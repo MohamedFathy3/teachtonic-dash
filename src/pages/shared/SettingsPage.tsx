@@ -70,7 +70,7 @@ export function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="rounded-2xl border-border p-6 shadow-soft">
+      {/* <Card className="rounded-2xl border-border p-6 shadow-soft">
         <h3 className="font-semibold">Notifications</h3>
         <Separator className="my-4" />
         {["Email notifications", "Push notifications", "Weekly digest", "Marketing updates"].map((label, i) => (
@@ -82,7 +82,7 @@ export function SettingsPage() {
             <Switch defaultChecked={i < 2} />
           </div>
         ))}
-      </Card>
+      </Card> */}
     </div>
   );
 }
