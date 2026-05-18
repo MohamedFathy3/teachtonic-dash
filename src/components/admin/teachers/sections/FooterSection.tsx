@@ -79,11 +79,14 @@ export function FooterSection({ teacherId }: FooterSectionProps) {
   };
 
   const getText = (item: any) => {
-    if (lang === 'ar') return item.name_ar || item.name;
-    return item.name;
+    if (!item) return '';
+
+    return lang === 'ar'
+      ? item.name_ar || item.name || ''
+      : item.name || '';
   };
 
-  const itemsList = Array.isArray(items) ? items : [];
+  const itemsList = Array.isArray(items) ? items.filter(Boolean) : [];
 
   return (
     <>
@@ -108,7 +111,7 @@ export function FooterSection({ teacherId }: FooterSectionProps) {
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
                 <div className="flex gap-3 mt-2">
-                
+
                 </div>
               </div>
               <div className="flex gap-1">

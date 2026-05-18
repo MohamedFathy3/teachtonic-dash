@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/teachers/TeacherDashboard.tsx
-
 import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Card } from '@/components/ui/card';
@@ -12,38 +11,18 @@ import { Progress } from '@/components/ui/progress';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
 import { StatusBadge } from '@/components/lms/StatusBadge';
 import { ThemePicker } from './ThemePicker';
+import { useTeacherDashboard } from '@/hooks/useTeacherDashboard';
 import {
   BookOpen, Users, FileText, Star, TrendingUp, Download,
   Calendar, CheckCircle, Award, BarChart3,
   Eye, Edit, Trash2, Plus, Search
 } from 'lucide-react';
 
+
 interface TeacherDashboardProps {
   teacherId: number;
   teacherName: string;
 }
-
-// Static Data
-const staticCourses = [
-  { id: 1, title: 'React Mastery 2024', category: 'Frontend', students: 245, rating: 4.8, price: 99, progress: 75, status: 'published' },
-  { id: 2, title: 'Advanced TypeScript', category: 'Programming', students: 189, rating: 4.9, price: 79, progress: 60, status: 'published' },
-  { id: 3, title: 'Node.js Backend', category: 'Backend', students: 312, rating: 4.7, price: 89, progress: 45, status: 'draft' },
-  { id: 4, title: 'UI/UX Design', category: 'Design', students: 167, rating: 4.6, price: 69, progress: 30, status: 'published' },
-];
-
-const staticStudents = [
-  { id: 1, name: 'Ahmed Mohamed', avatar: 'A', email: 'ahmed@email.com', course: 'React Mastery', progress: 85, lastActive: '2024-01-15', status: 'active' },
-  { id: 2, name: 'Sara Hassan', avatar: 'S', email: 'sara@email.com', course: 'TypeScript', progress: 92, lastActive: '2024-01-14', status: 'active' },
-  { id: 3, name: 'Omar Khaled', avatar: 'O', email: 'omar@email.com', course: 'Node.js', progress: 45, lastActive: '2024-01-10', status: 'inactive' },
-  { id: 4, name: 'Laila Ahmed', avatar: 'L', email: 'laila@email.com', course: 'UI/UX', progress: 78, lastActive: '2024-01-12', status: 'active' },
-];
-
-const staticAssignments = [
-  { id: 1, title: 'React Hooks Project', student: 'Ahmed Mohamed', submitted: '2024-01-14', status: 'submitted', grade: 92 },
-  { id: 2, title: 'TypeScript Generics', student: 'Sara Hassan', submitted: '2024-01-13', status: 'graded', grade: 88 },
-  { id: 3, title: 'REST API Design', student: 'Omar Khaled', submitted: '2024-01-09', status: 'pending', grade: null },
-  { id: 4, title: 'Figma Prototype', student: 'Laila Ahmed', submitted: '2024-01-11', status: 'submitted', grade: null },
-];
 
 const staticReviews = [
   { id: 1, student: 'Ahmed Mohamed', rating: 5, comment: 'Excellent course! Very well structured.', date: '2024-01-10', course: 'React Mastery' },
@@ -54,6 +33,16 @@ const staticReviews = [
 export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardProps) {
   const { dir } = useApp();
   const [activeSubTab, setActiveSubTab] = useState('overview');
+
+const {
+  teacherData,
+  loading,
+  dashboardCourses,
+  dashboardStudents,
+  dashboardAssignments,
+  dashboardExams,
+  dashboardBooks,
+} = useTeacherDashboard(teacherId);
 
   const stats = [
     { label: 'Total Courses', value: '12', icon: BookOpen, change: '+2', color: 'bg-blue-500' },
@@ -67,10 +56,20 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     { id: 'courses', label: 'Courses', icon: BookOpen },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'assignments', label: 'Assignments', icon: FileText },
+    { id: 'exams', label: 'Exams', icon: CheckCircle },
+    { id: 'books', label: 'Books', icon: BookOpen },
     { id: 'reviews', label: 'Reviews', icon: Star },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'theme', label: 'Theme', icon: Award },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-lg font-semibold">Loading teacher data...</p>
+      </div>
+    );
+  }
 
   const renderOverview = () => (
     <div className="space-y-6">
@@ -101,12 +100,11 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
               <tr>
                 <th className="text-left p-4 text-sm font-medium">Course</th>
                 <th className="text-left p-4 text-sm font-medium">Students</th>
-                <th className="text-left p-4 text-sm font-medium">Rating</th>
-                <th className="text-left p-4 text-sm font-medium">Progress</th>
+
               </tr>
             </thead>
             <tbody>
-              {staticCourses.map((course) => (
+              {dashboardCourses.map((course) => (
                 <tr key={course.id} className="border-t">
                   <td className="p-4">
                     <div>
@@ -115,18 +113,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                     </div>
                   </td>
                   <td className="p-4">{course.students}</td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />
-                      {course.rating}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2 max-w-[150px]">
-                      <Progress value={course.progress} className="h-2" />
-                      <span className="text-xs">{course.progress}%</span>
-                    </div>
-                  </td>
+
                 </tr>
               ))}
             </tbody>
@@ -137,38 +124,118 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
   );
 
   const renderCourses = () => (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {staticCourses.map((course) => (
-        <Card key={course.id} className="p-4 rounded-xl hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <BookOpen className="h-6 w-6 text-primary" />
+
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {dashboardCourses.map((course) => (
+        <Card
+          key={course.id}
+          className="group relative overflow-hidden rounded-2xl border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+        >
+          {/* IMAGE */}
+          <div className="relative h-48 w-full overflow-hidden">
+            <img
+              src={course.image || '/placeholder-course.png'}
+              alt={course.title}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            />
+
+            {/* overlay gradient */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+            {/* status */}
+            <div className="absolute top-3 right-3">
+              <StatusBadge status={course.status as any} />
+            </div>
+
+            {/* price */}
+            <div className="absolute bottom-3 left-3 flex items-center gap-2">
+              <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-black">
+                ${course.price}
+              </span>
+
+              {course.discount > 0 && (
+                <span className="rounded-full bg-red-500 px-2 py-1 text-xs text-white">
+                  -{course.discount}%
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* CONTENT */}
+          <div className="p-4 space-y-4">
+            {/* TITLE */}
+            <div>
+              <h3 className="text-base font-semibold line-clamp-1">
+                {course.title}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {course.semesterName ?? course.category}
+              </p>
+            </div>
+
+            {/* STATS GRID */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-xl bg-muted/40 p-2 text-center">
+                <p className="text-sm font-bold">{course.students}</p>
+                <p className="text-[11px] text-muted-foreground">Students</p>
               </div>
-              <div>
-                <h4 className="font-semibold">{course.title}</h4>
-                <p className="text-xs text-muted-foreground">{course.category}</p>
+
+              <div className="rounded-xl bg-muted/40 p-2 text-center">
+                <p className="text-sm font-bold">{course.lessonsCount}</p>
+                <p className="text-[11px] text-muted-foreground">Lessons</p>
+              </div>
+
+              <div className="rounded-xl bg-muted/40 p-2 text-center">
+                <p className="text-sm font-bold">{course.examsCount}</p>
+                <p className="text-[11px] text-muted-foreground">Exams</p>
               </div>
             </div>
-            <StatusBadge status={course.status as any} />
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-            <div><p className="font-bold">{course.students}</p><p className="text-xs text-muted-foreground">Students</p></div>
-            <div><p className="font-bold">{course.rating}</p><p className="text-xs text-muted-foreground">Rating</p></div>
-            <div><p className="font-bold">${course.price}</p><p className="text-xs text-muted-foreground">Price</p></div>
-          </div>
-          <div className="mt-3 flex gap-2">
-            <Progress value={course.progress} className="h-1 flex-1" />
-            <span className="text-xs">{course.progress}%</span>
-          </div>
-          <div className="mt-4 flex justify-end gap-1">
-            <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500" /></Button>
+
+            {/* SECOND ROW STATS */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-muted/40 p-2 text-center">
+                <p className="text-sm font-bold">{course.assignmentsCount}</p>
+                <p className="text-[11px] text-muted-foreground">Assignments</p>
+              </div>
+
+              <div className="rounded-xl bg-muted/40 p-2 text-center">
+                <p className="text-sm font-bold">{course.totalContent}</p>
+                <p className="text-[11px] text-muted-foreground">Total</p>
+              </div>
+            </div>
+
+            {/* PRICE INFO */}
+            {course.priceBeforeDiscount &&
+              course.priceBeforeDiscount > course.price && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">
+                    Original Price
+                  </span>
+                  <span className="line-through text-muted-foreground">
+                    ${course.priceBeforeDiscount}
+                  </span>
+                </div>
+              )}
+
+            {/* ACTIONS */}
+            <div className="flex items-center justify-end gap-1 border-t pt-3">
+              <Button variant="ghost" size="icon">
+                <Eye className="h-4 w-4" />
+              </Button>
+
+              <Button variant="ghost" size="icon">
+                <Edit className="h-4 w-4" />
+              </Button>
+
+              <Button variant="ghost" size="icon">
+                <Trash2 className="h-4 w-4 text-red-500" />
+              </Button>
+            </div>
           </div>
         </Card>
       ))}
     </div>
+
   );
 
   const renderStudents = () => (
@@ -191,7 +258,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
             </tr>
           </thead>
           <tbody>
-            {staticStudents.map((student) => (
+            {dashboardStudents.map((student) => (
               <tr key={student.id} className="border-t">
                 <td className="p-4">
                   <div className="flex items-center gap-3">
@@ -202,14 +269,24 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                     </div>
                   </div>
                 </td>
-                <td className="p-4">{student.course}</td>
+
                 <td className="p-4">
+                  {student.enrolledCourses ?? 0} Courses
+                </td>
+
+                <td className="p-4">
+
                   <div className="flex items-center gap-2 max-w-[150px]">
                     <Progress value={student.progress} className="h-2" />
                     <span className="text-xs">{student.progress}%</span>
                   </div>
                 </td>
-                <td className="p-4 text-sm">{student.lastActive}</td>
+                <td className="p-4 text-sm"><AvatarBadge
+                  initials={student.avatar ?? student.name.charAt(0)}
+                  size="sm"
+                />
+                </td>
+
                 <td className="p-4"><StatusBadge status={student.status as any} /></td>
               </tr>
             ))}
@@ -228,25 +305,99 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
         <table className="w-full">
           <thead className="bg-muted/30">
             <tr>
-              <th className="text-left p-4 text-sm font-medium">Title</th>
-              <th className="text-left p-4 text-sm font-medium">Student</th>
-              <th className="text-left p-4 text-sm font-medium">Submitted</th>
-              <th className="text-left p-4 text-sm font-medium">Status</th>
-              <th className="text-left p-4 text-sm font-medium">Grade</th>
+              <th className="text-left p-4 text-sm font-medium">
+                Assignment
+              </th>
+              <th className="text-left p-4 text-sm font-medium">
+                Course
+              </th>
+              <th className="text-left p-4 text-sm font-medium">
+                Questions
+              </th>
+              <th className="text-left p-4 text-sm font-medium">
+                Marks
+              </th>
+              <th className="text-left p-4 text-sm font-medium">
+                Duration
+              </th>
+              <th className="text-left p-4 text-sm font-medium">
+                Status
+              </th>
+              <th className="text-left p-4 text-sm font-medium">
+                Created
+              </th>
+            
             </tr>
           </thead>
           <tbody>
-            {staticAssignments.map((assignment) => (
-              <tr key={assignment.id} className="border-t">
-                <td className="p-4 font-medium">{assignment.title}</td>
-                <td className="p-4">{assignment.student}</td>
-                <td className="p-4 text-sm">{assignment.submitted}</td>
-                <td className="p-4"><StatusBadge status={assignment.status as any} /></td>
+            {dashboardAssignments.map((assignment) => (
+              <tr
+                key={assignment.id}
+                className="border-t hover:bg-muted/20 transition"
+              >
+                {/* Assignment */}
                 <td className="p-4">
-                  {assignment.grade ? (
-                    <span className="font-semibold text-green-600">{assignment.grade}/100</span>
-                  ) : <span className="text-muted-foreground">—</span>}
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={
+                        assignment.imageUrl ||
+                        '/placeholder-course.png'
+                      }
+                      alt={assignment.title}
+                      className="h-12 w-12 rounded-lg object-cover"
+                    />
+
+                    <div>
+                      <p className="font-medium line-clamp-1">
+                        {assignment.title}
+                      </p>
+
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        {assignment.description}
+                      </p>
+                    </div>
+                  </div>
                 </td>
+
+                {/* Course */}
+                <td className="p-4">
+                  React Course
+                </td>
+
+                {/* Questions */}
+                <td className="p-4">
+                  {assignment.questions.length}
+                </td>
+
+                {/* Marks */}
+                <td className="p-4 font-semibold">
+                  {assignment.total_marks}
+                </td>
+
+                {/* Duration */}
+                <td className="p-4">
+                  {assignment.duration_minutes} min
+                </td>
+
+                {/* Status */}
+                <td className="p-4">
+                  <StatusBadge
+                    status={
+                      assignment.active
+                        ? 'published'
+                        : 'draft'
+                    }
+                  />
+                </td>
+
+                {/* Created */}
+                <td className="p-4 text-sm text-muted-foreground">
+                  {new Date(
+                    assignment.created_at
+                  ).toLocaleDateString()}
+                </td>
+
+             
               </tr>
             ))}
           </tbody>
@@ -254,6 +405,218 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
       </div>
     </Card>
   );
+
+  const renderExams = () => (
+    <Card className="rounded-2xl overflow-hidden">
+      <div className="p-4 border-b">
+        <Button className="gap-2">
+          <Plus className="h-4 w-4" />
+          New Exam
+        </Button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-muted/30">
+            <tr>
+              <th className="text-left p-4 text-sm font-medium">
+                Exam
+              </th>
+
+              <th className="text-left p-4 text-sm font-medium">
+                Course
+              </th>
+
+              <th className="text-left p-4 text-sm font-medium">
+                Questions
+              </th>
+
+              <th className="text-left p-4 text-sm font-medium">
+                Total Marks
+              </th>
+
+              <th className="text-left p-4 text-sm font-medium">
+                Duration
+              </th>
+
+              <th className="text-left p-4 text-sm font-medium">
+                Result
+              </th>
+
+              <th className="text-left p-4 text-sm font-medium">
+                Status
+              </th>
+
+            
+            </tr>
+          </thead>
+
+          <tbody>
+            {dashboardExams.map((exam: any) => (
+              <tr
+                key={exam.id}
+                className="border-t hover:bg-muted/20 transition"
+              >
+                {/* Exam */}
+                <td className="p-4">
+                  <div className="flex items-center gap-3">
+
+                    <img
+                      src={
+                        exam.imageUrl ||
+                        '/placeholder-course.png'
+                      }
+                      alt={exam.title}
+                      className="h-12 w-12 rounded-lg object-cover"
+                    />
+
+                    <div>
+                      <p className="font-medium line-clamp-1">
+                        {exam.title}
+                      </p>
+
+                      <p className="text-xs text-muted-foreground">
+                        {exam.description}
+                      </p>
+                    </div>
+                  </div>
+                </td>
+
+                {/* Course */}
+                <td className="p-4">
+                  {exam.courseTitle}
+                </td>
+
+                {/* Questions */}
+                <td className="p-4">
+                  {exam.questions?.length ?? 0}
+                </td>
+
+                {/* Marks */}
+                <td className="p-4 font-semibold">
+                  {exam.total_marks}
+                </td>
+
+                {/* Duration */}
+                <td className="p-4">
+                  {exam.duration_minutes} min
+                </td>
+
+                {/* Result */}
+                <td className="p-4">
+                  {exam.show_result ? (
+                    <span className="text-green-600 text-sm font-medium">
+                      Visible
+                    </span>
+                  ) : (
+                    <span className="text-red-500 text-sm font-medium">
+                      Hidden
+                    </span>
+                  )}
+                </td>
+
+                {/* Status */}
+                <td className="p-4">
+                  <StatusBadge
+                    status={
+                      exam.active
+                        ? 'published'
+                        : 'draft'
+                    }
+                  />
+                </td>
+
+             
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+const renderBooks = () => (
+  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    {dashboardBooks.map((book) => (
+      <Card
+        key={book.id}
+        className="group overflow-hidden rounded-2xl border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+      >
+        {/* IMAGE */}
+        <div className="relative h-56 overflow-hidden">
+          <img
+            src={book.imageUrl || '/placeholder-book.png'}
+            alt={book.title}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+          <div className="absolute top-3 right-3">
+            <StatusBadge
+              status={book.active ? 'published' : 'draft'}
+            />
+          </div>
+
+          <div className="absolute bottom-3 left-3">
+            <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-black">
+              ${book.price}
+            </span>
+          </div>
+        </div>
+
+        {/* CONTENT */}
+        <div className="p-4 space-y-4">
+          <div>
+            <h3 className="text-base font-semibold line-clamp-1">
+              {book.title}
+            </h3>
+
+            <p className="text-sm text-muted-foreground">
+              By {book.writer}
+            </p>
+          </div>
+
+          {/* STATS */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-muted/40 p-3 text-center">
+              <p className="text-sm font-bold">
+                {book.pagesCount}
+              </p>
+
+              <p className="text-[11px] text-muted-foreground">
+                Pages
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-muted/40 p-3 text-center">
+              <p className="text-sm font-bold">
+                {new Date(book.createdAt).toLocaleDateString()}
+              </p>
+
+              <p className="text-[11px] text-muted-foreground">
+                Created
+              </p>
+            </div>
+          </div>
+
+          {/* <div className="flex items-center justify-end gap-1 border-t pt-3">
+            <Button variant="ghost" size="icon">
+              <Eye className="h-4 w-4" />
+            </Button>
+
+            <Button variant="ghost" size="icon">
+              <Edit className="h-4 w-4" />
+            </Button>
+
+            <Button variant="ghost" size="icon">
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </Button>
+          </div> */}
+        </div>
+      </Card>
+    ))}
+  </div>
+);
 
   const renderReviews = () => (
     <div className="space-y-4">
@@ -284,6 +647,9 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
       ))}
     </div>
   );
+
+
+
 
   const renderReports = () => (
     <Card className="p-5 rounded-xl">
@@ -330,6 +696,8 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
       {activeSubTab === 'courses' && renderCourses()}
       {activeSubTab === 'students' && renderStudents()}
       {activeSubTab === 'assignments' && renderAssignments()}
+      {activeSubTab === 'exams' && renderExams()}
+      {activeSubTab === 'books' && renderBooks()}
       {activeSubTab === 'reviews' && renderReviews()}
       {activeSubTab === 'reports' && renderReports()}
       {activeSubTab === 'theme' && renderTheme()}
