@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/lms/StatusBadge";
 import { BookOpen, Star, Users, Plus } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
-
+import { useNavigate } from "react-router-dom";
 export function AdminCourses() {
   const { t } = useApp();
   const { courses, loading } = useCourses();
-
+  const navigate = useNavigate();
   return (
     <div className="mx-auto max-w-[1400px] space-y-8">
       {/* HEADER */}
@@ -30,8 +30,10 @@ export function AdminCourses() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+
           {courses.map((c) => (
             <Card
+              onClick={() => navigate(`/admin/courses/${c.id}`)}
               key={c.id}
               className="
                 group relative overflow-hidden rounded-2xl

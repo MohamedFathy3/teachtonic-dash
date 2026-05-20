@@ -10,7 +10,8 @@ import AdminLoginPage from "./pages/login";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { TeacherProfileView } from "./pages/admin/TeacherProfileView"; // 🔥 استورد الـ Component صح
-
+import { AdminCourses } from "@/pages/admin/AdminCourses";
+import { CourseDetails } from "@/pages/admin/CourseDetails";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -26,6 +27,11 @@ const App = () => {
               <Route path="/login" element={<AdminLoginPage />} />
               <Route path="/admin/teachers/profile" element={<TeacherProfileView />} />
               <Route path="/admin/*" element={<Index />} />
+                 {/* Admin Courses */}
+        <Route path="/admin/courses" element={<AdminCourses />} />
+
+        {/* 👇 ده اللي انت ضيفته */}
+        <Route path="/admin/courses/:id" element={<CourseDetails />} />
               <Route path="/instructor/*" element={<Index />} />
               <Route path="/*" element={<Index />} />
             </Routes>
