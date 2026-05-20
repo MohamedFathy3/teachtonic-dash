@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/center-hours/CenterHoursPage.tsx
+import { ExportExcelButton } from '@/components/common/ExportExcelButton'; // ✅ أضف هذا الاستيراد
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -103,6 +104,13 @@ export const CenterHoursPage: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-3">
+            {/* ✅ زرار التصدير */}
+            <ExportExcelButton
+              data={hours}
+              fileName="center-hours"
+              label={lang === 'ar' ? 'تصدير' : 'Export'}
+              disabled={isLoading || hours.length === 0}
+            />
             {/* Dark Mode Toggle Button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -163,7 +171,7 @@ export const CenterHoursPage: React.FC = () => {
                 className="w-full pl-3 pr-10 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300"
               />
             </div>
-            
+
             <AsyncSelect
               configKey="teachers"
               value={filters.teacher_id}

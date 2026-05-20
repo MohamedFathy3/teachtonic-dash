@@ -8,6 +8,7 @@ import { AvatarBadge } from "@/components/lms/AvatarBadge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { assistantsData } from "@/lib/mockData";
 import { Plus, Mail, BookOpen } from "lucide-react";
+import { ExportExcelButton } from "@/components/common/ExportExcelButton";
 
 export function InstructorAssistants() {
   const { t } = useApp();
@@ -17,32 +18,42 @@ export function InstructorAssistants() {
         title={t("assistants")}
         description="Manage teaching assistants helping you run your courses"
         actions={
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="gap-2 rounded-xl gradient-primary border-0 shadow-glow"><Plus className="h-4 w-4" />Add assistant</Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-2xl">
-              <DialogHeader><DialogTitle>Invite a teaching assistant</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <Label>{t("name")}</Label>
-                  <Input placeholder="Full name" className="rounded-xl" />
+          <div className="flex items-center gap-3">
+            {/* ✅ زرار التصدير */}
+            <ExportExcelButton
+              data={assistantsData}
+              fileName="assistants-list"
+              label={'Export'}
+            />
+
+            {/* Dialog + Button الأصلي */}
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="gap-2 rounded-xl gradient-primary border-0 shadow-glow"><Plus className="h-4 w-4" />Add assistant</Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-2xl">
+                <DialogHeader><DialogTitle>Invite a teaching assistant</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <Label>{t("name")}</Label>
+                    <Input placeholder="Full name" className="rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("email")}</Label>
+                    <Input type="email" placeholder="ta@example.com" className="rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("role")}</Label>
+                    <Input placeholder="Teaching Assistant" className="rounded-xl" />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>{t("email")}</Label>
-                  <Input type="email" placeholder="ta@example.com" className="rounded-xl" />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("role")}</Label>
-                  <Input placeholder="Teaching Assistant" className="rounded-xl" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" className="rounded-xl">{t("cancel")}</Button>
-                <Button className="rounded-xl gradient-primary border-0">Send invite</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button variant="outline" className="rounded-xl">{t("cancel")}</Button>
+                  <Button className="rounded-xl gradient-primary border-0">Send invite</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         }
       />
 

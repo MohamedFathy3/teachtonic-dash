@@ -1,22 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/admin/SubjectsPage.tsx
-
+import { Download, Loader2 } from "lucide-react";
+import { ExportExcelButton } from "@/components/common/ExportExcelButton";
 import { useApp } from '@/contexts/AppContext';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
-import { 
-  Search, 
-  Plus, 
-  ChevronLeft, 
-  ChevronRight, 
-  Edit, 
-  Trash2, 
-  Layers, 
-  Trash, 
-  Archive, 
+import {
+  Search,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Edit,
+  Trash2,
+  Layers,
+  Trash,
+  Archive,
   RotateCcw,
   Eye // 🔥 أيقونة Show
 } from 'lucide-react';
@@ -38,29 +39,29 @@ import { useNavigate } from 'react-router-dom';
 export function SubjectsPage() {
   const { dir, lang } = useApp();
   const navigate = useNavigate(); // 🔥 للتنقل
-  
-  const { 
-    subjects, 
-    loading, 
-    total, 
-    currentPage, 
-    lastPage, 
+
+  const {
+    subjects,
+    loading,
+    total,
+    currentPage,
+    lastPage,
     showDeleted,
     setShowDeleted,
     selectedSubjects,
     setSelectedSubjects,
-    createSubject, 
-    updateSubject, 
-    deleteSubject, 
+    createSubject,
+    updateSubject,
+    deleteSubject,
     forceDeleteSubject,
     restoreSubject,
-    toggleActive, 
+    toggleActive,
     goToPage,
     bulkDelete,
     bulkForceDelete,
     bulkRestore
   } = useSubjects();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingSubjectId, setEditingSubjectId] = useState<number | null>(null); // 🔥 ID بس
@@ -249,14 +250,37 @@ export function SubjectsPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          {/* 🔥 Export Button */}
+          <ExportExcelButton
+            data={subjects}
+            fileName={showDeleted ? "deleted-subjects" : "subjects-list"}
+            label={loading ? "Preparing..." : "Export"}
+            icon={
+              loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )
+            }
+            className="
+      h-10 rounded-lg
+      border border-emerald-200
+      bg-emerald-50
+      text-emerald-700
+      hover:bg-emerald-600
+      hover:text-white
+      dark:bg-emerald-900/20
+      dark:text-emerald-400
+      transition-all
+    "
+          />
           <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
-            className={`gap-2 rounded-lg ${
-              showDeleted 
-                ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+            className={`gap-2 rounded-lg ${showDeleted
+                ? 'bg-orange-600 hover:bg-orange-700 text-white'
                 : 'border-gray-200 dark:border-gray-700'
-            }`}
+              }`}
           >
             {showDeleted ? (
               <><Archive className="h-4 w-4" />{text.showActive}</>
@@ -410,22 +434,22 @@ export function SubjectsPage() {
                         </div>
                       ) : (
                         <div className="flex justify-center gap-1">
-                       
+
                           {/* 🔥 زر Edit */}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleEditClick(subject.id)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditClick(subject.id)}
                             className="text-amber-600"
                             title={text.edit}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           {/* 🔥 زر Delete */}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setDeletingSubject(subject)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeletingSubject(subject)}
                             className="text-red-600"
                             title={text.delete}
                           >
@@ -467,47 +491,47 @@ export function SubjectsPage() {
       </Card>
 
       {/* Dialogs */}
-      <SubjectForm 
-        open={formOpen} 
+      <SubjectForm
+        open={formOpen}
         onClose={() => {
           setFormOpen(false);
           setEditingSubjectId(null);
-        }} 
+        }}
         onSubmit={editingSubjectId ? handleUpdate : handleCreate}
         subjectId={editingSubjectId}
-        loading={actionLoading} 
+        loading={actionLoading}
       />
-      
-      <SubjectDeleteDialog 
-        open={!!deletingSubject} 
-        onClose={() => setDeletingSubject(null)} 
-        onConfirm={handleDelete} 
-        subjectName={getSubjectName(deletingSubject)} 
-        loading={actionLoading} 
+
+      <SubjectDeleteDialog
+        open={!!deletingSubject}
+        onClose={() => setDeletingSubject(null)}
+        onConfirm={handleDelete}
+        subjectName={getSubjectName(deletingSubject)}
+        loading={actionLoading}
       />
-      
-      <SubjectDeleteDialog 
-        open={!!restoringSubject} 
-        onClose={() => setRestoringSubject(null)} 
-        onConfirm={handleRestore} 
-        subjectName={getSubjectName(restoringSubject)} 
-        loading={actionLoading} 
+
+      <SubjectDeleteDialog
+        open={!!restoringSubject}
+        onClose={() => setRestoringSubject(null)}
+        onConfirm={handleRestore}
+        subjectName={getSubjectName(restoringSubject)}
+        loading={actionLoading}
         title="Restore Subject"
         confirmText="Restore"
         confirmClassName="bg-green-600"
       />
-      
-      <SubjectDeleteDialog 
-        open={!!forceDeletingSubject} 
-        onClose={() => setForceDeletingSubject(null)} 
-        onConfirm={handleForceDelete} 
-        subjectName={getSubjectName(forceDeletingSubject)} 
-        loading={actionLoading} 
+
+      <SubjectDeleteDialog
+        open={!!forceDeletingSubject}
+        onClose={() => setForceDeletingSubject(null)}
+        onConfirm={handleForceDelete}
+        subjectName={getSubjectName(forceDeletingSubject)}
+        loading={actionLoading}
         title="Permanent Delete"
         confirmText="Permanently Delete"
         confirmClassName="bg-red-700"
       />
-      
+
       <SubjectDeleteDialog
         open={bulkActionDialog.open}
         onClose={() => setBulkActionDialog({ type: null, open: false })}

@@ -36,6 +36,7 @@ import { HeroDeleteDialog } from '@/components/admin/hero/HeroDeleteDialog';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 export function HeroesPage() {
   const { dir, lang } = useApp();
@@ -194,6 +195,14 @@ export function HeroesPage() {
           </div>
         </div>
         <div className="flex gap-2">
+            {/* ✅ زرار التصدير */}
+          <ExportExcelButton
+            data={filteredHeroes}
+            fileName="heroes-list"
+            label={lang === 'ar' ? 'تصدير' : 'Export'}
+            disabled={loading || filteredHeroes.length === 0}
+          />
+
           <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}

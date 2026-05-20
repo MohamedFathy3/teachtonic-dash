@@ -1,15 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/payment-codes/PaymentCodesPage.tsx
+import { ExportExcelButton } from '@/components/common/ExportExcelButton'; // ✅ أضف هذا الاستيراد
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePaymentCodes } from '@/hooks/usePaymentCodes';
 import { GenerateCodesModal } from './GenerateCodesModal';
 import { useApp } from '@/contexts/AppContext';
-import { 
-  Plus, Trash2, Copy, Check, TrendingUp, Wallet, BookOpen, 
-  Calendar, FileText, Sparkles, Search, Filter, X, Eye, 
-  Tag, DollarSign, Clock, Zap, Layers 
+import {
+  Plus, Trash2, Copy, Check, TrendingUp, Wallet, BookOpen,
+  Calendar, FileText, Sparkles, Search, Filter, X, Eye,
+  Tag, DollarSign, Clock, Zap, Layers
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,7 @@ export const PaymentCodesPage: React.FC = () => {
     search: debouncedSearch,
     perPage: 1000,
   });
-  
+
   const deleteCodes = useDeleteCodes();
   const { data: statistics } = useGetStatistics();
 
@@ -48,9 +49,9 @@ export const PaymentCodesPage: React.FC = () => {
   // 🔥 استخراج الكودات من الهيكل المتداخل الفعلي
   const extractCodesFromResponse = (responseData: any): any[] => {
     if (!responseData) return [];
-    
+
     let allCodes: any[] = [];
-    
+
     // 1. استخراج من المحفظة (wallet)
     if (responseData.wallet && Array.isArray(responseData.wallet)) {
       responseData.wallet.forEach((item: any) => {
@@ -59,7 +60,7 @@ export const PaymentCodesPage: React.FC = () => {
         }
       });
     }
-    
+
     // 2. استخراج من الكورسات (courses)
     if (responseData.courses && Array.isArray(responseData.courses)) {
       responseData.courses.forEach((item: any) => {
@@ -68,7 +69,7 @@ export const PaymentCodesPage: React.FC = () => {
         }
       });
     }
-    
+
     // 3. استخراج من الترم (semesters)
     if (responseData.semesters && Array.isArray(responseData.semesters)) {
       responseData.semesters.forEach((item: any) => {
@@ -77,7 +78,7 @@ export const PaymentCodesPage: React.FC = () => {
         }
       });
     }
-    
+
     // 4. استخراج من الدروس (lessons)
     if (responseData.lessons && Array.isArray(responseData.lessons)) {
       responseData.lessons.forEach((item: any) => {
@@ -86,24 +87,24 @@ export const PaymentCodesPage: React.FC = () => {
         }
       });
     }
-    
+
     // تطبيق الفلترة حسب النص (لأن الـ API يمكن لا يدعم البحث في كل الأنواع)
     if (debouncedSearch) {
       allCodes = allCodes.filter((code: any) =>
         code.code.toLowerCase().includes(debouncedSearch.toLowerCase())
       );
     }
-    
+
     // تطبيق فلتر النوع
     if (filters.type) {
       allCodes = allCodes.filter((code: any) => code.type === filters.type);
     }
-    
+
     // تطبيق فلتر الحالة
     if (filters.is_used !== undefined) {
       allCodes = allCodes.filter((code: any) => code.is_used === (filters.is_used ? 1 : 0));
     }
-    
+
     return allCodes;
   };
 
@@ -124,26 +125,26 @@ export const PaymentCodesPage: React.FC = () => {
   }, [codes]);
 
   const statsCards = [
-    { 
-      key: 'total', 
-      label: lang === 'ar' ? 'إجمالي الكودات' : 'Total Codes', 
-      icon: Layers, 
-      color: 'from-blue-500 to-indigo-600', 
-      value: statsData.total_codes 
+    {
+      key: 'total',
+      label: lang === 'ar' ? 'إجمالي الكودات' : 'Total Codes',
+      icon: Layers,
+      color: 'from-blue-500 to-indigo-600',
+      value: statsData.total_codes
     },
-    { 
-      key: 'used', 
-      label: lang === 'ar' ? 'المستخدمة' : 'Used', 
-      icon: Check, 
-      color: 'from-rose-500 to-red-600', 
-      value: statsData.used_codes 
+    {
+      key: 'used',
+      label: lang === 'ar' ? 'المستخدمة' : 'Used',
+      icon: Check,
+      color: 'from-rose-500 to-red-600',
+      value: statsData.used_codes
     },
-    { 
-      key: 'unused', 
-      label: lang === 'ar' ? 'غير المستخدمة' : 'Unused', 
-      icon: Sparkles, 
-      color: 'from-emerald-500 to-teal-600', 
-      value: statsData.unused_codes 
+    {
+      key: 'unused',
+      label: lang === 'ar' ? 'غير المستخدمة' : 'Unused',
+      icon: Sparkles,
+      color: 'from-emerald-500 to-teal-600',
+      value: statsData.unused_codes
     },
   ];
 
@@ -155,7 +156,7 @@ export const PaymentCodesPage: React.FC = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
-    const confirmMsg = lang === 'ar' 
+    const confirmMsg = lang === 'ar'
       ? `⚠️ هل أنت متأكد من حذف ${selectedIds.length} كود؟ لا يمكن التراجع.`
       : `⚠️ Delete ${selectedIds.length} code(s)? This action cannot be undone.`;
     if (confirm(confirmMsg)) {
@@ -188,31 +189,31 @@ export const PaymentCodesPage: React.FC = () => {
 
   const getTypeBadge = (type: string) => {
     const config: Record<string, any> = {
-      wallet: { 
+      wallet: {
         bg: 'bg-gradient-to-r from-emerald-100 to-green-100 dark:from-emerald-950/40 dark:to-green-950/40',
-        text: 'text-emerald-800 dark:text-emerald-300', 
-        icon: Wallet, 
+        text: 'text-emerald-800 dark:text-emerald-300',
+        icon: Wallet,
         label: lang === 'ar' ? 'محفظة' : 'Wallet',
         border: 'border-emerald-200 dark:border-emerald-800'
       },
-      course: { 
+      course: {
         bg: 'bg-gradient-to-r from-blue-100 to-sky-100 dark:from-blue-950/40 dark:to-sky-950/40',
-        text: 'text-blue-800 dark:text-blue-300', 
-        icon: BookOpen, 
+        text: 'text-blue-800 dark:text-blue-300',
+        icon: BookOpen,
         label: lang === 'ar' ? 'كورس' : 'Course',
         border: 'border-blue-200 dark:border-blue-800'
       },
-      semester: { 
+      semester: {
         bg: 'bg-gradient-to-r from-purple-100 to-violet-100 dark:from-purple-950/40 dark:to-violet-950/40',
-        text: 'text-purple-800 dark:text-purple-300', 
-        icon: Calendar, 
+        text: 'text-purple-800 dark:text-purple-300',
+        icon: Calendar,
         label: lang === 'ar' ? 'ترم' : 'Semester',
         border: 'border-purple-200 dark:border-purple-800'
       },
-      lesson: { 
+      lesson: {
         bg: 'bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-950/40 dark:to-amber-950/40',
-        text: 'text-orange-800 dark:text-orange-300', 
-        icon: FileText, 
+        text: 'text-orange-800 dark:text-orange-300',
+        icon: FileText,
         label: lang === 'ar' ? 'درس' : 'Lesson',
         border: 'border-orange-200 dark:border-orange-800'
       },
@@ -309,7 +310,7 @@ export const PaymentCodesPage: React.FC = () => {
           className="flex flex-wrap justify-between items-center gap-4 mb-8"
         >
           <div>
-            <motion.h1 
+            <motion.h1
               className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent"
               animate={{ backgroundPosition: ['0%', '100%'] }}
               transition={{ duration: 5, repeat: Infinity, repeatType: 'reverse' }}
@@ -322,19 +323,25 @@ export const PaymentCodesPage: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-3">
+            {/* ✅ زرار التصدير */}
+            <ExportExcelButton
+              data={codes}
+              fileName="payment-codes"
+              label={lang === 'ar' ? 'تصدير' : 'Export'}
+              disabled={isLoading || codes.length === 0}
+            />
             <motion.button
               whileHover={{ scale: 1.05, rotate: 90 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowFilters(!showFilters)}
-              className={`p-2.5 rounded-xl border transition-all ${
-                showFilters 
-                  ? 'bg-blue-500 text-white border-blue-500 shadow-md' 
+              className={`p-2.5 rounded-xl border transition-all ${showFilters
+                  ? 'bg-blue-500 text-white border-blue-500 shadow-md'
                   : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300'
-              }`}
+                }`}
             >
               <Filter size={18} />
             </motion.button>
-            
+
             <AnimatePresence>
               {selectedIds.length > 0 && (
                 <motion.button
@@ -349,7 +356,7 @@ export const PaymentCodesPage: React.FC = () => {
                 </motion.button>
               )}
             </AnimatePresence>
-            
+
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -391,7 +398,7 @@ export const PaymentCodesPage: React.FC = () => {
                       </button>
                     )}
                   </div>
-                  
+
                   <select
                     value={filters.type}
                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
@@ -441,7 +448,7 @@ export const PaymentCodesPage: React.FC = () => {
                   <p className="text-white/80 text-sm font-medium tracking-wide">
                     {stat.label}
                   </p>
-                  <motion.p 
+                  <motion.p
                     className="text-4xl font-bold mt-2"
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
@@ -454,7 +461,7 @@ export const PaymentCodesPage: React.FC = () => {
                   <stat.icon size={32} className="text-white" />
                 </div>
               </div>
-              <motion.div 
+              <motion.div
                 className="absolute -bottom-4 -right-4 w-24 h-24 rounded-full bg-white/10"
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 3, repeat: Infinity }}
@@ -500,8 +507,8 @@ export const PaymentCodesPage: React.FC = () => {
               <p className="text-gray-500 dark:text-gray-400 text-lg">
                 {lang === 'ar' ? '✨ لا توجد كودات مطابقة للبحث' : '✨ No matching codes found'}
               </p>
-              <Button 
-                variant="link" 
+              <Button
+                variant="link"
                 onClick={() => { setSearchQuery(''); setFilters({ type: '', is_used: undefined }); }}
                 className="mt-3 text-blue-600"
               >
@@ -564,7 +571,7 @@ export const PaymentCodesPage: React.FC = () => {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
-                            <motion.code 
+                            <motion.code
                               whileHover={{ scale: 1.02 }}
                               className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-sm font-mono font-bold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 shadow-sm"
                             >
@@ -593,11 +600,10 @@ export const PaymentCodesPage: React.FC = () => {
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             onClick={() => handleCopyCode(code.code)}
-                            className={`text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                              copiedCode === code.code
+                            className={`text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${copiedCode === code.code
                                 ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
                                 : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50'
-                            }`}
+                              }`}
                           >
                             {copiedCode === code.code ? (
                               <>

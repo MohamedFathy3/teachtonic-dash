@@ -6,6 +6,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { monthlyRevenue } from "@/lib/mockData";
 import { DollarSign, Wallet, TrendingUp, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ExportExcelButton } from "@/components/common/ExportExcelButton";
 
 export function InstructorEarnings() {
   const { t } = useApp();
@@ -14,7 +15,16 @@ export function InstructorEarnings() {
       <PageHeader
         title={t("earnings")}
         description="Track your revenue and request payouts"
-        actions={<Button className="rounded-xl gradient-accent border-0 shadow-glow">Request payout</Button>}
+         actions={
+          <div className="flex items-center gap-3">
+            {/* ✅ زرار التصدير */}
+            <ExportExcelButton
+              data={monthlyRevenue}
+              fileName="earnings-data"
+              label={ 'Export'}
+            />
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -6,13 +6,38 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { paymentsData } from "@/lib/mockData";
 import { StatCard } from "@/components/lms/StatCard";
 import { DollarSign, CreditCard, TrendingUp, Wallet } from "lucide-react";
-
+import { ExportExcelButton } from "@/components/common/ExportExcelButton";
+import { Download, Loader2 } from "lucide-react";
 export function AdminPayments() {
   const { t } = useApp();
   const total = paymentsData.reduce((s, p) => s + p.amount, 0);
   return (
+    
     <div className="mx-auto max-w-[1400px] space-y-6">
-      <PageHeader title={t("payments")} description="All transactions across the platform" />
+      
+      <PageHeader title={t("payments")} description="All transactions across the platform"    />
+
+    
+      {/* 🔥 Export Button */}
+      <ExportExcelButton
+        data={paymentsData}
+        fileName="payments-report"
+        label="Export"
+        icon={<Download className="h-4 w-4" />}
+        className="
+      h-10 rounded-xl
+      border border-blue-200
+      bg-blue-50
+      text-blue-700
+      hover:bg-blue-600
+      hover:text-white
+      dark:bg-blue-900/20
+      dark:text-blue-400
+      transition-all duration-300
+      shadow-sm
+    "
+      />
+
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total volume" value={`$${total}`} delta={18.2} icon={DollarSign} variant="warm" />

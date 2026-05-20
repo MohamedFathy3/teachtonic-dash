@@ -36,6 +36,7 @@ import { AboutDeleteDialog } from '@/components/admin/about/AboutDeleteDialog';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 export function AboutsPage() {
   const { dir, lang } = useApp();
@@ -196,6 +197,13 @@ export function AboutsPage() {
           </div>
         </div>
         <div className="flex gap-2">
+           {/* ✅ زرار التصدير */}
+          <ExportExcelButton
+            data={filteredAbouts}
+            fileName="abouts-list"
+            label={lang === 'ar' ? 'تصدير' : 'Export'}
+            disabled={loading || filteredAbouts.length === 0}
+          />
           <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}

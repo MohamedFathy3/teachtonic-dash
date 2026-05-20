@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/lms/StatusBadge";
 import { BookOpen, Star, Users, Plus } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
 import { useNavigate } from "react-router-dom";
+import { ExportExcelButton } from "@/components/common/ExportExcelButton";
 export function AdminCourses() {
   const { t } = useApp();
   const { courses, loading } = useCourses();
@@ -13,14 +14,10 @@ export function AdminCourses() {
   return (
     <div className="mx-auto max-w-[1400px] space-y-8">
       {/* HEADER */}
-      <PageHeader
-        title={t("courses")}
-        description={`${courses.length} courses across the platform`}
-        actions={
-          <Button className="gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/70 shadow-lg hover:shadow-xl transition-all">
-            <Plus className="h-4 w-4" /> Add course
-          </Button>
-        }
+      <ExportExcelButton
+        data={courses}
+        fileName="courses-list"
+        label="Export Courses"
       />
 
       {/* LOADING */}

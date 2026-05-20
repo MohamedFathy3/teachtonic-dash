@@ -13,9 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
-import { 
-  Loader2, Plus, Search, Trash2, RefreshCw, Archive, Eye, 
-  Grid3x3, List, AlertCircle, Edit2, 
+import {
+  Loader2, Plus, Search, Trash2, RefreshCw, Archive, Eye,
+  Grid3x3, List, AlertCircle, Edit2,
   Power, PowerOff, ChevronLeft, ChevronRight, BookOpen,
   Users, DollarSign, Clock, Filter, X, Sparkles, TrendingUp,
   GraduationCap, Calendar, Star, Zap
@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Course } from '@/types/course.types';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import { Label } from '@/components/ui/label';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 // ✅ أنيميشن متقدمة
 const containerVariants = {
@@ -61,7 +62,7 @@ const statsCardVariants = {
 export const InstructorCourses: React.FC = () => {
   const { t, lang, user } = useApp();
   const isRTL = lang === 'ar';
-  
+
   // ✅ State
   const [courses, setCourses] = useState<Course[]>([]);
   const [deletedCourses, setDeletedCourses] = useState<Course[]>([]);
@@ -76,12 +77,12 @@ export const InstructorCourses: React.FC = () => {
   const [courseToEdit, setCourseToEdit] = useState<Course | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // ✅ Filter State
   const [filterStageId, setFilterStageId] = useState<number | null>(null);
   const [filterSubjectId, setFilterSubjectId] = useState<number | null>(null);
   const [filterSemesterId, setFilterSemesterId] = useState<number | null>(null);
-  
+
   // ✅ Pagination
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -89,11 +90,11 @@ export const InstructorCourses: React.FC = () => {
     total: 0,
     perPage: 12,
   });
-  
+
   // ✅ Selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
-  
+
   // ✅ Dialog States
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [restoringCourse, setRestoringCourse] = useState<Course | null>(null);
@@ -105,13 +106,13 @@ export const InstructorCourses: React.FC = () => {
     if (!activeTab) return;
     setLoading(true);
     setError(null);
-    
+
     const filters: Record<string, any> = {};
     filters.teacher_id = user?.id; // 🔥 مهم جدًا: نضيف teacher_id كفلتر أساسي
     if (filterStageId) filters.stage_id = filterStageId;
     if (filterSubjectId) filters.subject_id = filterSubjectId;
     if (filterSemesterId) filters.semester_id = filterSemesterId;
-    
+
     try {
       const response = await courseService.getAllCourses(filters, 12, page, searchQuery, activeTab === 'deleted');
       if (activeTab === 'active') {
@@ -248,7 +249,7 @@ export const InstructorCourses: React.FC = () => {
       className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950"
     >
       <div className="max-w-[1600px] mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
-        
+
         {/* ✅ Header Section */}
         <motion.div variants={headerVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -270,32 +271,36 @@ export const InstructorCourses: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="flex gap-2">
             {/* View Mode Toggle */}
             <div className="flex bg-muted/50 rounded-xl p-1">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 px-3 rounded-lg transition-all duration-300 ${
-                  viewMode === 'grid' 
-                    ? 'bg-white dark:bg-gray-800 text-primary shadow-md' 
+                className={`p-2 px-3 rounded-lg transition-all duration-300 ${viewMode === 'grid'
+                    ? 'bg-white dark:bg-gray-800 text-primary shadow-md'
                     : 'hover:bg-white/50 dark:hover:bg-gray-800/50'
-                }`}
+                  }`}
               >
                 <Grid3x3 className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-2 px-3 rounded-lg transition-all duration-300 ${
-                  viewMode === 'table' 
-                    ? 'bg-white dark:bg-gray-800 text-primary shadow-md' 
+                className={`p-2 px-3 rounded-lg transition-all duration-300 ${viewMode === 'table'
+                    ? 'bg-white dark:bg-gray-800 text-primary shadow-md'
                     : 'hover:bg-white/50 dark:hover:bg-gray-800/50'
-                }`}
+                  }`}
               >
                 <List className="h-4 w-4" />
               </button>
             </div>
-            
+            {/* ✅ زرار التصدير */}
+            <ExportExcelButton
+              data={currentList}
+              fileName="courses-list"
+              label={lang === 'ar' ? 'تصدير' : 'Export'}
+              disabled={loading || currentList.length === 0}
+            />
             {/* Create Button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -327,7 +332,7 @@ export const InstructorCourses: React.FC = () => {
               <div className="relative z-10 flex justify-between items-start">
                 <div>
                   <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  <motion.p 
+                  <motion.p
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: stat.delay, type: "spring" }}
@@ -369,11 +374,10 @@ export const InstructorCourses: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowFilters(!showFilters)}
-                  className={`p-2.5 rounded-xl border transition-all duration-300 ${
-                    showFilters 
-                      ? 'bg-primary text-white border-primary shadow-md' 
+                  className={`p-2.5 rounded-xl border transition-all duration-300 ${showFilters
+                      ? 'bg-primary text-white border-primary shadow-md'
                       : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary'
-                  }`}
+                    }`}
                 >
                   <Filter className="h-4 w-4" />
                 </motion.button>
@@ -501,7 +505,7 @@ export const InstructorCourses: React.FC = () => {
               {/* ✅ Grid View */}
               {!loading && !error && currentList.length > 0 && viewMode === 'grid' && (
                 <>
-                  <motion.div 
+                  <motion.div
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
@@ -527,7 +531,7 @@ export const InstructorCourses: React.FC = () => {
                       </motion.div>
                     ))}
                   </motion.div>
-                  
+
                   {/* ✅ Pagination */}
                   {pagination.total > pagination.perPage && (
                     <div className="flex items-center justify-center gap-3 pt-8 pb-4">
@@ -646,11 +650,10 @@ export const InstructorCourses: React.FC = () => {
                             </td>
                             {!isDeletedTab && (
                               <td className="px-5 py-4 text-center">
-                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                                  course.active === 1 
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${course.active === 1
                                     ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                     : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                                }`}>
+                                  }`}>
                                   {course.active === 1 ? (
                                     <>
                                       <Zap className="h-3 w-3" />
@@ -761,7 +764,7 @@ export const InstructorCourses: React.FC = () => {
           title={t('deleteCourse') || 'Delete Course'}
           itemName={deletingCourse?.title}
         />
-        
+
         <DeleteConfirmDialog
           open={!!restoringCourse}
           onClose={() => setRestoringCourse(null)}
@@ -769,7 +772,7 @@ export const InstructorCourses: React.FC = () => {
           title={t('restoreCourse') || 'Restore Course'}
           itemName={restoringCourse?.title}
         />
-        
+
         <DeleteConfirmDialog
           open={!!forceDeletingCourse}
           onClose={() => setForceDeletingCourse(null)}
@@ -791,7 +794,7 @@ const DeleteConfirmDialog: React.FC<{
   itemName?: string;
 }> = ({ open, onClose, onConfirm, title, itemName }) => {
   if (!open) return null;
-  
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <motion.div

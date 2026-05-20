@@ -2,7 +2,7 @@
 // src/hooks/useCourses.ts
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { courseService } from '@/services/course.service';
+import { courseService } from '@/services/course.service';  
 import type { Course, CourseFormData } from '@/types/course.types';
 import { useApp } from '@/contexts/AppContext';
 

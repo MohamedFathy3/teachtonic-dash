@@ -7,17 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
-import { 
-  Search, 
-  Plus, 
-  MoreHorizontal, 
-  ChevronLeft, 
-  ChevronRight, 
-  Edit, 
-  Trash2, 
-  Layers, 
-  Trash, 
-  Archive, 
+import {
+  Search,
+  Plus,
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  Edit,
+  Trash2,
+  Layers,
+  Trash,
+  Archive,
   RotateCcw,
   Eye,
   Image as ImageIcon
@@ -36,33 +36,34 @@ import { FeatureDeleteDialog } from '@/components/admin/features/FeatureDeleteDi
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 export function FeaturesPage() {
   const { dir, lang } = useApp();
   const navigate = useNavigate();
-  
-  const { 
-    features, 
-    loading, 
-    total, 
-    currentPage, 
-    lastPage, 
+
+  const {
+    features,
+    loading,
+    total,
+    currentPage,
+    lastPage,
     showDeleted,
     setShowDeleted,
     selectedFeatures,
     setSelectedFeatures,
-    createFeature, 
-    updateFeature, 
-    deleteFeature, 
+    createFeature,
+    updateFeature,
+    deleteFeature,
     forceDeleteFeature,
     restoreFeature,
-    toggleActive, 
+    toggleActive,
     goToPage,
     bulkDelete,
     bulkForceDelete,
     bulkRestore
   } = useFeatures();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingFeatureId, setEditingFeatureId] = useState<number | null>(null);
@@ -196,14 +197,19 @@ export function FeaturesPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <ExportExcelButton
+            data={filteredFeatures}
+            fileName="features-list"
+            label={lang === 'ar' ? 'تصدير' : 'Export'}
+            disabled={loading || filteredFeatures.length === 0}
+          />
           <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
-            className={`gap-2 rounded-lg ${
-              showDeleted 
-                ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+            className={`gap-2 rounded-lg ${showDeleted
+                ? 'bg-orange-600 hover:bg-orange-700 text-white'
                 : 'border-gray-200 dark:border-gray-700'
-            }`}
+              }`}
           >
             {showDeleted ? (
               <><Archive className="h-4 w-4" />{text.showActive}</>
@@ -322,10 +328,10 @@ export function FeaturesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <AvatarBadge 
-                          initials={getInitials(feature)} 
-                          size="sm" 
-                          variant={showDeleted ? "muted" : "primary"} 
+                        <AvatarBadge
+                          initials={getInitials(feature)}
+                          size="sm"
+                          variant={showDeleted ? "muted" : "primary"}
                         />
                         <div>
                           <div className={showDeleted ? 'text-gray-500 line-through' : 'font-medium'}>
@@ -342,8 +348,8 @@ export function FeaturesPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {feature.image?.fullUrl ? (
-                        <img 
-                          src={feature.image.fullUrl} 
+                        <img
+                          src={feature.image.fullUrl}
                           alt={feature.name}
                           className="h-8 w-8 rounded object-cover mx-auto"
                         />
@@ -362,18 +368,18 @@ export function FeaturesPage() {
                     <TableCell className="text-center">
                       {showDeleted ? (
                         <div className="flex justify-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setRestoringFeature(feature)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setRestoringFeature(feature)}
                             className="text-green-600"
                           >
                             <RotateCcw className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setForceDeletingFeature(feature)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setForceDeletingFeature(feature)}
                             className="text-red-600"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -381,28 +387,28 @@ export function FeaturesPage() {
                         </div>
                       ) : (
                         <div className="flex justify-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleShowClick(feature.id)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleShowClick(feature.id)}
                             className="text-blue-600"
                             title={text.show}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleEditClick(feature.id)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditClick(feature.id)}
                             className="text-amber-600"
                             title={text.edit}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setDeletingFeature(feature)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeletingFeature(feature)}
                             className="text-red-600"
                             title={text.delete}
                           >
@@ -435,11 +441,11 @@ export function FeaturesPage() {
               {text.showing} {filteredFeatures.length} {text.of} {total} {text.features}
             </p>
             <div className="flex gap-1">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8" 
-                onClick={() => goToPage(currentPage - 1)} 
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
@@ -447,11 +453,11 @@ export function FeaturesPage() {
               <span className="px-3 text-sm flex items-center">
                 {currentPage} / {lastPage}
               </span>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8" 
-                onClick={() => goToPage(currentPage + 1)} 
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === lastPage}
               >
                 <ChevronRight className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
@@ -462,56 +468,56 @@ export function FeaturesPage() {
       </Card>
 
       {/* Dialogs */}
-      <FeatureForm 
-        open={formOpen} 
+      <FeatureForm
+        open={formOpen}
         onClose={() => {
           setFormOpen(false);
           setEditingFeatureId(null);
-        }} 
+        }}
         onSubmit={editingFeatureId ? handleUpdate : handleCreate}
         featureId={editingFeatureId}
-        loading={actionLoading} 
+        loading={actionLoading}
       />
-      
-      <FeatureDeleteDialog 
-        open={!!deletingFeature} 
-        onClose={() => setDeletingFeature(null)} 
+
+      <FeatureDeleteDialog
+        open={!!deletingFeature}
+        onClose={() => setDeletingFeature(null)}
         onConfirm={async () => {
           await deleteFeature(deletingFeature.id);
           setDeletingFeature(null);
-        }} 
-        featureName={getFeatureName(deletingFeature)} 
-        loading={actionLoading} 
+        }}
+        featureName={getFeatureName(deletingFeature)}
+        loading={actionLoading}
       />
-      
-      <FeatureDeleteDialog 
-        open={!!restoringFeature} 
-        onClose={() => setRestoringFeature(null)} 
+
+      <FeatureDeleteDialog
+        open={!!restoringFeature}
+        onClose={() => setRestoringFeature(null)}
         onConfirm={async () => {
           await restoreFeature(restoringFeature.id);
           setRestoringFeature(null);
-        }} 
-        featureName={getFeatureName(restoringFeature)} 
-        loading={actionLoading} 
+        }}
+        featureName={getFeatureName(restoringFeature)}
+        loading={actionLoading}
         title="Restore Feature"
         confirmText="Restore"
         confirmClassName="bg-green-600"
       />
-      
-      <FeatureDeleteDialog 
-        open={!!forceDeletingFeature} 
-        onClose={() => setForceDeletingFeature(null)} 
+
+      <FeatureDeleteDialog
+        open={!!forceDeletingFeature}
+        onClose={() => setForceDeletingFeature(null)}
         onConfirm={async () => {
           await forceDeleteFeature(forceDeletingFeature.id);
           setForceDeletingFeature(null);
-        }} 
-        featureName={getFeatureName(forceDeletingFeature)} 
-        loading={actionLoading} 
+        }}
+        featureName={getFeatureName(forceDeletingFeature)}
+        loading={actionLoading}
         title="Permanent Delete"
         confirmText="Permanently Delete"
         confirmClassName="bg-red-700"
       />
-      
+
       <FeatureDeleteDialog
         open={bulkActionDialog.open}
         onClose={() => setBulkActionDialog({ type: null, open: false })}

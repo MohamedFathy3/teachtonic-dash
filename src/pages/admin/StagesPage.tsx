@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/admin/StagesPage.tsx
+import type { Stage, StageFilters, PaginatedResponse, StageFormData } from '@/types/stage.types';
+import { stageService } from '@/services/stage.service';
 
+import { Download, Loader2 } from 'lucide-react';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { useApp } from '@/contexts/AppContext';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,28 +28,28 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export function StagesPage() {
   const { dir, lang } = useApp();
-  const { 
-    stages, 
-    loading, 
-    total, 
-    currentPage, 
-    lastPage, 
+  const {
+    stages,
+    loading,
+    total,
+    currentPage,
+    lastPage,
     showDeleted,
     setShowDeleted,
     selectedStages,
     setSelectedStages,
-    createStage, 
-    updateStage, 
-    deleteStage, 
+    createStage,
+    updateStage,
+    deleteStage,
     forceDeleteStage,
     restoreStage,
-    toggleActive, 
+    toggleActive,
     goToPage,
     bulkDelete,
     bulkForceDelete,
     bulkRestore
   } = useStages();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<any>(null);
@@ -205,43 +209,90 @@ export function StagesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg">
             <Layers className="h-5 w-5 text-white" />
           </div>
+
           <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
               {showDeleted ? text.deletedStages : text.activeStages}
             </h1>
+
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {total} {text.stages}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
+
+          {/* EXPORT BUTTON */}
+          <ExportExcelButton
+            data={filteredStages} 
+            fileName={showDeleted ? "deleted-stages" : "stages-list"}
+            label={loading ? "Exporting..." : "Export"}
+            disabled={loading || filteredStages.length === 0}
+            icon={
+              loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )
+            }
+            className="
+        h-10 rounded-xl
+        border border-emerald-200
+        bg-emerald-50
+        text-emerald-700
+        hover:bg-emerald-600
+        hover:text-white
+        dark:bg-emerald-900/20
+        dark:text-emerald-400
+        transition-all duration-300
+        shadow-sm
+      "
+          />
+
+          {/* TOGGLE DELETED */}
           <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
-            className={`gap-2 rounded-lg ${
-              showDeleted 
-                ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                : 'border-gray-200 dark:border-gray-700'
-            }`}
+            className={`gap-2 rounded-xl h-10 ${showDeleted
+              ? 'bg-orange-600 hover:bg-orange-700 text-white'
+              : 'border-gray-200 dark:border-gray-700'
+              }`}
           >
             {showDeleted ? (
-              <><Archive className="h-4 w-4" />{text.showActive}</>
+              <>
+                <Archive className="h-4 w-4" />
+                {text.showActive}
+              </>
             ) : (
-              <><Trash className="h-4 w-4" />{text.showDeleted}</>
+              <>
+                <Trash className="h-4 w-4" />
+                {text.showDeleted}
+              </>
             )}
           </Button>
+
+          {/* ADD BUTTON */}
           <Button
             onClick={() => setFormOpen(true)}
-            className="gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600"
+            className="
+        gap-2 h-10 rounded-xl
+        bg-gradient-to-r from-purple-600 to-indigo-600
+        hover:from-purple-700 hover:to-indigo-700
+        shadow-md
+      "
           >
             <Plus className="h-4 w-4" />
             {text.addStage}
           </Button>
+
         </div>
       </div>
 
@@ -418,11 +469,11 @@ export function StagesPage() {
       {/* Dialogs */}
       <StageForm open={formOpen} onClose={() => setFormOpen(false)} onSubmit={handleCreate} loading={actionLoading} />
       <StageForm open={!!editingStage} onClose={() => setEditingStage(null)} onSubmit={handleUpdate} initialData={editingStage} loading={actionLoading} />
-      
+
       <StageDeleteDialog open={!!deletingStage} onClose={() => setDeletingStage(null)} onConfirm={handleDelete} stageName={getStageName(deletingStage)} loading={actionLoading} />
       <StageDeleteDialog open={!!restoringStage} onClose={() => setRestoringStage(null)} onConfirm={handleRestore} stageName={getStageName(restoringStage)} loading={actionLoading} title="استعادة" confirmText="استعادة" confirmClassName="bg-green-600" />
       <StageDeleteDialog open={!!forceDeletingStage} onClose={() => setForceDeletingStage(null)} onConfirm={handleForceDelete} stageName={getStageName(forceDeletingStage)} loading={actionLoading} title="حذف نهائي" confirmText="حذف نهائي" confirmClassName="bg-red-700" />
-      
+
       <StageDeleteDialog
         open={bulkActionDialog.open}
         onClose={() => setBulkActionDialog({ type: null, open: false })}

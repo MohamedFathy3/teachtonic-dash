@@ -1,7 +1,6 @@
 // src/pages/admin/SemestersPage.tsx
-/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { semesterService, Semester, SemesterFormData } from '@/services/semester.service';
@@ -45,6 +44,7 @@ export const SemestersPage: React.FC = () => {
   const isRTL = lang === 'ar';
 
   // ✅ State
+  
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +79,21 @@ export const SemestersPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  const handleExport = async () => {
+  try {
+    const response = await semesterService.getAllSemesters(
+      {},
+      10000,
+      1,
+      ''
+    );
+
+    return response.data;
+  } catch (e) {
+    console.error(e);
+    return [];
+  }
+};
   // ✅ Fetch semesters
   const fetchSemesters = useCallback(async (page = 1) => {
     setLoading(true);
@@ -212,7 +227,7 @@ export const SemestersPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
-        
+
         {/* ✅ Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
@@ -232,8 +247,14 @@ export const SemestersPage: React.FC = () => {
               </p>
             </div>
           </div>
-          
+
           <div className="flex gap-2">
+            <ExportExcelButton
+              data={semesters}
+              fileName="semesters-list"
+              label={lang === 'ar' ? 'تصدير' : 'Export'}
+              disabled={loading || semesters.length === 0}
+            />
             {selectedIds.size > 0 && (
               <motion.button
                 initial={{ scale: 0 }}
@@ -304,7 +325,7 @@ export const SemestersPage: React.FC = () => {
               {lang === 'ar' ? 'فلاتر' : 'Filters'}
             </Button>
           </div>
-          
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -489,7 +510,7 @@ export const SemestersPage: React.FC = () => {
                   : (lang === 'ar' ? 'إضافة ترم جديد' : 'Add New Semester')}
               </DialogTitle>
             </DialogHeader>
-            
+
             <div className="space-y-4 mt-4">
               <div>
                 <Label>{lang === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'}</Label>
@@ -501,7 +522,7 @@ export const SemestersPage: React.FC = () => {
                   dir="rtl"
                 />
               </div>
-              
+
               <div>
                 <Label>{lang === 'ar' ? 'الاسم (إنجليزي)' : 'Name (English)'}</Label>
                 <Input
@@ -511,7 +532,7 @@ export const SemestersPage: React.FC = () => {
                   className="rounded-xl mt-1"
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>{lang === 'ar' ? 'السعر' : 'Price'}</Label>
@@ -534,7 +555,7 @@ export const SemestersPage: React.FC = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
                 <Button variant="outline" onClick={() => setShowModal(false)}>
                   {lang === 'ar' ? 'إلغاء' : 'Cancel'}

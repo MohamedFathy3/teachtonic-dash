@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Plus, Trash2, Save, Clock, FileText, HelpCircle, X, CheckCircle, Sparkles, GraduationCap, Trophy, Zap, Star } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { XCircle } from "lucide-react";
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 // ✅ Animation variants
 const containerVariants = {
@@ -75,14 +77,14 @@ interface QuestionBuilder {
 export const InstructorExams: React.FC = () => {
   const { t, lang } = useApp();
   const isRTL = lang === 'ar';
-  
+
   // ✅ State
   const [exams, setExams] = useState<any[]>([]);
   const [selectedExam, setSelectedExam] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('exams');
-  
+
   // ✅ Form State
   const [showExamForm, setShowExamForm] = useState(false);
   const [examFormData, setExamFormData] = useState({
@@ -93,12 +95,12 @@ export const InstructorExams: React.FC = () => {
     course_detail_id: 1,
     stage_id: 1,
   });
-  
+
   // ✅ Questions Builder State
   const [questions, setQuestions] = useState<QuestionBuilder[]>([]);
   const [savingQuestions, setSavingQuestions] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
-  
+
   // ✅ Taking Exam State
   const [takingExam, setTakingExam] = useState(false);
   const [currentExam, setCurrentExam] = useState<any | null>(null);
@@ -156,7 +158,7 @@ export const InstructorExams: React.FC = () => {
   // ✅ حفظ الأسئلة
   const saveQuestions = async () => {
     if (!selectedExamId) return;
-    
+
     setSavingQuestions(true);
     try {
       const formattedQuestions = questions.map(q => ({
@@ -166,7 +168,7 @@ export const InstructorExams: React.FC = () => {
         ...(q.question_type === 'true_false' && { correct_answer: q.correct_answer }),
         ...(q.question_type === 'multiple_choice' && { options: q.options }),
       }));
-      
+
       await examService.addQuestions(selectedExamId, formattedQuestions);
       alert('✨ Questions saved successfully!');
       setQuestions([]);
@@ -216,7 +218,7 @@ export const InstructorExams: React.FC = () => {
             {t('back')}
           </Button>
         </motion.div>
-        
+
         <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 50 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -445,7 +447,7 @@ export const InstructorExams: React.FC = () => {
                       placeholder={t('enterQuestion')}
                       className="rounded-xl text-base focus:ring-2 focus:ring-primary"
                     />
-                    
+
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Label>{t('marks')}</Label>
@@ -683,26 +685,40 @@ export const InstructorExams: React.FC = () => {
       variants={containerVariants}
       className="space-y-8"
     >
+
+
       <motion.div variants={itemVariants}>
         <PageHeader
           title={t('exams')}
           description={t('manageAndCreateExams')}
           actions={
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              initial={{ rotate: -180, scale: 0 }}
-              animate={{ rotate: 0, scale: 1 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <Button onClick={() => setShowExamForm(true)} className="gap-2 shadow-lg rounded-full px-6">
-                <Plus className="h-4 w-4" />
-                {t('createExam')}
-              </Button>
-            </motion.div>
+            <div className="flex items-center gap-3"> {/* ✅ مجموع زرين جنب بعض */}
+
+              {/* زرار التصدير */}
+              <ExportExcelButton
+                data={exams}
+                fileName="exams-list"
+                label={lang === 'ar' ? 'تصدير' : 'Export'}
+                disabled={loading || exams.length === 0}
+              />
+
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ rotate: -180, scale: 0 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <Button onClick={() => setShowExamForm(true)} className="gap-2 shadow-lg rounded-full px-6">
+                  <Plus className="h-4 w-4" />
+                  {t('createExam')}
+                </Button>
+              </motion.div>
+            </div>
           }
         />
       </motion.div>
+
 
       {loading && (
         <motion.div
@@ -770,7 +786,7 @@ export const InstructorExams: React.FC = () => {
                   whileHover={{ x: "100%" }}
                   transition={{ duration: 0.6 }}
                 />
-                
+
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
