@@ -2,14 +2,22 @@
 // src/services/course.service.ts
 
 import { BaseService } from './base.service';
-import type { Course, CourseFormData, PaginatedResponse } from '@/types/course.types';
+import type { Course, CourseFormData, PaginatedResponse} from '@/types/course.types';
+
 import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
-
 class CourseService extends BaseService<Course> {
   constructor() {
     super('course');
   }
+
+
+
+ async getCourses(params?: any): Promise<PaginatedResponse<Course>> {
+    const response = await this.getAll(params);
+    return response;
+  }
+
 
   // ✅ الدالة الأساسية لجلب الكورسات مع فلتر متقدم
   async getAllCourses(
