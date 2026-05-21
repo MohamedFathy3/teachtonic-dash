@@ -39,6 +39,7 @@ import {
   Save,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AsyncSelect } from '../ui/AsyncSelect';
 
 export const SemestersPage: React.FC = () => {
   const { t, lang, user } = useApp();
@@ -62,6 +63,7 @@ export const SemestersPage: React.FC = () => {
     price: 0,
     discount: 0,
     teacher_id: user?.id || 1,
+    subject_id: null,
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -175,6 +177,7 @@ export const SemestersPage: React.FC = () => {
       price: parseFloat(semester.price),
       discount: parseFloat(semester.discount),
       teacher_id: semester.teacher_id,
+      subject_id: semester.subject_id,
     });
     setShowModal(true);
   };
@@ -187,6 +190,7 @@ export const SemestersPage: React.FC = () => {
       price: 0,
       discount: 0,
       teacher_id: user?.id || 1,
+      subject_id: null,
     });
   };
 
@@ -491,6 +495,15 @@ export const SemestersPage: React.FC = () => {
             </DialogHeader>
             
             <div className="space-y-4 mt-4">
+              <div>
+                   <AsyncSelect
+                                      configKey="subjects"
+                                      value={formData.subject_id}
+                                      onChange={(id) => setFormData({ ...formData, subject_id: id })}
+                                      placeholder={lang === 'ar' ? 'اختر الماده' : 'Select subject'}
+                                      required
+                                    />
+              </div>
               <div>
                 <Label>{lang === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'}</Label>
                 <Input

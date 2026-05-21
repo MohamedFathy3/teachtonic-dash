@@ -1,8 +1,19 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/services/exam.service.ts
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseService } from './base.service';
-import type { Exam, ExamFormData, PaginatedResponse, Question, QuestionsResponse } from '@/types/exam.types';
+import type { 
+  Exam, 
+  CreateExamDTO, 
+  UpdateExamDTO, 
+  PaginatedResponse, 
+  Question, 
+  QuestionsResponse,
+  AddQuestionsDTO,
+  GradeEssayDTO,
+  SubmitExamDTO,
+  ExamResult
+} from '@/types/exam.types';
 import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 
@@ -70,6 +81,11 @@ class ExamService extends BaseService<Exam> {
     return this.getAllExams({ teacher_id: teacherId });
   }
 
+  // ✅ جلب امتحانات درس معين
+  async getExamsByLesson(lessonId: number): Promise<PaginatedResponse<Exam>> {
+    return this.getAllExams({ course_detail_id: lessonId });
+  }
+
   // ✅ جلب امتحان بالـ ID مع أسئلته
   async getExam(id: number): Promise<Exam> {
     const response = await api.get(`/${this.endpoint}/${id}`);
@@ -79,20 +95,50 @@ class ExamService extends BaseService<Exam> {
     throw new Error('Invalid response structure');
   }
 
-  // ✅ إنشاء امتحان جديد
-  async createExam(data: ExamFormData): Promise<Exam> {
+  // ✅ إنشاء امتحان جديد (مع دعم total_marks_pass_marks)
+  private creatingExams = new Set<string>();
+
+  async createExam(data: CreateExamDTO): Promise<Exam> {
     try {
-      const response = await api.post(`/${this.endpoint}`, data);
+      const key = `${data.title}_${data.teacher_id}`;
+      if (this.creatingExams.has(key)) {
+        throw new Error('Exam creation already in progress');
+      }
+      
+      this.creatingExams.add(key);
+      
+      const payload = {
+        title: data.title,
+        title_ar: data.title_ar,
+        description: data.description,
+        description_ar: data.description_ar,
+        type: data.type,
+        teacher_id: data.teacher_id,
+        course_detail_id: data.course_detail_id,
+        stage_id: data.stage_id,
+        total_marks: data.total_marks,
+        total_marks_pass_marks: data.total_marks_pass_marks,
+        duration_minutes: data.duration_minutes,
+        ...(data.image && { image: data.image }),
+      };
+
+      const response = await api.post(`/${this.endpoint}`, payload);
       toast({ title: "Success", description: "Exam created successfully" });
+      
+      this.creatingExams.delete(key);
+      
       return response.data.data;
     } catch (error: any) {
+      const key = `${data.title}_${data.teacher_id}`;
+      this.creatingExams.delete(key);
+      
       toast({ title: "Error", description: error.response?.data?.message || "Failed to create exam", variant: "destructive" });
       throw error;
     }
   }
 
   // ✅ تحديث امتحان
-  async updateExam(id: number, data: Partial<ExamFormData>): Promise<Exam> {
+  async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {
     try {
       const response = await api.patch(`/${this.endpoint}/${id}`, data);
       toast({ title: "Success", description: "Exam updated successfully" });
@@ -137,28 +183,102 @@ class ExamService extends BaseService<Exam> {
     }
   }
 
-  // ✅ تبديل حالة التفعيل
-  async toggleExamActive(id: number): Promise<{ message: string }> {
+  // ✅ تبديل ترتيب الأسئلة عشوائي (via URL parameter)
+  async toggleRandomQuestions(id: number, value: boolean): Promise<Exam> {
     try {
-      const result = await this.toggleActive(id);
-      toast({ title: "Success", description: result.message || "Exam status changed successfully" });
-      return result;
+      // 🔥 إرسال القيمة كـ query parameter
+      const response = await api.put(`/${this.endpoint}/${id}/random_questions`);
+      toast({ 
+        title: "Success", 
+        description: value ? "Random questions enabled" : "Random questions disabled" 
+      });
+      return response.data.data;
+    } catch (error: any) {
+      toast({ 
+        title: "Error", 
+        description: error.response?.data?.message || "Failed to update setting", 
+        variant: "destructive" 
+      });
+      throw error;
+    }
+  }
+
+  // ✅ تبديل ترتيب الإجابات عشوائي (via URL parameter)
+  async toggleRandomAnswers(id: number, value: boolean): Promise<Exam> {
+    try {
+      // 🔥 إرسال القيمة كـ query parameter
+      const response = await api.put(`/${this.endpoint}/${id}/random_answers`);
+      toast({ 
+        title: "Success", 
+        description: value ? "Random answers enabled" : "Random answers disabled" 
+      });
+      return response.data.data;
+    } catch (error: any) {
+      toast({ 
+        title: "Error", 
+        description: error.response?.data?.message || "Failed to update setting", 
+        variant: "destructive" 
+      });
+      throw error;
+    }
+  }
+
+  // ✅ تبديل إظهار النتيجة (via URL parameter)
+  async toggleShowResult(id: number, value: boolean): Promise<Exam> {
+    try {
+      // 🔥 إرسال القيمة كـ query parameter
+      const response = await api.put(`/${this.endpoint}/${id}/show_result`);
+      toast({ 
+        title: "Success", 
+        description: value ? "Results will be shown to students" : "Results hidden from students" 
+      });
+      return response.data.data;
+    } catch (error: any) {
+      toast({ 
+        title: "Error", 
+        description: error.response?.data?.message || "Failed to update setting", 
+        variant: "destructive" 
+      });
+      throw error;
+    }
+  }
+
+  // ✅ تبديل حالة الامتحان (via URL parameter)
+  async toggleExamActive(id: number, value?: boolean): Promise<{ message: string }> {
+    try {
+      // 🔥 إرسال القيمة كـ query parameter إذا وجدت
+      let url = `/${this.endpoint}/${id}/active`;
+      if (value !== undefined) {
+        url += `?value=${value ? 1 : 0}`;
+      }
+      const response = await api.put(url);
+      toast({ title: "Success", description: response.data?.message || "Exam status changed successfully" });
+      return response.data;
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.message || "Failed to toggle exam status", variant: "destructive" });
       throw error;
     }
   }
 
-  // ✅ إضافة أسئلة للامتحان
-  async addQuestions(examId: number, questions: Partial<Question>[]): Promise<QuestionsResponse> {
+  // ✅ إضافة أسئلة متعددة للامتحان (باستخدام add-questions endpoint)
+  async addQuestions(examId: number, questions: any[]): Promise<QuestionsResponse> {
     try {
-      const response = await api.post(`/${this.endpoint}/add-questions`, {
+      const payload: AddQuestionsDTO = {
         exam_id: examId,
-        questions
-      });
+        questions: questions.map(q => ({
+          question_type: q.question_type,
+          question: q.question,
+          mark: q.mark,
+          ...(q.correct_answer && { correct_answer: q.correct_answer }),
+          ...(q.options && { options: q.options }),
+        }))
+      };
+
+      const response = await api.post(`/${this.endpoint}/add-questions`, payload);
       toast({ title: "Success", description: response.data?.message || "Questions added successfully" });
       return response.data;
     } catch (error: any) {
+      console.error('Error adding questions:', error);
       toast({ title: "Error", description: error.response?.data?.message || "Failed to add questions", variant: "destructive" });
       throw error;
     }
@@ -173,13 +293,33 @@ class ExamService extends BaseService<Exam> {
   // ✅ تصحيح السؤال المقالي
   async gradeEssayQuestion(answerId: number, mark: number): Promise<{ status: boolean; message: string }> {
     try {
-      const response = await api.post(`/${this.endpoint}/grade-essay`, { answer_id: answerId, mark });
+      const payload: GradeEssayDTO = { answer_id: answerId, mark };
+      const response = await api.post(`/${this.endpoint}/grade-essay`, payload);
       toast({ title: "Success", description: response.data?.message || "Essay graded successfully" });
       return response.data;
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.message || "Failed to grade essay", variant: "destructive" });
       throw error;
     }
+  }
+
+  // ✅ إرسال إجابات الامتحان
+  async submitExam(submission: SubmitExamDTO): Promise<ExamResult> {
+    try {
+      const response = await api.post(`/${this.endpoint}/submit`, submission);
+      toast({ title: "Success", description: "Exam submitted successfully" });
+      return response.data.data;
+    } catch (error: any) {
+      toast({ title: "Error", description: error.response?.data?.message || "Failed to submit exam", variant: "destructive" });
+      throw error;
+    }
+  }
+
+  // ✅ الحصول على نتيجة امتحان الطالب
+  async getExamResult(examId: number, studentId?: number): Promise<ExamResult> {
+    const params = studentId ? { student_id: studentId } : {};
+    const response = await api.get(`/${this.endpoint}/${examId}/result`, { params });
+    return response.data.data;
   }
 
   // ✅ العمليات الجماعية

@@ -7,6 +7,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAssignments } from "@/hooks/useAssignments";
 import { AssignmentModal } from "./AssignmentModal";
+import { AssignmentShow } from "./AssignmentShow";
 import { useApp } from "@/contexts/AppContext";
 import {
   Plus,
@@ -21,10 +22,12 @@ import {
   Filter,
   Sparkles,
   Layers3,
+  Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 import { arSA, enUS } from "date-fns/locale";
 import { AsyncSelect } from "@/components/ui/AsyncSelect";
+import { Switch } from "@/components/ui/switch";
 
 export const AssignmentsPage: React.FC = () => {
   const { lang, user, isInstructor } = useApp();
@@ -33,16 +36,14 @@ export const AssignmentsPage: React.FC = () => {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === "undefined") return true;
-
     const saved = localStorage.getItem("theme");
-
     return (
       saved === "dark" ||
-      (!saved &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches)
+      (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)
     );
   });
 
@@ -51,8 +52,7 @@ export const AssignmentsPage: React.FC = () => {
     stage_id: undefined as number | undefined,
   });
 
-  const { useGetAll, useBulkDelete, useToggleActive } =
-    useAssignments();
+  const { useGetAll, useBulkDelete, useToggleActive, useDelete } = useAssignments();
 
   const { data, isLoading, refetch } = useGetAll({
     ...filters,
@@ -62,6 +62,7 @@ export const AssignmentsPage: React.FC = () => {
 
   const bulkDelete = useBulkDelete();
   const toggleActive = useToggleActive();
+  const deleteAssignment = useDelete();
 
   useEffect(() => {
     if (isDarkMode) {
@@ -78,7 +79,6 @@ export const AssignmentsPage: React.FC = () => {
 
   const handleDeleteSelected = async () => {
     if (!selectedIds.length) return;
-
     if (
       confirm(
         lang === "ar"
@@ -99,6 +99,19 @@ export const AssignmentsPage: React.FC = () => {
   const handleToggleActive = async (id: number) => {
     await toggleActive.mutateAsync(id);
     refetch();
+  };
+
+  const handleViewDetails = (assignment: any) => {
+    setSelectedAssignmentId(assignment.id);
+    setShowDetails(true);
+  };
+
+  const handleDeleteAssignment = async (id: number) => {
+    if (confirm(lang === "ar" ? "هل أنت متأكد من حذف هذا الواجب؟" : "Delete this assignment?")) {
+      await deleteAssignment.mutateAsync(id);
+      setShowDetails(false);
+      refetch();
+    }
   };
 
   if (isLoading) {
@@ -126,9 +139,7 @@ export const AssignmentsPage: React.FC = () => {
       `}
     >
       {/* ================= BACKGROUND ================= */}
-
       <div className="absolute inset-0 overflow-hidden">
-
         {/* GRID */}
         <div
           className={`
@@ -213,15 +224,12 @@ export const AssignmentsPage: React.FC = () => {
       </div>
 
       {/* ================= CONTENT ================= */}
-
       <div
         className="relative z-10 p-6"
         dir={lang === "ar" ? "rtl" : "ltr"}
       >
         {/* ================= HEADER ================= */}
-
         <div className="flex flex-col lg:flex-row justify-between gap-6 mb-10">
-
           <div>
             <div
               className={`
@@ -268,9 +276,7 @@ export const AssignmentsPage: React.FC = () => {
           </div>
 
           {/* ACTIONS */}
-
           <div className="flex flex-wrap gap-3">
-
             {/* FILTER */}
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -349,7 +355,6 @@ export const AssignmentsPage: React.FC = () => {
         </div>
 
         {/* ================= FILTERS ================= */}
-
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -368,7 +373,6 @@ export const AssignmentsPage: React.FC = () => {
               `}
             >
               <div className="grid md:grid-cols-2 gap-4">
-
                 <input
                   type="text"
                   placeholder={
@@ -414,239 +418,243 @@ export const AssignmentsPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* ================= CARDS ================= */}
+        {/* ================= SHOW DETAILS OR CARDS ================= */}
+        {showDetails && selectedAssignmentId ? (
+          <AssignmentShow
+            assignmentId={selectedAssignmentId}
+            onBack={() => setShowDetails(false)}
+            onEdit={() => {
+              const assignmentToEdit = assignments.find((a: any) => a.id === selectedAssignmentId);
+              setEditingItem(assignmentToEdit);
+              setIsModalOpen(true);
+              setShowDetails(false);
+            }}
+            onDelete={() => handleDeleteAssignment(selectedAssignmentId)}
+            isDarkMode={isDarkMode}
+          />
+        ) : (
+          <>
+            {/* ================= CARDS ================= */}
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-7">
+              <AnimatePresence>
+                {assignments.map((assignment: any, index: number) => (
+                  <motion.div
+                    key={assignment.id}
+                    initial={{ opacity: 0, y: 40 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ y: -10 }}
+                    transition={{
+                      duration: 0.4,
+                      delay: index * 0.05,
+                    }}
+                    className={`
+                      group relative overflow-hidden rounded-[30px]
+                      border backdrop-blur-2xl
+                      transition-all duration-500
+                      cursor-pointer
+                      ${
+                        isDarkMode
+                          ? "bg-white/5 border-white/10 hover:border-orange-500/30"
+                          : "bg-white/80 border-gray-200 hover:border-orange-300"
+                      }
+                    `}
+                    onClick={() => handleViewDetails(assignment)}
+                  >
+                    {/* glow */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-500 bg-gradient-to-br from-orange-500/10 via-transparent to-purple-500/10" />
 
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-7">
+                    {/* TOP */}
+                    <div className="relative p-6 border-b border-white/10">
+                      <div className="flex justify-between items-start">
+                        <div
+                          className="
+                            w-16 h-16 rounded-2xl
+                            bg-gradient-to-br from-orange-500 to-pink-500
+                            flex items-center justify-center
+                            shadow-lg
+                          "
+                        >
+                          <FileText className="w-8 h-8 text-white" />
+                        </div>
 
-          <AnimatePresence>
-            {assignments.map((assignment: any, index: number) => (
-              <motion.div
-                key={assignment.id}
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -10 }}
-                transition={{
-                  duration: 0.4,
-                  delay: index * 0.05,
-                }}
-                className={`
-                  group relative overflow-hidden rounded-[30px]
-                  border backdrop-blur-2xl
-                  transition-all duration-500
-                  ${
-                    isDarkMode
-                      ? "bg-white/5 border-white/10 hover:border-orange-500/30"
-                      : "bg-white/80 border-gray-200 hover:border-orange-300"
-                  }
-                `}
-              >
-                {/* glow */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-500 bg-gradient-to-br from-orange-500/10 via-transparent to-purple-500/10" />
+                        <div className="flex items-center gap-2">
+                          {/* View Button */}
+                          <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetails(assignment);
+                            }}
+                            className={`
+                              w-10 h-10 rounded-xl flex items-center justify-center
+                              ${
+                                isDarkMode
+                                  ? "bg-white/10 text-white hover:bg-white/20"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }
+                            `}
+                          >
+                            <Eye size={16} />
+                          </motion.button>
 
-                {/* TOP */}
-                <div className="relative p-6 border-b border-white/10">
+                          <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleActive(assignment.id);
+                            }}
+                            className={`
+                              w-10 h-10 rounded-xl flex items-center justify-center
+                              ${
+                                assignment.active
+                                  ? "bg-green-500 text-white"
+                                  : "bg-gray-500 text-white"
+                              }
+                            `}
+                          >
+                            <Power size={16} />
+                          </motion.button>
 
-                  <div className="flex justify-between items-start">
+                          <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(assignment);
+                            }}
+                            className={`
+                              w-10 h-10 rounded-xl flex items-center justify-center
+                              ${
+                                isDarkMode
+                                  ? "bg-white/10 text-white hover:bg-white/20"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }
+                            `}
+                          >
+                            <Edit size={16} />
+                          </motion.button>
+                        </div>
+                      </div>
 
-                    <div
-                      className="
-                        w-16 h-16 rounded-2xl
-                        bg-gradient-to-br from-orange-500 to-pink-500
-                        flex items-center justify-center
-                        shadow-lg
-                      "
-                    >
-                      <FileText className="w-8 h-8 text-white" />
+                      <h3
+                        className={`
+                          mt-5 text-2xl font-bold line-clamp-1
+                          ${isDarkMode ? "text-white" : "text-gray-900"}
+                        `}
+                      >
+                        {isDarkMode ? assignment.title : assignment.title}
+                      </h3>
+
+                      <p
+                        className={`
+                          mt-2 line-clamp-2 text-sm
+                          ${isDarkMode ? "text-gray-400" : "text-gray-600"}
+                        `}
+                      >
+                        {assignment.description}
+                      </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    {/* BODY */}
+                    <div className="p-6 space-y-4">
+                      <InfoRow
+                        icon={<Star size={16} />}
+                        label={lang === "ar" ? "الدرجة" : "Marks"}
+                        value={assignment.total_marks}
+                        isDarkMode={isDarkMode}
+                      />
 
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() =>
-                          handleToggleActive(assignment.id)
+                      <InfoRow
+                        icon={<Clock size={16} />}
+                        label={lang === "ar" ? "المدة" : "Duration"}
+                        value={`${assignment.duration_minutes} min`}
+                        isDarkMode={isDarkMode}
+                      />
+
+                      <InfoRow
+                        icon={<Layers3 size={16} />}
+                        label={lang === "ar" ? "الحالة" : "Status"}
+                        value={
+                          assignment.active
+                            ? lang === "ar"
+                              ? "نشط"
+                              : "Active"
+                            : lang === "ar"
+                            ? "غير نشط"
+                            : "Inactive"
                         }
-                        className={`
-                          w-10 h-10 rounded-xl flex items-center justify-center
-                          ${
-                            assignment.active
-                              ? "bg-green-500 text-white"
-                              : "bg-gray-500 text-white"
-                          }
-                        `}
-                      >
-                        <Power size={16} />
-                      </motion.button>
+                        isDarkMode={isDarkMode}
+                      />
 
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleEdit(assignment)}
+                      <div
                         className={`
-                          w-10 h-10 rounded-xl flex items-center justify-center
-                          ${
-                            isDarkMode
-                              ? "bg-white/10 text-white"
-                              : "bg-gray-100 text-gray-700"
-                          }
+                          pt-4 border-t text-xs
+                          ${isDarkMode ? "border-white/10 text-gray-500" : "border-gray-200 text-gray-500"}
                         `}
                       >
-                        <Edit size={16} />
-                      </motion.button>
+                        {format(
+                          new Date(assignment.created_at),
+                          "dd/MM/yyyy",
+                          {
+                            locale: lang === "ar" ? arSA : enUS,
+                          }
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
 
-                  <h3
+            {/* ================= EMPTY ================= */}
+            {!assignments.length && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-32"
+              >
+                <motion.div
+                  animate={{
+                    y: [0, -15, 0],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                  }}
+                >
+                  <FileText
                     className={`
-                      mt-5 text-2xl font-bold line-clamp-1
-                      ${
-                        isDarkMode
-                          ? "text-white"
-                          : "text-gray-900"
-                      }
+                      w-24 h-24 mx-auto mb-5
+                      ${isDarkMode ? "text-white/20" : "text-gray-300"}
                     `}
-                  >
-                    {assignment.title}
-                  </h3>
-
-                  <p
-                    className={`
-                      mt-2 line-clamp-2 text-sm
-                      ${
-                        isDarkMode
-                          ? "text-gray-400"
-                          : "text-gray-600"
-                      }
-                    `}
-                  >
-                    {assignment.description}
-                  </p>
-                </div>
-
-                {/* BODY */}
-
-                <div className="p-6 space-y-4">
-
-                  <InfoRow
-                    icon={<Star size={16} />}
-                    label={
-                      lang === "ar"
-                        ? "الدرجة"
-                        : "Marks"
-                    }
-                    value={assignment.total_marks}
-                    isDarkMode={isDarkMode}
                   />
+                </motion.div>
 
-                  <InfoRow
-                    icon={<Clock size={16} />}
-                    label={
-                      lang === "ar"
-                        ? "المدة"
-                        : "Duration"
-                    }
-                    value={`${assignment.duration_minutes} min`}
-                    isDarkMode={isDarkMode}
-                  />
-
-                  <InfoRow
-                    icon={<Layers3 size={16} />}
-                    label={
-                      lang === "ar"
-                        ? "الحالة"
-                        : "Status"
-                    }
-                    value={
-                      assignment.active
-                        ? lang === "ar"
-                          ? "نشط"
-                          : "Active"
-                        : lang === "ar"
-                        ? "غير نشط"
-                        : "Inactive"
-                    }
-                    isDarkMode={isDarkMode}
-                  />
-
-                  <div
-                    className={`
-                      pt-4 border-t text-xs
-                      ${
-                        isDarkMode
-                          ? "border-white/10 text-gray-500"
-                          : "border-gray-200 text-gray-500"
-                      }
-                    `}
-                  >
-                    {format(
-                      new Date(assignment.created_at),
-                      "dd/MM/yyyy",
-                      {
-                        locale:
-                          lang === "ar" ? arSA : enUS,
-                      }
-                    )}
-                  </div>
-                </div>
+                <h3
+                  className={`
+                    text-2xl font-bold
+                    ${isDarkMode ? "text-white" : "text-gray-900"}
+                  `}
+                >
+                  {lang === "ar"
+                    ? "لا توجد واجبات"
+                    : "No Assignments"}
+                </h3>
               </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-
-        {/* EMPTY */}
-
-        {!assignments.length && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-32"
-          >
-            <motion.div
-              animate={{
-                y: [0, -15, 0],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-              }}
-            >
-              <FileText
-                className={`
-                  w-24 h-24 mx-auto mb-5
-                  ${
-                    isDarkMode
-                      ? "text-white/20"
-                      : "text-gray-300"
-                  }
-                `}
-              />
-            </motion.div>
-
-            <h3
-              className={`
-                text-2xl font-bold
-                ${
-                  isDarkMode
-                    ? "text-white"
-                    : "text-gray-900"
-                }
-              `}
-            >
-              {lang === "ar"
-                ? "لا توجد واجبات"
-                : "No Assignments"}
-            </h3>
-          </motion.div>
+            )}
+          </>
         )}
 
-        {/* MODAL */}
-
+        {/* ================= MODAL ================= */}
         <AssignmentModal
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
             setEditingItem(null);
           }}
-          onSuccess={() => refetch()}
+          onSuccess={() => {
+            refetch();
+            setShowDetails(false);
+          }}
           editingItem={editingItem}
           isDarkMode={isDarkMode}
         />
@@ -656,24 +664,14 @@ export const AssignmentsPage: React.FC = () => {
 };
 
 /* ================= INFO ROW ================= */
-
-const InfoRow = ({
-  icon,
-  label,
-  value,
-  isDarkMode,
-}: any) => {
+const InfoRow = ({ icon, label, value, isDarkMode }: any) => {
   return (
     <motion.div
       whileHover={{ x: 5 }}
       className={`
         flex items-center justify-between
         p-4 rounded-2xl
-        ${
-          isDarkMode
-            ? "bg-white/[0.03]"
-            : "bg-gray-50"
-        }
+        ${isDarkMode ? "bg-white/[0.03]" : "bg-gray-50"}
       `}
     >
       <div className="flex items-center gap-3">
@@ -690,27 +688,13 @@ const InfoRow = ({
         >
           {icon}
         </div>
-
-        <span
-          className={
-            isDarkMode
-              ? "text-gray-300"
-              : "text-gray-700"
-          }
-        >
+        <span className={isDarkMode ? "text-gray-300" : "text-gray-700"}>
           {label}
         </span>
       </div>
-
-      <span
-        className={
-          isDarkMode
-            ? "text-white font-bold"
-            : "text-gray-900 font-bold"
-        }
-      >
+      <span className={isDarkMode ? "text-white font-bold" : "text-gray-900 font-bold"}>
         {value}
       </span>
     </motion.div>
   );
-};
+};  

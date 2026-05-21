@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/types/exam.types.ts
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export interface Option {
   id?: number;
@@ -19,56 +20,93 @@ export interface Question {
   updated_at?: string;
 }
 
+// ✅ DTO لإنشاء سؤال جديد
+export interface CreateQuestionDTO {
+  question_type: 'true_false' | 'multiple_choice' | 'essay';
+  question: string;
+  mark: number;
+  correct_answer?: string;
+  options?: Omit<Option, 'id'>[];
+}
+
+// ✅ DTO لإضافة أسئلة متعددة
+export interface AddQuestionsDTO {
+  exam_id: number;
+  questions: CreateQuestionDTO[];
+}
+
+// ✅ DTO لتصحيح السؤال المقالي
+export interface GradeEssayDTO {
+  answer_id: number;
+  mark: number;
+}
+
+// ✅ DTO لإنشاء امتحان
+export interface CreateExamDTO {
+  title: string;
+  title_ar?: string;
+  description: string;
+  description_ar?: string;
+  type: 'exam' | 'quiz' | 'assignment';
+  teacher_id: number;
+  course_detail_id: number;
+  stage_id: number;
+  total_marks: number;
+  total_marks_pass_marks?: number;
+  duration_minutes: number;
+  image?: number;
+}
+
+export type UpdateExamDTO = Partial<CreateExamDTO>
+export interface UpdateExamSettingsDTO {
+  random_questions?: boolean;
+  random_answers?: boolean;
+  show_result?: boolean;
+  active?: boolean;
+}
 export interface Exam {
   id: number;
   title: string;
   title_ar?: string;
   description: string;
   description_ar?: string;
-  type: 'exam' | 'quiz';
+  type: 'exam' | 'quiz' | 'assignment';
   teacher_id: number;
-  teacher?: {
-    id: number;
-    name: string;
-    email: string;
-  };
+  teacher?: { id: number; name: string; email: string };
   course_detail_id: number;
-  course_detail?: {
-    id: number;
-    title: string;
-    title_ar?: string;
-  };
+  course_detail?: { id: number; title: string; title_ar?: string };
   stage_id: number;
-  stage?: {
-    id: number;
-    name: string;
-    name_ar?: string;
-  };
+  stage?: { id: number; name: string; name_ar?: string };
   total_marks: number;
+  total_marks_pass_marks?: number;
   duration_minutes: number;
   active: number;
+  // ✅ الخيارات الجديدة
+  random_questions?: boolean;
+  random_answers?: boolean;
+  show_result?: boolean;
   imageUrl?: string;
-  image?: {
-    id: number;
-    fullUrl: string;
-  };
+  image?: { id: number; fullUrl: string };
   questions?: Question[];
   created_at?: string;
   updated_at?: string;
 }
 
-export interface ExamFormData {
-  title: string;
-  title_ar?: string;
-  description: string;
-  description_ar?: string;
-  type: 'exam' | 'quiz';
-  teacher_id: number;
-  course_detail_id: number;
-  stage_id: number;
-  image?: number;
+
+export interface ExamResult {
+  exam_id: number;
+  exam_title: string;
+  score: number;
   total_marks: number;
-  duration_minutes: number;
+  percentage: number;
+  passed: boolean;
+  pass_marks: number;
+  answers: Record<number, {
+    question_id: number;
+    answer: string;
+    mark_earned?: number;
+    is_correct?: boolean;
+  }>;
 }
 
 export interface PaginatedResponse<T> {
@@ -100,4 +138,11 @@ export interface QuestionsResponse {
   exam_title: string;
   questions_count: number;
   data: Question[];
+}
+
+export interface SubmitExamDTO {
+  exam_id: number;
+  answers: Record<number, string>; // question_id -> answer
+  started_at?: string;
+  submitted_at?: string;
 }

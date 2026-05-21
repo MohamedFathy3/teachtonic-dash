@@ -12,19 +12,22 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, ChevronLeft, Save, FileText } from 'lucide-react';
 import type { Exam, ExamFormData } from '@/types/exam.types';
 import FileUploader from '@/components/FileUploader';
+import { AsyncSelect } from '@/components/ui/AsyncSelect'; // 🔥 استخدم AsyncSelect
 
 interface ExamFormProps {
   exam?: Exam;
   onSubmit: (data: ExamFormData) => Promise<void>;
   onCancel?: () => void;
   loading?: boolean;
+  courseDetailId?: number; // 🔥 يمكن تمرير course_detail_id من الخارج
 }
 
 export const ExamForm: React.FC<ExamFormProps> = ({ 
   exam, 
   onSubmit, 
   onCancel, 
-  loading = false 
+  loading = false,
+  courseDetailId
 }) => {
   const { t, lang, user } = useApp();
   const isRTL = lang === 'ar';
@@ -36,9 +39,10 @@ export const ExamForm: React.FC<ExamFormProps> = ({
     description_ar: '',
     type: 'exam',
     teacher_id: user?.id || 1,
-    course_detail_id: 1,
+    course_detail_id: courseDetailId || 1,
     stage_id: 1,
     total_marks: 0,
+    total_marks_pass_marks: 0, // 🔥 أضف هذا
     duration_minutes: 0,
   });
   
@@ -57,6 +61,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({
         course_detail_id: exam.course_detail_id,
         stage_id: exam.stage_id,
         total_marks: exam.total_marks,
+        total_marks_pass_marks: exam.total_marks_pass_marks || 0,
         duration_minutes: exam.duration_minutes,
       });
       setImageId(exam.image || null);
@@ -69,6 +74,14 @@ export const ExamForm: React.FC<ExamFormProps> = ({
     
     if (!formData.title) {
       setError(t('required'));
+      return;
+    }
+    
+    // 🔥 التحقق من أن درجة النجاح لا تتجاوز الدرجة الكلية
+    if (formData.total_marks_pass_marks && formData.total_marks_pass_marks > formData.total_marks) {
+      setError(lang === 'ar' 
+        ? 'درجة النجاح لا يمكن أن تتجاوز الدرجة الكلية' 
+        : 'Pass marks cannot exceed total marks');
       return;
     }
     
@@ -189,8 +202,8 @@ export const ExamForm: React.FC<ExamFormProps> = ({
               </div>
             </div>
 
-            {/* Marks & Duration */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Marks, Pass Marks & Duration */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>{t('totalMarks')} *</Label>
                 <Input
@@ -201,6 +214,20 @@ export const ExamForm: React.FC<ExamFormProps> = ({
                   required
                   className="rounded-xl"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('passMarks') || 'Pass Marks'} *</Label>
+                <Input
+                  type="number"
+                  value={formData.total_marks_pass_marks}
+                  onChange={(e) => handleChange('total_marks_pass_marks', parseInt(e.target.value) || 0)}
+                  placeholder="Marks needed to pass"
+                  required
+                  className="rounded-xl"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {lang === 'ar' ? 'الدرجة المطلوبة للنجاح' : 'Minimum marks to pass'}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>{t('durationMinutes')} *</Label>
@@ -215,28 +242,26 @@ export const ExamForm: React.FC<ExamFormProps> = ({
               </div>
             </div>
 
-            {/* Course & Stage */}
+            {/* Course Detail (Lesson) - باستخدام AsyncSelect */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t('course')} *</Label>
-                <Input
-                  type="number"
+                <Label>{t('lesson') || 'Lesson'} *</Label>
+                <AsyncSelect
+                  configKey="lessons"
                   value={formData.course_detail_id}
-                  onChange={(e) => handleChange('course_detail_id', parseInt(e.target.value))}
-                  placeholder="Course Detail ID"
+                  onChange={(id) => handleChange('course_detail_id', id || 1)}
+                  placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select lesson'}
                   required
-                  className="rounded-xl"
                 />
               </div>
               <div className="space-y-2">
                 <Label>{t('stage')} *</Label>
-                <Input
-                  type="number"
+                <AsyncSelect
+                  configKey="stages"
                   value={formData.stage_id}
-                  onChange={(e) => handleChange('stage_id', parseInt(e.target.value))}
-                  placeholder="Stage ID"
+                  onChange={(id) => handleChange('stage_id', id || 1)}
+                  placeholder={lang === 'ar' ? 'اختر المرحلة' : 'Select stage'}
                   required
-                  className="rounded-xl"
                 />
               </div>
             </div>
@@ -248,7 +273,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({
                   {t('cancel')}
                 </Button>
               )}
-              <Button type="submit" disabled={loading} className="gap-2 rounded-xl">
+              <Button type="submit" disabled={loading} className="gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary">
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                 <Save className="h-4 w-4" />
                 {exam ? t('update') : t('create')}

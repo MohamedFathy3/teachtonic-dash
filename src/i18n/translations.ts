@@ -310,7 +310,15 @@ export const translations = {
     // Directions
     ltr: "Left to Right",
     rtl: "Right to Left",
-    
+    stageId: "Stage ID",
+    lessonId: "Lesson ID",
+    passMarks: "Pass marks",
+    optionalPassMarks: "Pass marks (optional)",
+    next: "Next",
+    previous: "Previous",
+    yourScore: "Your score: {{score}}/{{total}}",
+    score: "Score",
+    lesson: "Lesson",
     // Themes
     system: "System",
     questions: "Questions",
@@ -674,6 +682,14 @@ time: "المنطقة الزمنية",
      redeemRequests: "طلبات الاسترداد",
     redeemRequestsDesc: "إدارة طلبات استرداد الطلاب للدورات أو الفصول الدراسية أو الدروس. قم بالموافقة أو الرفض للتحكم في الوصول والأرباح.",
     approve: "الموافقة",
+      stageId: "المرحله ",
+    lessonId: "الدرس ",
+    passMarks: "العلامه ",
+    optionalPassMarks: "علامه  (اختياري)",
+    next: "بعد",
+    previous: "قبل",
+    yourScore: "نقاطك : {{نقاط}}/{{المجموع}}",
+    score: "نقاط",
   },
 } as const;
 

@@ -102,6 +102,31 @@ export const useExams = (options: UseExamsOptions = {}) => {
       }
     }
   }, [teacherId, user?.id]);
+const submitExam = useCallback(async (examId: number, answers: Record<number, string>) => {
+  setLoading(true);
+  try {
+    const result = await examService.submitExam({ exam_id: examId, answers });
+    return result;
+  } catch (err: any) {
+    setError(err.message);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+const getExamResult = useCallback(async (examId: number, studentId?: number) => {
+  setLoading(true);
+  try {
+    const result = await examService.getExamResult(examId, studentId);
+    return result;
+  } catch (err: any) {
+    setError(err.message);
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   // ✅ جلب امتحان بالـ ID مع أسئلته
   const fetchExamById = useCallback(async (id: number) => {
@@ -352,7 +377,8 @@ export const useExams = (options: UseExamsOptions = {}) => {
     bulkDeleteExams,
     bulkRestoreExams,
     bulkForceDeleteExams,
-    
+     submitExam,
+  getExamResult,  
     // Pagination
     goToPage: (page: number) => fetchExams(page),
   };

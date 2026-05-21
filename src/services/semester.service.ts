@@ -14,6 +14,7 @@ export interface Semester {
   teacher_id: number;
   courses: any[];
   createdAt: string;
+  subject_id: number | null;
 }
 
 export interface SemesterFormData {
@@ -22,6 +23,7 @@ export interface SemesterFormData {
   price: number;
   discount: number;
   teacher_id: number;
+  subject_id: number | null;
 }
 
 class SemesterService extends BaseService<Semester> {

@@ -370,6 +370,37 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
               </div>
             </div>
 
+
+             <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-lg font-semibold">{t('academicInfo')}</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t('startDate')} *</Label>
+                  <Input
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) => handleChange('start_date', e.target.value)}
+                    className="rounded-xl"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t('endDate')} *</Label>
+                  <Input
+                    type="date"
+                    value={formData.end_date}
+                    onChange={(e) => handleChange('end_date', e.target.value)}
+                    className="rounded-xl"
+                    required
+                  />
+                </div>
+
+             
+              </div>
+            </div>
+
             {/* Submit Buttons */}
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button

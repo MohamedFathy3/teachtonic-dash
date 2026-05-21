@@ -8,14 +8,35 @@ import { PageHeader } from '@/components/lms/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { QuestionCard } from '@/components/exams/QuestionCard'; // ✅ أضف هذا الاستيراد
+import { QuestionCard } from '@/components/exams/QuestionCard';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Plus, Trash2, Save, Clock, FileText, HelpCircle, X, CheckCircle, Sparkles, GraduationCap, Trophy, Zap, Star } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { 
+  Plus, Trash2, Save, Clock, FileText, HelpCircle, X, CheckCircle, 
+  Sparkles, GraduationCap, Trophy, Zap, Award, 
+  ChevronRight, ChevronLeft, Loader2, AlertCircle, Timer, Search,
+  XCircle, Shuffle, ListOrdered, Eye, Power, Settings2, 
+  ChevronDown, ChevronUp
+} from 'lucide-react';
+import { AsyncSelect } from '@/components/ui/AsyncSelect';
+import FileUploader from '@/components/FileUploader';
+
+// ✅ Types for question builder
+interface QuestionBuilder {
+  id: string;
+  question_type: 'true_false' | 'multiple_choice' | 'essay';
+  question: string;
+  mark: number;
+  correct_answer?: string;
+  options?: { option_text: string; is_correct: boolean }[];
+}
 
 // ✅ Animation variants
 const containerVariants = {
@@ -48,50 +69,199 @@ const cardHover = {
   transition: { type: "spring", stiffness: 400, damping: 10 },
 };
 
-const glowPulse = {
-  scale: [1, 1.05, 1],
-  boxShadow: [
-    "0 0 0 0 rgba(99, 102, 241, 0.4)",
-    "0 0 0 20px rgba(99, 102, 241, 0)",
-    "0 0 0 0 rgba(99, 102, 241, 0)",
-  ],
-  transition: {
-    duration: 2,
-    repeat: Infinity,
-    repeatType: "loop" as const,
-  },
+// ✅ Exam Timer Component
+const ExamTimer: React.FC<{ duration: number; onTimeEnd: () => void }> = ({ duration, onTimeEnd }) => {
+  const [timeLeft, setTimeLeft] = useState(duration * 60);
+  const [warning, setWarning] = useState(false);
+  
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onTimeEnd();
+      return;
+    }
+    const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    return () => clearInterval(timer);
+  }, [timeLeft, onTimeEnd]);
+  
+  useEffect(() => {
+    if (timeLeft <= 300) setWarning(true);
+  }, [timeLeft]);
+  
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+  const percentage = (timeLeft / (duration * 60)) * 100;
+  
+  return (
+    <motion.div
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className="flex flex-col items-end gap-2"
+    >
+      <Badge 
+        variant={warning ? "destructive" : "outline"} 
+        className={`text-lg px-4 py-2 gap-2 ${warning ? 'animate-pulse' : ''}`}
+      >
+        <Timer className={`h-4 w-4 ${warning ? 'text-white' : ''}`} />
+        {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+      </Badge>
+      <Progress value={percentage} className="w-32 h-1" />
+    </motion.div>
+  );
 };
 
-// ✅ Types for question builder
-interface QuestionBuilder {
-  id: string;
-  question_type: 'true_false' | 'multiple_choice' | 'essay';
-  question: string;
-  mark: number;
-  correct_answer?: string;
-  options?: { option_text: string; is_correct: boolean }[];
-}
+// ✅ Exam Result Card Component
+const ExamResultCard: React.FC<{ result: any; exam: any; onClose: () => void }> = ({ result, exam, onClose }) => {
+  const { t, lang } = useApp();
+  const isPassed = result.score >= (exam.total_marks_pass_marks || exam.total_marks / 2);
+  const percentage = (result.score / exam.total_marks) * 100;
+  
+  return (
+    <motion.div
+      initial={{ scale: 0.8, opacity: 0, rotateY: 180 }}
+      animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        className="max-w-md w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Card className={`relative overflow-hidden border-4 ${
+          isPassed 
+            ? 'bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950/30 dark:to-emerald-950/30 border-green-400'
+            : 'bg-gradient-to-br from-red-50 to-orange-100 dark:from-red-950/30 dark:to-orange-950/30 border-red-400'
+        }`}>
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            animate={{ x: ['-100%', '100%'] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          />
+          
+          <CardContent className="p-8 text-center relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 rounded-full"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 0.5 }}
+            >
+              {isPassed ? (
+                <Trophy className="h-20 w-20 text-yellow-500 mx-auto mb-4" />
+              ) : (
+                <Trophy className="h-20 w-20 text-orange-500 mx-auto mb-4" />
+              )}
+            </motion.div>
+            
+            <h3 className="text-2xl font-bold mb-2">
+              {isPassed ? (lang === 'ar' ? '🎉 مبروك! 🎉' : '🎉 Congratulations! 🎉') : (lang === 'ar' ? '💪 استمر في التدريب! 💪' : '💪 Keep Practicing! 💪')}
+            </h3>
+            
+            <div className="flex justify-center items-center gap-4 my-6">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", delay: 0.2 }}
+                className="text-center"
+              >
+                <p className="text-5xl font-bold text-primary">{result.score}</p>
+                <p className="text-sm text-muted-foreground">{t('yourScore')}</p>
+              </motion.div>
+              
+              <div className="text-3xl font-bold text-muted-foreground">/</div>
+              
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", delay: 0.3 }}
+                className="text-center"
+              >
+                <p className="text-5xl font-bold">{exam.total_marks}</p>
+                <p className="text-sm text-muted-foreground">{t('totalMarks')}</p>
+              </motion.div>
+            </div>
+            
+            <div className="max-w-md mx-auto mb-4">
+              <div className="flex justify-between text-sm mb-1">
+                <span>{t('score')}</span>
+                <span>{percentage.toFixed(1)}%</span>
+              </div>
+              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${percentage}%` }}
+                  transition={{ duration: 1, delay: 0.5 }}
+                  className={`h-full rounded-full ${
+                    isPassed ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-red-500 to-orange-500'
+                  }`}
+                />
+              </div>
+            </div>
+            
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", delay: 0.4 }}
+            >
+              <Badge className={`gap-2 px-4 py-2 text-base ${
+                isPassed 
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                  : 'bg-gradient-to-r from-red-500 to-orange-500'
+              }`}>
+                {isPassed ? (lang === 'ar' ? 'نجاح' : 'Passed') : (lang === 'ar' ? 'رسب' : 'Failed')}
+              </Badge>
+            </motion.div>
+            
+            {exam.total_marks_pass_marks && (
+              <p className="text-sm text-muted-foreground mt-4">
+                {lang === 'ar' ? 'درجة النجاح' : 'Pass Marks'}: {exam.total_marks_pass_marks} / {exam.total_marks}
+              </p>
+            )}
+            
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onClose}
+              className="mt-6 px-6 py-2 bg-gradient-to-r from-primary to-secondary rounded-xl text-white font-medium"
+            >
+              {lang === 'ar' ? 'إغلاق' : 'Close'}
+            </motion.button>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 export const InstructorExams: React.FC = () => {
-  const { t, lang } = useApp();
+  const { t, lang, user } = useApp();
   const isRTL = lang === 'ar';
   
   // ✅ State
   const [exams, setExams] = useState<any[]>([]);
-  const [selectedExam, setSelectedExam] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('exams');
   
   // ✅ Form State
   const [showExamForm, setShowExamForm] = useState(false);
+  const [imageId, setImageId] = useState<number | null>(null);
   const [examFormData, setExamFormData] = useState({
     title: '',
+    title_ar: '',
     description: '',
+    description_ar: '',
     total_marks: 0,
+    total_marks_pass_marks: 0,
     duration_minutes: 0,
-    course_detail_id: 1,
-    stage_id: 1,
+    course_detail_id: null as number | null,
+    stage_id: null as number | null,
   });
   
   // ✅ Questions Builder State
@@ -106,23 +276,71 @@ export const InstructorExams: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [examStartedAt, setExamStartedAt] = useState<Date | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  
+  // ✅ Pagination
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    lastPage: 1,
+    total: 0,
+    perPage: 12,
+  });
+  
+  // ✅ Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  
+  // ✅ Settings expanded state
+  const [expandedSettings, setExpandedSettings] = useState<Record<number, boolean>>({});
+  
+  // ✅ Creating state
+  const [isCreating, setIsCreating] = useState(false);
+  
+  // ✅ Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // ✅ جلب الامتحانات
-  const fetchExams = useCallback(async () => {
+  const fetchExams = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      const response = await examService.getTeacherExams(1);
+      const response = await examService.getAllExams(
+        { teacher_id: user?.id || 1 },
+        pagination.perPage,
+        page,
+        debouncedSearch
+      );
       setExams(response.data || []);
+      setPagination({
+        currentPage: response.meta?.current_page || 1,
+        lastPage: response.meta?.last_page || 1,
+        total: response.meta?.total || 0,
+        perPage: response.meta?.per_page || 12,
+      });
     } catch (err: any) {
       setError(err.message);
+      toast.error(lang === 'ar' ? 'حدث خطأ في جلب الامتحانات' : 'Error fetching exams');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id, pagination.perPage, debouncedSearch, lang]);
 
   useEffect(() => {
     fetchExams();
   }, [fetchExams]);
+
+  // ✅ معالج رفع الصورة
+  const handleImageUpload = (id: number) => {
+    setImageId(id);
+    toast.success(lang === 'ar' ? 'تم رفع الصورة بنجاح' : 'Image uploaded successfully');
+  };
+
+  const handleRemoveImage = () => {
+    setImageId(null);
+  };
 
   // ✅ إضافة سؤال جديد
   const addQuestion = () => {
@@ -168,34 +386,224 @@ export const InstructorExams: React.FC = () => {
       }));
       
       await examService.addQuestions(selectedExamId, formattedQuestions);
-      alert('✨ Questions saved successfully!');
+      toast.success(lang === 'ar' ? 'تم حفظ الأسئلة بنجاح' : 'Questions saved successfully');
       setQuestions([]);
       setSelectedExamId(null);
       setActiveTab('exams');
+      fetchExams();
     } catch (err) {
       console.error(err);
+      toast.error(lang === 'ar' ? 'حدث خطأ أثناء حفظ الأسئلة' : 'Error saving questions');
     } finally {
       setSavingQuestions(false);
     }
   };
 
-  // ✅ بدء الامتحان
+  // ✅ دوال تبديل الإعدادات
+  const toggleRandomQuestions = async (examId: number, currentValue: boolean) => {
+    try {
+      await examService.toggleRandomQuestions(examId, !currentValue);
+      setExams(prev => prev.map(e => 
+        e.id === examId ? { ...e, random_questions: !currentValue } : e
+      ));
+      toast.success(lang === 'ar' ? 'تم تغيير ترتيب الأسئلة' : 'Random questions toggled');
+    } catch (error) {
+      console.error('Error toggling random questions:', error);
+    }
+  };
+
+  const toggleRandomAnswers = async (examId: number, currentValue: boolean) => {
+    try {
+      await examService.toggleRandomAnswers(examId, !currentValue);
+      setExams(prev => prev.map(e => 
+        e.id === examId ? { ...e, random_answers: !currentValue } : e
+      ));
+      toast.success(lang === 'ar' ? 'تم تغيير ترتيب الإجابات' : 'Random answers toggled');
+    } catch (error) {
+      console.error('Error toggling random answers:', error);
+    }
+  };
+
+  const toggleShowResult = async (examId: number, currentValue: boolean) => {
+    try {
+      await examService.toggleShowResult(examId, !currentValue);
+      setExams(prev => prev.map(e => 
+        e.id === examId ? { ...e, show_result: !currentValue } : e
+      ));
+      toast.success(lang === 'ar' ? 'تم تغيير إظهار النتيجة' : 'Show result toggled');
+    } catch (error) {
+      console.error('Error toggling show result:', error);
+    }
+  };
+
+  const toggleExamActive = async (examId: number, currentValue: boolean) => {
+    try {
+      await examService.toggleExamActive(examId);
+      setExams(prev => prev.map(e => 
+        e.id === examId ? { ...e, active: currentValue ? 0 : 1 } : e
+      ));
+      toast.success(lang === 'ar' ? 'تم تغيير حالة الامتحان' : 'Exam status toggled');
+    } catch (error) {
+      console.error('Error toggling exam active:', error);
+    }
+  };
+
+  const toggleSettings = (examId: number) => {
+    setExpandedSettings(prev => ({
+      ...prev,
+      [examId]: !prev[examId]
+    }));
+  };
+
+  // ✅ بدء الامتحان مع مراعاة الإعدادات
   const startExam = async (exam: any) => {
-    const fullExam = await examService.getExam(exam.id);
-    setCurrentExam(fullExam);
-    setTakingExam(true);
-    setAnswers({});
-    setResult(null);
-    setCurrentQuestionIndex(0);
+    try {
+      let fullExam = await examService.getExam(exam.id);
+      
+      // ✅ ترتيب الأسئلة عشوائياً إذا كان مطلوباً
+      if (fullExam.random_questions && fullExam.questions) {
+        fullExam = {
+          ...fullExam,
+          questions: [...fullExam.questions].sort(() => Math.random() - 0.5)
+        };
+      }
+      
+      // ✅ ترتيب الإجابات عشوائياً إذا كان مطلوباً
+      if (fullExam.random_answers && fullExam.questions) {
+        fullExam = {
+          ...fullExam,
+          questions: fullExam.questions.map((q: any) => {
+            if (q.question_type === 'multiple_choice' && q.options) {
+              return {
+                ...q,
+                options: [...q.options].sort(() => Math.random() - 0.5)
+              };
+            }
+            return q;
+          })
+        };
+      }
+      
+      setCurrentExam(fullExam);
+      setTakingExam(true);
+      setAnswers({});
+      setResult(null);
+      setCurrentQuestionIndex(0);
+      setExamStartedAt(new Date());
+      setShowResult(false);
+    } catch (error) {
+      console.error('Error loading exam:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ في تحميل الامتحان' : 'Error loading exam');
+    }
   };
 
   // ✅ إرسال الإجابات
   const submitExam = async () => {
     setSubmitting(true);
-    setTimeout(() => {
-      setResult({ score: Math.floor(Math.random() * currentExam.total_marks) + 1, total: currentExam?.total_marks });
+    try {
+      const submissionResult = await examService.submitExam({
+        exam_id: currentExam.id,
+        answers: answers,
+        started_at: examStartedAt?.toISOString(),
+        submitted_at: new Date().toISOString(),
+      });
+      setResult(submissionResult);
+      
+      // ✅ إظهار النتيجة فقط إذا كان مسموحاً
+      if (currentExam.show_result) {
+        setShowResult(true);
+      } else {
+        toast.info(lang === 'ar' ? 'تم إرسال الامتحان. ستظهر النتيجة لاحقاً' : 'Exam submitted. Results will be shown later');
+        setTakingExam(false);
+        setCurrentExam(null);
+        fetchExams();
+      }
+      toast.success(lang === 'ar' ? 'تم إرسال الامتحان بنجاح' : 'Exam submitted successfully');
+    } catch (error) {
+      console.error('Error submitting exam:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ أثناء إرسال الامتحان' : 'Error submitting exam');
+    } finally {
       setSubmitting(false);
-    }, 1500);
+    }
+  };
+
+  // ✅ إنشاء امتحان جديد
+  const createExamHandler = async () => {
+    if (isCreating) return;
+    
+    if (!examFormData.title) {
+      toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الامتحان' : 'Please enter exam title');
+      return;
+    }
+    
+    if (!examFormData.stage_id) {
+      toast.error(lang === 'ar' ? 'يرجى اختيار المرحلة' : 'Please select stage');
+      return;
+    }
+    
+    if (!examFormData.course_detail_id) {
+      toast.error(lang === 'ar' ? 'يرجى اختيار الدرس' : 'Please select lesson');
+      return;
+    }
+    
+    setIsCreating(true);
+    
+    try {
+      const newExam = await examService.createExam({
+        ...examFormData,
+        teacher_id: user?.id || 1,
+        type: 'exam',
+        image: imageId || undefined,
+      });
+      
+      setSelectedExamId(newExam.id);
+      setShowExamForm(false);
+      setActiveTab('questions');
+      toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
+      
+      resetExamForm();
+      
+    } catch (error) {
+      console.error('Error creating exam:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ في إنشاء الامتحان' : 'Error creating exam');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // ✅ دالة تنظيف الفورم
+  const resetExamForm = () => {
+    setExamFormData({
+      title: '',
+      title_ar: '',
+      description: '',
+      description_ar: '',
+      total_marks: 0,
+      total_marks_pass_marks: 0,
+      duration_minutes: 0,
+      course_detail_id: null,
+      stage_id: null,
+    });
+    setImageId(null);
+  };
+
+  // ✅ حذف امتحان
+  const deleteExam = async (id: number) => {
+    if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا الامتحان؟' : 'Are you sure you want to delete this exam?')) {
+      try {
+        await examService.deleteExam(id);
+        toast.success(lang === 'ar' ? 'تم حذف الامتحان بنجاح' : 'Exam deleted successfully');
+        fetchExams();
+      } catch (error) {
+        toast.error(lang === 'ar' ? 'حدث خطأ في حذف الامتحان' : 'Error deleting exam');
+      }
+    }
+  };
+
+  // ✅ تابع الوقت
+  const handleTimeEnd = () => {
+    toast.warning(lang === 'ar' ? 'انتهى الوقت! سيتم إرسال الامتحان تلقائياً' : 'Time is up! Submitting exam automatically');
+    submitExam();
   };
 
   // ✅ Create Exam Form with animation
@@ -242,12 +650,30 @@ export const InstructorExams: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 relative">
+              {/* Image Upload */}
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.05 }}
+              >
+                <FileUploader
+                  label={lang === 'ar' ? 'صورة الامتحان' : 'Exam Image'}
+                  onUploadSuccess={handleImageUpload}
+                  onRemoveImage={handleRemoveImage}
+                  multiple={false}
+                  accept="image/*"
+                  preview={true}
+                  uniqueId="exam-image-upload"
+                  maxFiles={1}
+                />
+              </motion.div>
+
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.1 }}
               >
-                <Label>{t('title')}</Label>
+                <Label>{t('title')} (EN) *</Label>
                 <Input
                   value={examFormData.title}
                   onChange={(e) => setExamFormData({ ...examFormData, title: e.target.value })}
@@ -255,12 +681,28 @@ export const InstructorExams: React.FC = () => {
                   className="rounded-xl transition-all focus:ring-2 focus:ring-primary"
                 />
               </motion.div>
+              
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.15 }}
+              >
+                <Label>{t('title')} (AR)</Label>
+                <Input
+                  value={examFormData.title_ar}
+                  onChange={(e) => setExamFormData({ ...examFormData, title_ar: e.target.value })}
+                  placeholder="مثال: امتحان منتصف الفصل"
+                  className="rounded-xl text-right"
+                  dir="rtl"
+                />
+              </motion.div>
+              
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                <Label>{t('description')}</Label>
+                <Label>{t('description')} (EN)</Label>
                 <Textarea
                   value={examFormData.description}
                   onChange={(e) => setExamFormData({ ...examFormData, description: e.target.value })}
@@ -268,43 +710,112 @@ export const InstructorExams: React.FC = () => {
                   className="rounded-xl transition-all focus:ring-2 focus:ring-primary"
                 />
               </motion.div>
+              
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.25 }}
+              >
+                <Label>{t('description')} (AR)</Label>
+                <Textarea
+                  value={examFormData.description_ar}
+                  onChange={(e) => setExamFormData({ ...examFormData, description_ar: e.target.value })}
+                  placeholder="وصف الامتحان"
+                  className="rounded-xl text-right"
+                  dir="rtl"
+                />
+              </motion.div>
+              
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="grid grid-cols-2 gap-4"
+                className="grid grid-cols-1 md:grid-cols-3 gap-4"
               >
                 <div>
-                  <Label>{t('totalMarks')}</Label>
+                  <Label>{t('totalMarks')} *</Label>
                   <Input
                     type="number"
                     value={examFormData.total_marks}
-                    onChange={(e) => setExamFormData({ ...examFormData, total_marks: parseInt(e.target.value) })}
+                    onChange={(e) => setExamFormData({ ...examFormData, total_marks: parseInt(e.target.value) || 0 })}
                     className="rounded-xl"
+                    required
                   />
                 </div>
                 <div>
-                  <Label>{t('durationMinutes')}</Label>
+                  <Label>{t('passMarks')}</Label>
+                  <Input
+                    type="number"
+                    value={examFormData.total_marks_pass_marks}
+                    onChange={(e) => setExamFormData({ ...examFormData, total_marks_pass_marks: parseInt(e.target.value) || 0 })}
+                    placeholder={t('optionalPassMarks')}
+                    className="rounded-xl"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {lang === 'ar' ? 'الدرجة المطلوبة للنجاح (اختياري)' : 'Minimum marks to pass (optional)'}
+                  </p>
+                </div>
+                <div>
+                  <Label>{t('durationMinutes')} *</Label>
                   <Input
                     type="number"
                     value={examFormData.duration_minutes}
-                    onChange={(e) => setExamFormData({ ...examFormData, duration_minutes: parseInt(e.target.value) })}
+                    onChange={(e) => setExamFormData({ ...examFormData, duration_minutes: parseInt(e.target.value) || 0 })}
                     className="rounded-xl"
+                    required
                   />
                 </div>
               </motion.div>
+              
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.35 }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-4"
+              >
+                <div>
+                  <Label>{t('stage')} *</Label>
+                  <AsyncSelect
+                    configKey="stages"
+                    value={examFormData.stage_id}
+                    onChange={(id, stage) => {
+                      setExamFormData({ ...examFormData, stage_id: id });
+                    }}
+                    placeholder={lang === 'ar' ? 'اختر المرحلة' : 'Select Stage'}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>{t('lesson')} *</Label>
+                  <AsyncSelect
+                    configKey="lessons"
+                    value={examFormData.course_detail_id}
+                    onChange={(id, lesson) => {
+                      setExamFormData({ ...examFormData, course_detail_id: id });
+                    }}
+                    placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select Lesson'}
+                    required
+                    extraFilters={{ course_id: 1 }}
+                  />
+                </div>
+              </motion.div>
+              
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                transition={{ delay: 0.4 }}
               >
-                <Button className="w-full gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all" onClick={async () => {
-                  const newExam = await examService.createExam({ ...examFormData, teacher_id: 1, type: 'exam' });
-                  setSelectedExamId(newExam.id);
-                  setShowExamForm(false);
-                  setActiveTab('questions');
-                }}>
-                  <Sparkles className="h-4 w-4" />
-                  {t('createAndAddQuestions')}
+                <Button 
+                  className="w-full gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all" 
+                  onClick={createExamHandler}
+                  disabled={isCreating}
+                >
+                  {isCreating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {isCreating ? (lang === 'ar' ? 'جاري الإنشاء...' : 'Creating...') : t('createAndAddQuestions')}
                 </Button>
               </motion.div>
             </CardContent>
@@ -452,7 +963,7 @@ export const InstructorExams: React.FC = () => {
                         <Input
                           type="number"
                           value={q.mark}
-                          onChange={(e) => updateQuestion(q.id, { mark: parseInt(e.target.value) })}
+                          onChange={(e) => updateQuestion(q.id, { mark: parseInt(e.target.value) || 0 })}
                           className="w-24 rounded-xl"
                         />
                       </div>
@@ -546,6 +1057,10 @@ export const InstructorExams: React.FC = () => {
 
   // ✅ Taking Exam with amazing animations
   if (takingExam && currentExam) {
+    const currentQuestion = currentExam.questions?.[currentQuestionIndex];
+    const totalQuestions = currentExam.questions?.length || 0;
+    const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+    
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -553,20 +1068,15 @@ export const InstructorExams: React.FC = () => {
         exit={{ opacity: 0 }}
         className="max-w-3xl mx-auto space-y-6"
       >
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center flex-wrap gap-4">
           <motion.div whileHover={{ x: -5 }}>
-            <Button variant="ghost" onClick={() => setTakingExam(false)}>← {t('back')}</Button>
+            <Button variant="ghost" onClick={() => setTakingExam(false)} className="gap-2">
+              <ChevronLeft className="h-4 w-4" />
+              {t('back')}
+            </Button>
           </motion.div>
           <div className="flex items-center gap-4">
-            <motion.div
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            >
-              <Badge variant="outline" className="gap-2 px-3 py-1.5">
-                <Clock className="h-3 w-3 animate-pulse" />
-                {currentExam.duration_minutes} {t('minutes')}
-              </Badge>
-            </motion.div>
+            <ExamTimer duration={currentExam.duration_minutes} onTimeEnd={handleTimeEnd} />
             <Badge variant="outline" className="gap-2 px-3 py-1.5">
               <Trophy className="h-3 w-3 text-yellow-500" />
               {currentExam.total_marks} {t('marks')}
@@ -598,80 +1108,85 @@ export const InstructorExams: React.FC = () => {
               <p className="text-muted-foreground mt-2">{currentExam.description}</p>
             </motion.div>
 
-            <div className="space-y-6">
-              {currentExam.questions?.map((q: any, idx: number) => (
-                <motion.div
-                  key={q.id}
-                  initial={{ opacity: 0, x: -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1, type: "spring" }}
-                >
-                  <QuestionCard
-                    question={q}
-                    index={idx}
-                    answer={answers[q.id]}
-                    onAnswerChange={(ans) => setAnswers({ ...answers, [q.id]: ans })}
-                  />
-                </motion.div>
-              ))}
+            <div className="mb-6">
+              <div className="flex justify-between text-sm mb-2">
+                <span>{t('question')} {currentQuestionIndex + 1} / {totalQuestions}</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
             </div>
 
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="mt-8"
-            >
+            <div className="space-y-6">
+              {currentQuestion && (
+                <QuestionCard
+                  question={currentQuestion}
+                  index={currentQuestionIndex}
+                  answer={answers[currentQuestion.id]}
+                  onAnswerChange={(ans) => setAnswers({ ...answers, [currentQuestion.id]: ans })}
+                />
+              )}
+            </div>
+
+            <div className="flex justify-between gap-4 mt-8">
               <Button
-                className="w-full gap-3 py-6 text-lg bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-xl transition-all"
-                size="lg"
-                onClick={submitExam}
-                disabled={submitting}
+                variant="outline"
+                onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+                disabled={currentQuestionIndex === 0}
+                className="gap-2"
               >
-                {submitting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-5 w-5" />
-                )}
-                {t('submitExam')}
+                <ChevronLeft className="h-4 w-4" />
+                {t('previous')}
               </Button>
-            </motion.div>
+              
+              {currentQuestionIndex === totalQuestions - 1 ? (
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex-1"
+                >
+                  <Button
+                    className="w-full gap-3 py-6 text-lg bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-xl transition-all"
+                    size="lg"
+                    onClick={submitExam}
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-5 w-5" />
+                    )}
+                    {t('submitExam')}
+                  </Button>
+                </motion.div>
+              ) : (
+                <Button
+                  onClick={() => setCurrentQuestionIndex(prev => Math.min(totalQuestions - 1, prev + 1))}
+                  className="gap-2 flex-1"
+                >
+                  {t('next')}
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </Card>
         </motion.div>
-
-        {result && (
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0, y: 50 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 500 }}
-          >
-            <Card className="p-8 text-center bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 border-2 border-yellow-200">
-              <motion.div
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 0.5 }}
-              >
-                <Trophy className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-              </motion.div>
-              <h3 className="text-2xl font-bold mb-4">{t('examSubmitted')}</h3>
-              <motion.p
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-orange-600"
-              >
-                {result.score} / {result.total}
-              </motion.p>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="mt-4 text-muted-foreground"
-              >
-                {result.score >= result.total / 2 ? "🎉 Great job! 🎉" : "💪 Keep practicing! 💪"}
-              </motion.p>
-            </Card>
-          </motion.div>
-        )}
       </motion.div>
+    );
+  }
+
+  // ✅ Show Result Modal
+  if (showResult && result && currentExam) {
+    return (
+      <ExamResultCard 
+        result={result} 
+        exam={currentExam} 
+        onClose={() => {
+          setShowResult(false);
+          setTakingExam(false);
+          setCurrentExam(null);
+          fetchExams();
+        }} 
+      />
     );
   }
 
@@ -688,18 +1203,29 @@ export const InstructorExams: React.FC = () => {
           title={t('exams')}
           description={t('manageAndCreateExams')}
           actions={
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              initial={{ rotate: -180, scale: 0 }}
-              animate={{ rotate: 0, scale: 1 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <Button onClick={() => setShowExamForm(true)} className="gap-2 shadow-lg rounded-full px-6">
-                <Plus className="h-4 w-4" />
-                {t('createExam')}
-              </Button>
-            </motion.div>
+            <div className="flex gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={lang === 'ar' ? 'بحث...' : 'Search...'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 w-64 rounded-xl"
+                />
+              </div>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ rotate: -180, scale: 0 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <Button onClick={() => setShowExamForm(true)} className="gap-2 shadow-lg rounded-full px-6">
+                  <Plus className="h-4 w-4" />
+                  {t('createExam')}
+                </Button>
+              </motion.div>
+            </div>
           }
         />
       </motion.div>
@@ -726,6 +1252,7 @@ export const InstructorExams: React.FC = () => {
           transition={{ type: "spring" }}
         >
           <Alert variant="destructive" className="rounded-xl">
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         </motion.div>
@@ -771,15 +1298,38 @@ export const InstructorExams: React.FC = () => {
                   transition={{ duration: 0.6 }}
                 />
                 
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+                <div className="h-32 bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center relative overflow-hidden">
+                  {exam.image?.fullUrl ? (
+                    <img src={exam.image.fullUrl} alt={exam.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <motion.div
+                      animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                    >
+                      <FileText className="h-12 w-12 text-primary/50" />
+                    </motion.div>
+                  )}
+                  <div className="absolute top-2 right-2">
+                    <Badge variant={exam.active === 1 ? "success" : "secondary"} className="gap-1">
+                      {exam.active === 1 ? (
+                        <CheckCircle className="h-3 w-3" />
+                      ) : (
+                        <XCircle className="h-3 w-3" />
+                      )}
+                      {exam.active === 1 ? t('active') : t('inactive')}
+                    </Badge>
+                  </div>
+                </div>
+                
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <motion.h3
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         className="font-bold text-xl line-clamp-1"
                       >
-                        {exam.title}
+                        {isRTL && exam.title_ar ? exam.title_ar : exam.title}
                       </motion.h3>
                       <motion.p
                         initial={{ x: -20, opacity: 0 }}
@@ -787,30 +1337,16 @@ export const InstructorExams: React.FC = () => {
                         transition={{ delay: 0.05 }}
                         className="text-sm text-muted-foreground line-clamp-2 mt-1"
                       >
-                        {exam.description}
+                        {isRTL && exam.description_ar ? exam.description_ar : exam.description}
                       </motion.p>
                     </div>
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                    >
-                      <Badge variant={exam.active === 1 ? "success" : "secondary"} className="gap-1">
-                        {exam.active === 1 ? (
-                          <CheckCircle className="h-3 w-3" />
-                        ) : (
-                          <XCircle className="h-3 w-3" />
-                        )}
-                        {exam.active === 1 ? t('active') : t('inactive')}
-                      </Badge>
-                    </motion.div>
                   </div>
 
                   <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.1 }}
-                    className="flex gap-6 mt-4 text-sm"
+                    className="flex gap-4 mt-4 text-sm"
                   >
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-primary" />
@@ -822,13 +1358,112 @@ export const InstructorExams: React.FC = () => {
                       <span className="font-semibold">{exam.duration_minutes}</span>
                       <span className="text-muted-foreground">min</span>
                     </div>
+                    {exam.total_marks_pass_marks && (
+                      <div className="flex items-center gap-2">
+                        <Award className="h-4 w-4 text-yellow-500" />
+                        <span className="font-semibold text-yellow-600">{exam.total_marks_pass_marks}</span>
+                        <span className="text-muted-foreground">pass</span>
+                      </div>
+                    )}
                   </motion.div>
+
+                  {/* ✅ Exam Settings Toggle Section */}
+                  <div className="mt-3 border-t pt-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => toggleSettings(exam.id)}
+                      className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        <Settings2 className="h-3 w-3" />
+                        <span>{lang === 'ar' ? 'إعدادات الامتحان' : 'Exam Settings'}</span>
+                      </div>
+                      {expandedSettings[exam.id] ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </motion.button>
+                    
+                    <AnimatePresence>
+                      {expandedSettings[exam.id] && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="mt-3 space-y-2"
+                        >
+                          {/* Random Questions Toggle */}
+                          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                            <div className="flex items-center gap-2">
+                              <Shuffle className="h-3.5 w-3.5 text-primary" />
+                              <span className="text-xs font-medium">
+                                {lang === 'ar' ? 'ترتيب عشوائي للأسئلة' : 'Random Questions'}
+                              </span>
+                            </div>
+                            <Switch
+                              checked={exam.random_questions || false}
+                              onCheckedChange={() => toggleRandomQuestions(exam.id, exam.random_questions)}
+                              className="data-[state=checked]:bg-primary scale-75"
+                            />
+                          </div>
+                          
+                          {/* Random Answers Toggle */}
+                          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                            <div className="flex items-center gap-2">
+                              <ListOrdered className="h-3.5 w-3.5 text-primary" />
+                              <span className="text-xs font-medium">
+                                {lang === 'ar' ? 'ترتيب عشوائي للإجابات' : 'Random Answers'}
+                              </span>
+                            </div>
+                            <Switch
+                              checked={exam.random_answers || false}
+                              onCheckedChange={() => toggleRandomAnswers(exam.id, exam.random_answers)}
+                              className="data-[state=checked]:bg-primary scale-75"
+                            />
+                          </div>
+                          
+                          {/* Show Result Toggle */}
+                          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                            <div className="flex items-center gap-2">
+                              <Eye className="h-3.5 w-3.5 text-primary" />
+                              <span className="text-xs font-medium">
+                                {lang === 'ar' ? 'إظهار النتيجة للطلاب' : 'Show Result to Students'}
+                              </span>
+                            </div>
+                            <Switch
+                              checked={exam.show_result || false}
+                              onCheckedChange={() => toggleShowResult(exam.id, exam.show_result)}
+                              className="data-[state=checked]:bg-primary scale-75"
+                            />
+                          </div>
+                          
+                          {/* Active Toggle */}
+                          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                            <div className="flex items-center gap-2">
+                              <Power className="h-3.5 w-3.5 text-primary" />
+                              <span className="text-xs font-medium">
+                                {lang === 'ar' ? 'تفعيل الامتحان' : 'Activate Exam'}
+                              </span>
+                            </div>
+                            <Switch
+                              checked={exam.active === 1}
+                              onCheckedChange={() => toggleExamActive(exam.id, exam.active === 1)}
+                              className="data-[state=checked]:bg-green-500 scale-75"
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
                   <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.15 }}
-                    className="flex gap-3 mt-6"
+                    className="flex gap-3 mt-3"
                   >
                     <motion.div className="flex-1" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                       <Button
@@ -854,6 +1489,16 @@ export const InstructorExams: React.FC = () => {
                         {t('takeExam')}
                       </Button>
                     </motion.div>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="rounded-lg"
+                        onClick={() => deleteExam(exam.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </motion.div>
                   </motion.div>
                 </div>
               </Card>
@@ -861,6 +1506,32 @@ export const InstructorExams: React.FC = () => {
           ))}
         </motion.div>
       </LayoutGroup>
+
+      {pagination.lastPage > 1 && (
+        <div className="flex items-center justify-center gap-3 py-4">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full w-10 h-10"
+            onClick={() => fetchExams(pagination.currentPage - 1)}
+            disabled={pagination.currentPage === 1}
+          >
+            <ChevronLeft className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />
+          </Button>
+          <span className="text-sm">
+            {pagination.currentPage} / {pagination.lastPage}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full w-10 h-10"
+            onClick={() => fetchExams(pagination.currentPage + 1)}
+            disabled={pagination.currentPage === pagination.lastPage}
+          >
+            <ChevronRight className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />
+          </Button>
+        </div>
+      )}
     </motion.div>
   );
 };

@@ -16,6 +16,7 @@ export interface CourseDetail {
   lession_time: string;
   price: string;
   discount: string;
+    must_pass_to_unlock?: boolean; // 🔥 أضف هذا
   createdAt: string;
   image?: any;
 }
@@ -56,6 +57,13 @@ class CourseDetailService extends BaseService<CourseDetail> {
 
   async deleteDetail(id: number): Promise<void> {
     await api.delete(`/${this.endpoint}/${id}`);
+  }
+
+    async toggleMustPassToUnlock(id: number, value: boolean): Promise<CourseDetail> {
+    const response = await api.put(`/${this.endpoint}/${id}/must_pass_to_unlock`, {
+      must_pass_to_unlock: value
+    });
+    return response.data.data;
   }
 }
 
