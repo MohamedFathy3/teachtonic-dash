@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { monthlyRevenue } from "@/lib/mockData";
 import { Activity, Eye, Clock, TrendingUp } from "lucide-react";
+import { ExportExcelButton } from "@/components/common/ExportExcelButton";
 
 const engagement = monthlyRevenue.map((m) => ({ month: m.month, completion: 50 + Math.round((m.users / 1200) * 40), engagement: 60 + Math.round((m.users / 1500) * 30) }));
 
@@ -12,7 +13,15 @@ export function InstructorAnalytics() {
   const { t } = useApp();
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
-      <PageHeader title={t("analytics")} description="Performance, engagement, and completion across your courses" />
+      <PageHeader title={t("analytics")}
+       description="Performance, engagement, and completion across your courses"
+        actions={
+          <ExportExcelButton
+            data={monthlyRevenue}
+            fileName="analytics-data"
+            label={ 'Export'}
+          />
+        } />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Course views" value="48.2K" delta={12.3} icon={Eye} variant="primary" />

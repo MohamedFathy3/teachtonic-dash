@@ -1,3 +1,5 @@
+import { ExportExcelButton } from "@/components/common/ExportExcelButton";
+import { Download } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { PageHeader } from "@/components/lms/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -20,7 +22,32 @@ export function AdminReviews() {
   const avg = (reviewsData.reduce((s, r) => s + r.rating, 0) / reviewsData.length).toFixed(1);
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
-      <PageHeader title={t("reviews")} description={`${reviewsData.length} reviews — average ${avg} ★`} />
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <PageHeader
+          title={t("reviews")}
+          description={`${reviewsData.length} reviews — average ${avg} ★`}
+        />
+
+        {/* 🔥 Export Button */}
+        <ExportExcelButton
+          data={reviewsData}
+          fileName="reviews-report"
+          label="Export"
+          icon={<Download className="h-4 w-4" />}
+          className="
+      h-10 rounded-xl
+      border border-amber-200
+      bg-amber-50
+      text-amber-700
+      hover:bg-amber-600
+      hover:text-white
+      dark:bg-amber-900/20
+      dark:text-amber-400
+      transition-all duration-300
+      shadow-sm
+    "
+        />
+      </div>
 
       <div className="space-y-4">
         {reviewsData.map((r) => (

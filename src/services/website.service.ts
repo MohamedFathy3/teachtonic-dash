@@ -14,19 +14,29 @@ export interface ISectionService {
 }
 
 class WebsiteSectionService implements ISectionService {
-  private getEndpoint(type: SectionType): string {
+  private getListEndpoint(type: SectionType): string {
     switch (type) {
       case 'home': return 'home/index';
       case 'about': return 'about/index';
       case 'feature': return 'feature/index';
       case 'footer': return 'footer/index';
+      default: return `${type}/index`;
+    }
+  }
+
+  private getCrudEndpoint(type: SectionType): string {
+    switch (type) {
+      case 'home': return 'home';
+      case 'about': return 'about';
+      case 'feature': return 'feature';
+      case 'footer': return 'footer';
       default: return type;
     }
   }
 
   async getAll(type: SectionType, teacherId: number): Promise<any[]> {
     try {
-      const response = await api.post(`/${this.getEndpoint(type)}`, { filter: { teacher_id: teacherId } });
+      const response = await api.post(`/${this.getListEndpoint(type)}`, { filter: { teacher_id: teacherId } });
       return response.data?.data || [];
     } catch (error) {
       console.error(`Failed to fetch ${type}:`, error);
@@ -36,7 +46,7 @@ class WebsiteSectionService implements ISectionService {
 
   async create(type: SectionType, data: any): Promise<any> {
     try {
-      const response = await api.post(`/${this.getEndpoint(type)}`, data);
+      const response = await api.post(`/${this.getCrudEndpoint(type)}`, data);
       toast({ title: "Success", description: `${type} created successfully` });
       return response.data?.data;
     } catch (error: any) {
@@ -47,7 +57,7 @@ class WebsiteSectionService implements ISectionService {
 
   async update(type: SectionType, id: number, data: any): Promise<any> {
     try {
-      const response = await api.patch(`/${this.getEndpoint(type)}/${id}`, data);
+      const response = await api.patch(`/${this.getCrudEndpoint(type)}/${id}`, data);
       toast({ title: "Success", description: `${type} updated successfully` });
       return response.data?.data;
     } catch (error: any) {
@@ -58,7 +68,11 @@ class WebsiteSectionService implements ISectionService {
 
   async delete(type: SectionType, id: number): Promise<void> {
     try {
-      await api.delete(`/${this.getEndpoint(type)}/${id}`);
+      // Backend expects bulk delete payload: { items: [id] }
+      // but route method might be POST (not DELETE) depending on the API.
+      await api.delete(`/${this.getCrudEndpoint(type)}/delete`, {
+        data: { items: [id] }
+      });
       toast({ title: "Success", description: `${type} deleted successfully` });
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.message || `Failed to delete ${type}`, variant: "destructive" });
@@ -68,7 +82,7 @@ class WebsiteSectionService implements ISectionService {
 
   async toggleActive(type: SectionType, id: number): Promise<any> {
     try {
-      const response = await api.patch(`/${this.getEndpoint(type)}/${id}/toggle-active`);
+      const response = await api.patch(`/${this.getCrudEndpoint(type)}/${id}/toggle-active`);
       toast({ title: "Success", description: `${type} status changed` });
       return response.data?.data;
     } catch (error: any) {

@@ -65,7 +65,8 @@ export interface Course {
   semester_id: number;
   semester: Semester;
   discount: string;
-  details: any[];
+  details: CourseDetail[];
+  students?: CourseStudent[];
   title: string;
   title_ar: string;
   description: string;
@@ -84,7 +85,37 @@ export interface Course {
   image: CourseImage;
   createdAt: string;
 }
-
+export interface CourseStudent {
+  id: number;
+  name: string;
+  phone: string;
+  phone_parent: string;
+  code_parent: string;
+  type_of_attendance: string | null;
+  gender: string | null;
+  active: boolean;
+  teacher_id: number;
+  stage_id: number;
+  center_hour_id: number | null;
+  joined_at: string;
+  created_at: string;
+}
+export interface CourseDetail {
+  id: number;
+  course_id: number;
+  title: string;
+  title_ar: string;
+  description: string;
+  description_ar: string;
+  content_link: string;
+  lession_date: string;
+  lession_time: string;
+  price: string;
+  must_pass_to_unlock: boolean;
+  discount: string;
+  attended: boolean;
+  createdAt: string;
+}
 export interface CourseFormData {
   teacher_id: number;
   stage_id: number;

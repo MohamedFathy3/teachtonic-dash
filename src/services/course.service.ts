@@ -3,13 +3,23 @@
 
 import { BaseService } from './base.service';
 import type { Course, CourseFormData, PaginatedResponse } from '@/types/course.types';
+
 import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
-
 class CourseService extends BaseService<Course> {
   constructor() {
     super('course');
   }
+
+
+
+
+
+  // async getCourses(params?: any): Promise<PaginatedResponse<Course>> {
+  //   const response = await this.getAll(params);
+  //   return response;
+  // }
+
 
   // ✅ الدالة الأساسية لجلب الكورسات مع فلتر متقدم
   async getAllCourses(
@@ -20,15 +30,15 @@ class CourseService extends BaseService<Course> {
     showDeleted: boolean = false
   ): Promise<PaginatedResponse<Course>> {
     try {
-    const baseFilters: Record<string, any> = { ...(filters || {}) };
-      
+      const baseFilters: Record<string, any> = { ...(filters || {}) };
+
       // 🔥 إضافة البحث في title و title_ar
       if (search && search.trim()) {
-        
+
         // الطريقة الثانية: إضافة فلتر title (لو الـ API بيدعم filters.title)
         baseFilters.title = search.trim();
       }
-  const requestBody: Record<string, any> = {
+      const requestBody: Record<string, any> = {
         filters: baseFilters,
         orderBy: 'id',
         orderByDirection: 'desc',
@@ -39,7 +49,7 @@ class CourseService extends BaseService<Course> {
       };
 
       const response = await api.post(`/${this.endpoint}/index`, requestBody);
-      
+
       return {
         data: response.data?.data || [],
         links: response.data?.links || { first: '', last: '', prev: null, next: null },
@@ -80,11 +90,11 @@ class CourseService extends BaseService<Course> {
   // ✅ جلب كورس واحد بالـ ID
   async getCourse(id: number): Promise<Course> {
     const response = await api.get(`/${this.endpoint}/${id}`);
-    
+
     if (response.data && response.data.data) {
       return response.data.data;
     }
-    
+
     throw new Error('Invalid response structure');
   }
 
@@ -112,12 +122,12 @@ class CourseService extends BaseService<Course> {
       };
 
       const response = await api.post(`/${this.endpoint}`, payload);
-      
+
       toast({
         title: "Success",
         description: "Course created successfully",
       });
-      
+
       return response.data.data;
     } catch (error: any) {
       toast({
@@ -133,7 +143,7 @@ class CourseService extends BaseService<Course> {
   async updateCourse(id: number, data: Partial<CourseFormData>): Promise<Course> {
     try {
       const payload: any = {};
-      
+
       if (data.teacher_id !== undefined) payload.teacher_id = data.teacher_id;
       if (data.stage_id !== undefined) payload.stage_id = data.stage_id;
       if (data.subject_id !== undefined) payload.subject_id = data.subject_id;
@@ -153,12 +163,12 @@ class CourseService extends BaseService<Course> {
       if (data.image !== undefined) payload.image = data.image;
 
       const response = await api.patch(`/${this.endpoint}/${id}`, payload);
-      
+
       toast({
         title: "Success",
         description: "Course updated successfully",
       });
-      
+
       return response.data.data;
     } catch (error: any) {
       toast({

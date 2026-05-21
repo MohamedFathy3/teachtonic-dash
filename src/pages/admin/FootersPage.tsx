@@ -7,17 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
-import { 
-  Search, 
-  Plus, 
-  MoreHorizontal, 
-  ChevronLeft, 
-  ChevronRight, 
-  Edit, 
-  Trash2, 
-  Layers, 
-  Trash, 
-  Archive, 
+import {
+  Search,
+  Plus,
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  Edit,
+  Trash2,
+  Layers,
+  Trash,
+  Archive,
   RotateCcw,
   Eye,
   Phone
@@ -36,58 +36,59 @@ import { FooterDeleteDialog } from '@/components/admin/footer/FooterDeleteDialog
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 // 🔥 أيقونات مخصصة للسوشيال ميديا (مش من lucide-react)
 const FacebookIcon = () => (
   <svg className="h-4 w-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
   </svg>
 );
 
 const YoutubeIcon = () => (
   <svg className="h-4 w-4 text-red-600" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.376.505A3.017 3.017 0 0 0 .502 6.186C0 8.066 0 12 0 12s0 3.934.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.376-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.934 24 12 24 12s0-3.934-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.376.505A3.017 3.017 0 0 0 .502 6.186C0 8.066 0 12 0 12s0 3.934.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.376-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.934 24 12 24 12s0-3.934-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
   </svg>
 );
 
 const InstagramIcon = () => (
   <svg className="h-4 w-4 text-pink-600" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
   </svg>
 );
 
 const TikTokIcon = () => (
   <svg className="h-4 w-4 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 10.692 6.33 6.33 0 0 0 10.857-4.424V8.687a8.182 8.182 0 0 0 4.773 1.526V6.79a4.831 4.831 0 0 1-1.003-.104z"/>
+    <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-5.201 1.743l-.002-.001.002.001a2.895 2.895 0 0 1 3.183-4.51v-3.5a6.329 6.329 0 0 0-5.394 10.692 6.33 6.33 0 0 0 10.857-4.424V8.687a8.182 8.182 0 0 0 4.773 1.526V6.79a4.831 4.831 0 0 1-1.003-.104z" />
   </svg>
 );
 
 export function FootersPage() {
   const { dir, lang } = useApp();
   const navigate = useNavigate();
-  
-  const { 
-    footers, 
-    loading, 
-    total, 
-    currentPage, 
-    lastPage, 
+
+  const {
+    footers,
+    loading,
+    total,
+    currentPage,
+    lastPage,
     showDeleted,
     setShowDeleted,
     selectedFooters,
     setSelectedFooters,
-    createFooter, 
-    updateFooter, 
-    deleteFooter, 
+    createFooter,
+    updateFooter,
+    deleteFooter,
     forceDeleteFooter,
     restoreFooter,
-    toggleActive, 
+    toggleActive,
     goToPage,
     bulkDelete,
     bulkForceDelete,
     bulkRestore
   } = useFooters();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingFooterId, setEditingFooterId] = useState<number | null>(null);
@@ -221,14 +222,19 @@ export function FootersPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <ExportExcelButton
+            data={filteredFooters}
+            fileName="footers-list"
+            label={lang === 'ar' ? 'تصدير' : 'Export'}
+            disabled={loading || filteredFooters.length === 0}
+          />
           <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
-            className={`gap-2 rounded-lg ${
-              showDeleted 
-                ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                : 'border-gray-200 dark:border-gray-700'
-            }`}
+            className={`gap-2 rounded-lg ${showDeleted
+              ? 'bg-orange-600 hover:bg-orange-700 text-white'
+              : 'border-gray-200 dark:border-gray-700'
+              }`}
           >
             {showDeleted ? (
               <><Archive className="h-4 w-4" />{text.showActive}</>
@@ -346,10 +352,10 @@ export function FootersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <AvatarBadge 
-                          initials={getInitials(footer)} 
-                          size="sm" 
-                          variant={showDeleted ? "muted" : "primary"} 
+                        <AvatarBadge
+                          initials={getInitials(footer)}
+                          size="sm"
+                          variant={showDeleted ? "muted" : "primary"}
                         />
                         <div>
                           <div className={showDeleted ? 'text-gray-500 line-through' : 'font-medium'}>
@@ -384,18 +390,18 @@ export function FootersPage() {
                     <TableCell className="text-center">
                       {showDeleted ? (
                         <div className="flex justify-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setRestoringFooter(footer)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setRestoringFooter(footer)}
                             className="text-green-600"
                           >
                             <RotateCcw className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setForceDeletingFooter(footer)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setForceDeletingFooter(footer)}
                             className="text-red-600"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -403,28 +409,28 @@ export function FootersPage() {
                         </div>
                       ) : (
                         <div className="flex justify-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleShowClick(footer.id)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleShowClick(footer.id)}
                             className="text-blue-600"
                             title={text.show}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleEditClick(footer.id)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditClick(footer.id)}
                             className="text-amber-600"
                             title={text.edit}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setDeletingFooter(footer)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeletingFooter(footer)}
                             className="text-red-600"
                             title={text.delete}
                           >
@@ -457,11 +463,11 @@ export function FootersPage() {
               {text.showing} {filteredFooters.length} {text.of} {total} {text.footers}
             </p>
             <div className="flex gap-1">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8" 
-                onClick={() => goToPage(currentPage - 1)} 
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
@@ -469,11 +475,11 @@ export function FootersPage() {
               <span className="px-3 text-sm flex items-center">
                 {currentPage} / {lastPage}
               </span>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8" 
-                onClick={() => goToPage(currentPage + 1)} 
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === lastPage}
               >
                 <ChevronRight className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
@@ -484,56 +490,56 @@ export function FootersPage() {
       </Card>
 
       {/* Dialogs */}
-      <FooterForm 
-        open={formOpen} 
+      <FooterForm
+        open={formOpen}
         onClose={() => {
           setFormOpen(false);
           setEditingFooterId(null);
-        }} 
+        }}
         onSubmit={editingFooterId ? handleUpdate : handleCreate}
         footerId={editingFooterId}
-        loading={actionLoading} 
+        loading={actionLoading}
       />
-      
-      <FooterDeleteDialog 
-        open={!!deletingFooter} 
-        onClose={() => setDeletingFooter(null)} 
+
+      <FooterDeleteDialog
+        open={!!deletingFooter}
+        onClose={() => setDeletingFooter(null)}
         onConfirm={async () => {
           await deleteFooter(deletingFooter.id);
           setDeletingFooter(null);
-        }} 
-        footerName={getFooterName(deletingFooter)} 
-        loading={actionLoading} 
+        }}
+        footerName={getFooterName(deletingFooter)}
+        loading={actionLoading}
       />
-      
-      <FooterDeleteDialog 
-        open={!!restoringFooter} 
-        onClose={() => setRestoringFooter(null)} 
+
+      <FooterDeleteDialog
+        open={!!restoringFooter}
+        onClose={() => setRestoringFooter(null)}
         onConfirm={async () => {
           await restoreFooter(restoringFooter.id);
           setRestoringFooter(null);
-        }} 
-        footerName={getFooterName(restoringFooter)} 
-        loading={actionLoading} 
+        }}
+        footerName={getFooterName(restoringFooter)}
+        loading={actionLoading}
         title="Restore Footer Section"
         confirmText="Restore"
         confirmClassName="bg-green-600"
       />
-      
-      <FooterDeleteDialog 
-        open={!!forceDeletingFooter} 
-        onClose={() => setForceDeletingFooter(null)} 
+
+      <FooterDeleteDialog
+        open={!!forceDeletingFooter}
+        onClose={() => setForceDeletingFooter(null)}
         onConfirm={async () => {
           await forceDeleteFooter(forceDeletingFooter.id);
           setForceDeletingFooter(null);
-        }} 
-        footerName={getFooterName(forceDeletingFooter)} 
-        loading={actionLoading} 
+        }}
+        footerName={getFooterName(forceDeletingFooter)}
+        loading={actionLoading}
         title="Permanent Delete"
         confirmText="Permanently Delete"
         confirmClassName="bg-red-700"
       />
-      
+
       <FooterDeleteDialog
         open={bulkActionDialog.open}
         onClose={() => setBulkActionDialog({ type: null, open: false })}

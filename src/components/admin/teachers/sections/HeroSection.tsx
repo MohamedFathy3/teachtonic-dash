@@ -70,8 +70,9 @@ export function HeroSection({ teacherId }: HeroSectionProps) {
   };
 
   const getText = (item: any) => {
-    if (lang === 'ar') return item.title_ar || item.title;
-    return item.title;
+    if (!item) return '';
+    if (lang === 'ar') return item.title_ar || item.title || '';
+    return item.title || '';
   };
 
   const itemsList = Array.isArray(items) ? items : [];
@@ -86,33 +87,78 @@ export function HeroSection({ teacherId }: HeroSectionProps) {
         emptyMessage="No hero sections added yet"
       >
         <div className="space-y-3">
-          {itemsList.map((item: any) => (
-            <div key={item.id} className="flex items-start justify-between p-4 rounded-lg bg-muted/30">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-lg">{getText(item)}</span>
-                  {item.active ? (
-                    <Eye className="h-4 w-4 text-green-500" />
+          {itemsList
+            .filter((item: any) => item != null)
+            .map((item: any) => (
+              <div
+                key={item.id}
+                className="group flex items-center gap-4 rounded-xl border bg-card p-4 transition-all hover:shadow-lg hover:-translate-y-0.5"
+              >
+                {/* IMAGE */}
+                <div className="shrink-0">
+                  {item.image?.fullUrl ? (
+                    <img
+                      src={item.image.fullUrl}
+                      alt={getText(item)}
+                      className="h-20 w-20 rounded-lg object-cover border"
+                    />
                   ) : (
-                    <EyeOff className="h-4 w-4 text-red-500" />
+                    <div className="h-20 w-20 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                      No Image
+                    </div>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">{item.sub_title}</p>
-                <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{item.description}</p>
-                {item.image?.fullUrl && (
-                  <img src={item.image.fullUrl} alt={getText(item)} className="w-20 h-20 object-cover rounded-lg mt-2" />
-                )}
+
+                {/* CONTENT */}
+                <div className="flex-1 min-w-0 space-y-1">
+
+                  {/* TITLE + STATUS */}
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-base truncate">
+                      {getText(item)}
+                    </h3>
+
+                    {item?.active ? (
+                      <Eye className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <EyeOff className="h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+
+                  {/* SUB TITLE */}
+                  <p className="text-sm text-muted-foreground truncate">
+                    {item.sub_title || 'No subtitle'}
+                  </p>
+
+                  {/* DESCRIPTION */}
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {item.description || 'No description'}
+                  </p>
+                </div>
+
+                {/* ACTIONS */}
+                <div className="flex items-center gap-2 opacity-70 group-hover:opacity-100 transition">
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => openEdit(item)}
+                    className="hover:bg-blue-50 hover:text-blue-600"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => remove(item.id)}
+                    className="hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => remove(item.id)}>
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))}
         </div>
       </BaseSection>
 

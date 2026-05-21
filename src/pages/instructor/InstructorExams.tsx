@@ -18,6 +18,7 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+<<<<<<< HEAD
 import { 
   Plus, Trash2, Save, Clock, FileText, HelpCircle, X, CheckCircle, 
   Sparkles, GraduationCap, Trophy, Zap, Award, 
@@ -37,6 +38,10 @@ interface QuestionBuilder {
   correct_answer?: string;
   options?: { option_text: string; is_correct: boolean }[];
 }
+=======
+import { XCircle } from "lucide-react";
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
+>>>>>>> c33cc6852af16c687402c04a977f45ce12ed0c3f
 
 // ✅ Animation variants
 const containerVariants = {
@@ -242,13 +247,13 @@ const ExamResultCard: React.FC<{ result: any; exam: any; onClose: () => void }> 
 export const InstructorExams: React.FC = () => {
   const { t, lang, user } = useApp();
   const isRTL = lang === 'ar';
-  
+
   // ✅ State
   const [exams, setExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('exams');
-  
+
   // ✅ Form State
   const [showExamForm, setShowExamForm] = useState(false);
   const [imageId, setImageId] = useState<number | null>(null);
@@ -263,12 +268,12 @@ export const InstructorExams: React.FC = () => {
     course_detail_id: null as number | null,
     stage_id: null as number | null,
   });
-  
+
   // ✅ Questions Builder State
   const [questions, setQuestions] = useState<QuestionBuilder[]>([]);
   const [savingQuestions, setSavingQuestions] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
-  
+
   // ✅ Taking Exam State
   const [takingExam, setTakingExam] = useState(false);
   const [currentExam, setCurrentExam] = useState<any | null>(null);
@@ -374,7 +379,7 @@ export const InstructorExams: React.FC = () => {
   // ✅ حفظ الأسئلة
   const saveQuestions = async () => {
     if (!selectedExamId) return;
-    
+
     setSavingQuestions(true);
     try {
       const formattedQuestions = questions.map(q => ({
@@ -384,7 +389,7 @@ export const InstructorExams: React.FC = () => {
         ...(q.question_type === 'true_false' && { correct_answer: q.correct_answer }),
         ...(q.question_type === 'multiple_choice' && { options: q.options }),
       }));
-      
+
       await examService.addQuestions(selectedExamId, formattedQuestions);
       toast.success(lang === 'ar' ? 'تم حفظ الأسئلة بنجاح' : 'Questions saved successfully');
       setQuestions([]);
@@ -624,7 +629,7 @@ export const InstructorExams: React.FC = () => {
             {t('back')}
           </Button>
         </motion.div>
-        
+
         <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 50 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -956,7 +961,7 @@ export const InstructorExams: React.FC = () => {
                       placeholder={t('enterQuestion')}
                       className="rounded-xl text-base focus:ring-2 focus:ring-primary"
                     />
-                    
+
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Label>{t('marks')}</Label>
@@ -1198,11 +1203,14 @@ export const InstructorExams: React.FC = () => {
       variants={containerVariants}
       className="space-y-8"
     >
+
+
       <motion.div variants={itemVariants}>
         <PageHeader
           title={t('exams')}
           description={t('manageAndCreateExams')}
           actions={
+<<<<<<< HEAD
             <div className="flex gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1213,6 +1221,18 @@ export const InstructorExams: React.FC = () => {
                   className="pl-9 w-64 rounded-xl"
                 />
               </div>
+=======
+            <div className="flex items-center gap-3"> {/* ✅ مجموع زرين جنب بعض */}
+
+              {/* زرار التصدير */}
+              <ExportExcelButton
+                data={exams}
+                fileName="exams-list"
+                label={lang === 'ar' ? 'تصدير' : 'Export'}
+                disabled={loading || exams.length === 0}
+              />
+
+>>>>>>> c33cc6852af16c687402c04a977f45ce12ed0c3f
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -1229,6 +1249,7 @@ export const InstructorExams: React.FC = () => {
           }
         />
       </motion.div>
+
 
       {loading && (
         <motion.div
@@ -1297,6 +1318,7 @@ export const InstructorExams: React.FC = () => {
                   whileHover={{ x: "100%" }}
                   transition={{ duration: 0.6 }}
                 />
+<<<<<<< HEAD
                 
                 <div className="h-32 bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center relative overflow-hidden">
                   {exam.image?.fullUrl ? (
@@ -1323,6 +1345,11 @@ export const InstructorExams: React.FC = () => {
                 
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-3">
+=======
+
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+>>>>>>> c33cc6852af16c687402c04a977f45ce12ed0c3f
                     <div className="flex-1">
                       <motion.h3
                         initial={{ x: -20, opacity: 0 }}

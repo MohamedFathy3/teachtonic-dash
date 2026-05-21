@@ -38,6 +38,7 @@ import { AssistantTeacherDeleteDialog } from '@/components/admin/assistant-teach
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 export function AssistantTeachersPage() {
   const { dir, lang } = useApp();
@@ -211,6 +212,12 @@ export function AssistantTeachersPage() {
           </div>
         </div>
         <div className="flex gap-2">
+           <ExportExcelButton
+            data={filteredAssistants}
+            fileName="assistant-teachers-list"
+            label={lang === 'ar' ? 'تصدير' : 'Export'}
+            disabled={loading || filteredAssistants.length === 0}
+          />
           <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}

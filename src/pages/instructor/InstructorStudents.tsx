@@ -1,5 +1,6 @@
 // src/pages/instructor/InstructorStudents.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -10,8 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { 
-  Loader2, Search, Users, User, Phone, Calendar, 
+import {
+  Loader2, Search, Users, User, Phone, Calendar,
   Monitor, Building2, CheckCircle, XCircle, Filter, X,
   ChevronLeft, ChevronRight, Award, Sparkles, Eye
 } from 'lucide-react';
@@ -40,7 +41,7 @@ const itemVariants = {
 export const InstructorStudents: React.FC = () => {
   const { t, lang, user } = useApp();
   const isRTL = lang === 'ar';
-  
+
   // ✅ State
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,11 +52,11 @@ export const InstructorStudents: React.FC = () => {
   const [filterStageId, setFilterStageId] = useState<number | null>(null);
   const [filterAttendance, setFilterAttendance] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
-  
+
   // ✅ Selected student for learning page
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [showLearningPage, setShowLearningPage] = useState(false);
-  
+
   // ✅ Pagination
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -79,7 +80,7 @@ export const InstructorStudents: React.FC = () => {
       if (filterStageId) filters.stage_id = filterStageId;
       if (filterAttendance) filters.type_of_attendance = filterAttendance;
       if (filterStatus !== '') filters.active = filterStatus === 'active';
-      
+
       const response = await studentService.getTeacherStudents(
         user?.id || 1,
         filters,
@@ -171,10 +172,17 @@ export const InstructorStudents: React.FC = () => {
       className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950"
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
-        
+
         {/* ✅ Header */}
         <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <ExportExcelButton
+            data={students}
+            fileName="students-list"
+            label={lang === 'ar' ? 'تصدير' : 'Export'}
+            disabled={loading || students.length === 0}
+          />
           <div className="flex items-center gap-3">
+
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl blur-xl opacity-60" />
               <div className="relative h-12 w-12 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
@@ -182,12 +190,15 @@ export const InstructorStudents: React.FC = () => {
               </div>
             </div>
             <div>
+
               <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
                 {t('myStudents') || 'طلابي'}
               </h1>
+
               <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                 <Sparkles className="h-3 w-3" />
                 {stats.total} {t('totalStudents') || 'طالب'} • {stats.active} {t('active') || 'نشط'}
+
               </p>
             </div>
           </div>
@@ -245,8 +256,9 @@ export const InstructorStudents: React.FC = () => {
               </Button>
             )}
           </div>
-          
+
           <div className="relative">
+
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={t('searchStudents') || 'بحث بالاسم...'}
@@ -417,6 +429,7 @@ export const InstructorStudents: React.FC = () => {
                           <Eye className="h-3 w-3" />
                           {t('viewLearning') || 'عرض التعلم'}
                         </Button>
+
                       </div>
                     </div>
 

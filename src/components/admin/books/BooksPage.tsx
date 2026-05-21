@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/books/BooksPage.tsx
+import { ExportExcelButton } from '@/components/common/ExportExcelButton'; // ✅ أضف هذا الاستيراد
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -136,6 +137,14 @@ export const BooksPage: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-3 flex-wrap">
+
+            <ExportExcelButton
+              data={books}
+              fileName="books-list"
+              label={lang === 'ar' ? 'تصدير' : 'Export'}
+              disabled={isLoading || books.length === 0}
+            />
+
             {/* Filter Toggle Button */}
             <Button
               variant="outline"
@@ -307,7 +316,7 @@ export const BooksPage: React.FC = () => {
                         <BookOpen className="h-16 w-16 text-white/40" />
                       </div>
                     )}
-                    
+
                     {/* Status Badge */}
                     <div className="absolute top-2 right-2">
                       <Badge variant={book.active === 1 ? "default" : "secondary"} className="gap-1 backdrop-blur-sm bg-black/50 border-none">

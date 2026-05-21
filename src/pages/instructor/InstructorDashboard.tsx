@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, Pie, PieChart, Legend } from "recharts";
 import { monthlyRevenue, categoryData, recentActivity } from "@/lib/mockData";
 import { AvatarBadge } from "@/components/lms/AvatarBadge";
+import { ExportExcelButton } from "@/components/common/ExportExcelButton";
 
 export function InstructorDashboard() {
   const { t } = useApp();
@@ -15,7 +16,19 @@ export function InstructorDashboard() {
       <PageHeader
         title="Welcome back, Ahmed 👋"
         description="Your courses are gaining momentum. Keep it up!"
-        actions={<Button className="gap-2 rounded-xl gradient-primary border-0 shadow-glow"><Sparkles className="h-4 w-4" />New course</Button>}
+       actions={
+          <div className="flex items-center gap-3">
+            {/* ✅ زرار التصدير */}
+            <ExportExcelButton
+              data={recentActivity}
+              fileName="dashboard-activity"
+              label={ 'Export'}
+            />
+
+            {/* الزرار الأصلي */}
+            <Button className="gap-2 rounded-xl gradient-primary border-0 shadow-glow"><Sparkles className="h-4 w-4" />New course</Button>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

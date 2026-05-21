@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/teachers/sections/AboutSection.tsx
-
+import { sectionService } from '@/services/website.service';
 import { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { BaseSection } from './BaseSection';
@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import FileUploader from '@/components/FileUploader';
-import { Edit, Info, Check, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Edit, Info, Check, Eye, EyeOff, Loader2, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 
@@ -46,6 +46,23 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
     }
   }, [teacherId]);
 
+  const handleDelete = async () => {
+    if (!about?.id) return;
+
+    try {
+      await sectionService.delete('about', about.id);
+
+      setAbout(null);
+      toast({
+        title: "Success",
+        description: "About section deleted successfully"
+      });
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       const payload = {
@@ -64,7 +81,7 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
         await api.post('/about', payload);
         toast({ title: "Success", description: "About section created" });
       }
-      
+
       setDialogOpen(false);
       fetchAbout();
     } catch (error) {
@@ -111,7 +128,6 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
       </BaseSection>
     );
   }
-
   return (
     <>
       <BaseSection
@@ -120,72 +136,192 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
         onAdd={!about ? openEdit : undefined}
       >
         {about ? (
-          <div className="flex items-start justify-between p-4 rounded-lg bg-muted/30">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-lg">{getText()}</span>
-                {about.active ? (
-                  <Eye className="h-4 w-4 text-green-500" />
-                ) : (
-                  <EyeOff className="h-4 w-4 text-red-500" />
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">{getDescription()}</p>
-              {about.image?.fullUrl && (
-                <img src={about.image.fullUrl} alt={getText()} className="w-24 h-24 object-cover rounded-lg mt-3" />
+          <div className="group flex items-center justify-between gap-5 p-5 rounded-2xl border bg-card shadow-sm hover:shadow-md transition-all">
+
+            {/* LEFT SIDE */}
+            <div className="flex items-center gap-4 flex-1">
+
+              {/* IMAGE */}
+              {about.image?.fullUrl ? (
+                <img
+                  src={about.image.fullUrl}
+                  alt={getText()}
+                  className="w-20 h-20 rounded-xl object-cover border"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center">
+                  <Info className="w-5 h-5 text-muted-foreground" />
+                </div>
               )}
+
+              {/* CONTENT */}
+              <div className="flex-1 space-y-1">
+
+                {/* TITLE + STATUS */}
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">
+                    {getText()}
+                  </h3>
+
+                  {/*    {about.active ? (
+                    <span className="flex items-center gap-1 text-green-600 text-xs font-medium">
+                      <Eye className="w-4 h-4" /> Active
+                    </span>
+             ) : (
+                    <span className="flex items-center gap-1 text-red-500 text-xs font-medium">
+                      <EyeOff className="w-4 h-4" /> Hidden
+                    </span>
+                  )} */}
+                </div>
+
+                {/* DESCRIPTION */}
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {getDescription()}
+                </p>
+              </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={openEdit}>
-              <Edit className="h-4 w-4" />
-            </Button>
+
+            {/* ACTIONS */}
+            <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition">
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={openEdit}
+                className="hover:bg-blue-50"
+              >
+                <Edit className="h-4 w-4 text-blue-600" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleDelete}
+                className="hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 text-red-500" />
+              </Button>
+
+            </div>
           </div>
         ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            No about section added yet
-            <Button variant="link" onClick={openEdit} className="ml-2">Add one</Button>
+          <div className="flex flex-col items-center justify-center py-10 text-center rounded-2xl border border-dashed">
+            <Info className="h-10 w-10 text-muted-foreground mb-2" />
+
+            <p className="text-muted-foreground text-sm">
+              No about section added yet
+            </p>
+
+            <Button
+              variant="link"
+              onClick={openEdit}
+              className="mt-1"
+            >
+              Add About Section
+            </Button>
           </div>
         )}
       </BaseSection>
 
+      {/* DIALOG */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl">
+
           <DialogHeader>
-            <DialogTitle>{about ? 'Edit About Section' : 'Add About Section'}</DialogTitle>
+            <DialogTitle>
+              {about ? 'Edit About Section' : 'Add About Section'}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+
+          <div className="space-y-5">
+
+            {/* NAME */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Name (EN)</Label>
-                <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+                <Input
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                />
               </div>
+
               <div>
                 <Label>Name (AR)</Label>
-                <Input value={formData.name_ar} onChange={(e) => setFormData({ ...formData, name_ar: e.target.value })} dir="rtl" />
+                <Input
+                  value={formData.name_ar}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name_ar: e.target.value })
+                  }
+                  dir="rtl"
+                />
               </div>
             </div>
+
+            {/* DESCRIPTION */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Description (EN)</Label>
-                <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={4} required />
+                <Textarea
+                  rows={4}
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                />
               </div>
+
               <div>
                 <Label>Description (AR)</Label>
-                <Textarea value={formData.description_ar} onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })} rows={4} dir="rtl" />
+                <Textarea
+                  rows={4}
+                  dir="rtl"
+                  value={formData.description_ar}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description_ar: e.target.value })
+                  }
+                />
               </div>
             </div>
+
+            {/* IMAGE */}
             <div>
               <Label>About Image</Label>
-              <FileUploader onUploadSuccess={(id) => setFormData({ ...formData, image: id })} multiple={false} />
+              <FileUploader
+                onUploadSuccess={(id) =>
+                  setFormData({ ...formData, image: id })
+                }
+                multiple={false}
+              />
+
               {about?.image?.fullUrl && (
-                <div className="mt-2">
-                  <p className="text-xs text-muted-foreground">Current image:</p>
-                  <img src={about.image.fullUrl} alt="Current" className="w-16 h-16 object-cover rounded mt-1" />
+                <div className="mt-3 flex items-center gap-3">
+                  <img
+                    src={about.image.fullUrl}
+                    className="w-14 h-14 rounded-lg object-cover border"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Current image
+                  </p>
                 </div>
               )}
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSubmit}>{about ? 'Update' : 'Create'}</Button>
+
+            {/* ACTIONS */}
+            <div className="flex justify-end gap-2 pt-2 border-t">
+
+              <Button
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+
+              <Button onClick={handleSubmit}>
+                {about ? 'Update' : 'Create'}
+              </Button>
+
             </div>
           </div>
         </DialogContent>
