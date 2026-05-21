@@ -27,11 +27,8 @@ import {
 import { format } from "date-fns";
 import { arSA, enUS } from "date-fns/locale";
 import { AsyncSelect } from "@/components/ui/AsyncSelect";
-<<<<<<< HEAD
 import { Switch } from "@/components/ui/switch";
-=======
 import { ExportExcelButton } from "@/components/common/ExportExcelButton";
->>>>>>> c33cc6852af16c687402c04a977f45ce12ed0c3f
 
 export const AssignmentsPage: React.FC = () => {
   const { lang, user, isInstructor } = useApp();
@@ -281,8 +278,6 @@ export const AssignmentsPage: React.FC = () => {
 
           {/* ACTIONS */}
           <div className="flex flex-wrap gap-3">
-<<<<<<< HEAD
-=======
   {/* ✅ زرار التصدير */}
             <ExportExcelButton
               data={assignments}
@@ -290,7 +285,6 @@ export const AssignmentsPage: React.FC = () => {
               label={lang === 'ar' ? 'تصدير' : 'Export'}
               disabled={isLoading || assignments.length === 0}
             />
->>>>>>> c33cc6852af16c687402c04a977f45ce12ed0c3f
             {/* FILTER */}
             <motion.button
               whileHover={{ scale: 1.05 }}

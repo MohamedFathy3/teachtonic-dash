@@ -18,7 +18,6 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-<<<<<<< HEAD
 import { 
   Plus, Trash2, Save, Clock, FileText, HelpCircle, X, CheckCircle, 
   Sparkles, GraduationCap, Trophy, Zap, Award, 
@@ -38,10 +37,8 @@ interface QuestionBuilder {
   correct_answer?: string;
   options?: { option_text: string; is_correct: boolean }[];
 }
-=======
 import { XCircle } from "lucide-react";
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
->>>>>>> c33cc6852af16c687402c04a977f45ce12ed0c3f
 
 // ✅ Animation variants
 const containerVariants = {
@@ -1210,7 +1207,6 @@ export const InstructorExams: React.FC = () => {
           title={t('exams')}
           description={t('manageAndCreateExams')}
           actions={
-<<<<<<< HEAD
             <div className="flex gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1221,7 +1217,6 @@ export const InstructorExams: React.FC = () => {
                   className="pl-9 w-64 rounded-xl"
                 />
               </div>
-=======
             <div className="flex items-center gap-3"> {/* ✅ مجموع زرين جنب بعض */}
 
               {/* زرار التصدير */}
@@ -1232,7 +1227,6 @@ export const InstructorExams: React.FC = () => {
                 disabled={loading || exams.length === 0}
               />
 
->>>>>>> c33cc6852af16c687402c04a977f45ce12ed0c3f
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -1318,7 +1312,6 @@ export const InstructorExams: React.FC = () => {
                   whileHover={{ x: "100%" }}
                   transition={{ duration: 0.6 }}
                 />
-<<<<<<< HEAD
                 
                 <div className="h-32 bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center relative overflow-hidden">
                   {exam.image?.fullUrl ? (
@@ -1345,11 +1338,9 @@ export const InstructorExams: React.FC = () => {
                 
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-3">
-=======
 
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
->>>>>>> c33cc6852af16c687402c04a977f45ce12ed0c3f
                     <div className="flex-1">
                       <motion.h3
                         initial={{ x: -20, opacity: 0 }}
