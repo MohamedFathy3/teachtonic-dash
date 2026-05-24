@@ -30,30 +30,33 @@ class SemesterService extends BaseService<Semester> {
   constructor() {
     super('semesters');
   }
-
+  private getTeacherId(): number | undefined {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    return user?.id;
+  }
   // ✅ جلب الأتربة مع فلتر (مع إضافة teacher_id افتراضي)
   async getAllSemesters(
-    filters?: Record<string, any>,
+    filters: Record<string, any> = {},
     perPage: number = 10,
     page: number = 1,
     search?: string,
-    teacherId?: number  // 🔥 إضافة teacherId
-  ): Promise<{ data: Semester[]; meta: any }> {
+    teacherId?: number
+  ) {
     try {
-      // 🔥 بناء الفلاتر الأساسية
-      const baseFilters: Record<string, any> = { ...(filters || {}) };
-      
-      // ✅ إضافة teacher_id إذا وجد (مع إمكانية تمريره من الخارج)
-      if (teacherId) {
-        baseFilters.teacher_id = teacherId;
+      const baseFilters: Record<string, any> = { ...filters };
+
+      // 🔥 أهم تعديل هنا
+      const finalTeacherId = teacherId ?? this.getTeacherId();
+
+      if (finalTeacherId) {
+        baseFilters.teacher_id = finalTeacherId;
       }
-      
-      // ✅ البحث في الاسم
-      if (search && search.trim()) {
+
+      if (search?.trim()) {
         baseFilters.name = search.trim();
       }
 
-      const requestBody: any = {
+      const response = await api.post(`/${this.endpoint}/index`, {
         filters: baseFilters,
         orderBy: 'id',
         orderByDirection: 'desc',
@@ -61,23 +64,14 @@ class SemesterService extends BaseService<Semester> {
         page,
         paginate: true,
         delete: false,
-      };
+      });
 
-      console.log('🔍 Semesters Request:', requestBody);
-
-      const response = await api.post(`/${this.endpoint}/index`, requestBody);
-      
       return {
         data: response.data?.data || [],
-        meta: response.data?.meta || {
-          current_page: page,
-          last_page: 1,
-          per_page: perPage,
-          total: 0,
-        },
+        meta: response.data?.meta || {},
       };
-    } catch (error: any) {
-      console.error('API Error in getAllSemesters:', error);
+    } catch (error) {
+      console.error('API Error:', error);
       throw error;
     }
   }

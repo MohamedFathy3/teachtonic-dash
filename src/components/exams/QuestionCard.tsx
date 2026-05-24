@@ -56,21 +56,27 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       mark: question.mark,
       value: answer,
       onChange: onAnswerChange,
-      disabled
+      disabled,
     };
 
     switch (question.question_type) {
       case 'true_false':
-        return <TrueFalseQuestion {...props} />;
+        return (
+          <TrueFalseQuestion
+            {...props}
+            image={question.image?.fullUrl ?? null}
+          />
+        );
       case 'multiple_choice':
         return (
           <MultipleChoiceQuestion
             {...props}
             options={question.options || []}
+            image={question.image?.fullUrl ?? null}
           />
         );
       case 'essay':
-        return <EssayQuestion {...props} />;
+        return <EssayQuestion {...props} image={question.image?.fullUrl} />;
       default:
         return null;
     }
@@ -86,23 +92,22 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
     >
-      <Card className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
-        isHovered ? 'shadow-2xl border-primary/50' : 'shadow-lg'
-      }`}>
+      <Card className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${isHovered ? 'shadow-2xl border-primary/50' : 'shadow-lg'
+        }`}>
         {/* Animated background gradient */}
         <motion.div
           className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-secondary/5"
           animate={{ x: ['-100%', '100%'] }}
           transition={{ duration: 3, repeat: Infinity, repeatDelay: 5 }}
         />
-        
+  
         {/* Decorative elements */}
         <motion.div
           className="absolute -top-10 -right-10 w-20 h-20 bg-primary/10 rounded-full blur-2xl"
           animate={{ scale: [1, 1.5, 1] }}
           transition={{ duration: 3, repeat: Infinity }}
         />
-        
+
         <div className="p-5 relative">
           <div className="flex items-start gap-4 mb-4">
             <motion.div
@@ -120,7 +125,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 transition={{ duration: 2, repeat: Infinity }}
               />
             </motion.div>
-            
+
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-3 flex-wrap">
                 {getQuestionTypeBadge(question.question_type)}
@@ -135,7 +140,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                   </Badge>
                 </motion.div>
               </div>
-              
+
               <AnimatePresence mode="wait">
                 {isExpanded && (
                   <motion.div
@@ -146,9 +151,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                     transition={{ duration: 0.3 }}
                   >
                     {renderQuestion()}
-                    
+
                     {showCorrectAnswer && question.correct_answer && (
-                      <motion.div 
+                      <motion.div
                         className="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-xl border border-green-200"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -167,7 +172,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 )}
               </AnimatePresence>
             </div>
-            
+
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -181,7 +186,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               )}
             </motion.button>
           </div>
-          
+
           {/* Progress indicator */}
           <AnimatePresence>
             {answer && !disabled && (

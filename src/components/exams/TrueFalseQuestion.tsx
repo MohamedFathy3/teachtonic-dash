@@ -13,6 +13,8 @@ interface TrueFalseQuestionProps {
   value?: string;
   onChange?: (value: string) => void;
   disabled?: boolean;
+  // ✅ add this
+  image?: string | null;
 }
 
 export const TrueFalseQuestion: React.FC<TrueFalseQuestionProps> = ({
@@ -20,7 +22,8 @@ export const TrueFalseQuestion: React.FC<TrueFalseQuestionProps> = ({
   mark,
   value,
   onChange,
-  disabled
+  disabled,
+  image,
 }) => {
   const { t } = useApp();
   const [showHint, setShowHint] = useState(false);
@@ -32,7 +35,7 @@ export const TrueFalseQuestion: React.FC<TrueFalseQuestionProps> = ({
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-3 relative"
       initial={{ opacity: 0, x: -50, rotateY: -30 }}
       animate={{ opacity: 1, x: 0, rotateY: 0 }}
@@ -42,7 +45,7 @@ export const TrueFalseQuestion: React.FC<TrueFalseQuestionProps> = ({
       {/* 3D card effect */}
       <motion.div
         className="relative bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-xl p-4 border-2"
-        whileHover={{ 
+        whileHover={{
           rotateX: 5,
           rotateY: 5,
           boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
@@ -52,7 +55,7 @@ export const TrueFalseQuestion: React.FC<TrueFalseQuestionProps> = ({
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-start gap-3 flex-1">
             <motion.div
-              animate={{ 
+              animate={{
                 rotate: [0, 15, -15, 0],
                 scale: [1, 1.1, 1]
               }}
@@ -60,12 +63,29 @@ export const TrueFalseQuestion: React.FC<TrueFalseQuestionProps> = ({
             >
               <HelpCircle className="h-5 w-5 text-blue-500" />
             </motion.div>
-            <motion.p 
-              className="font-semibold text-base leading-relaxed"
-              whileHover={{ scale: 1.02 }}
-            >
-              {question}
-            </motion.p>
+            <div className="flex-1">
+              <motion.p
+                className="font-semibold text-base leading-relaxed"
+                whileHover={{ scale: 1.02 }}
+              >
+                {question}
+              </motion.p>
+
+              {image && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.25 }}
+                  className="mt-3"
+                >
+                  <img
+                    src={image}
+                    alt="question"
+                    className="w-full max-h-64 object-cover rounded-xl border shadow-md hover:scale-[1.02] transition-transform duration-300"
+                  />
+                </motion.div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <motion.button
@@ -76,10 +96,10 @@ export const TrueFalseQuestion: React.FC<TrueFalseQuestionProps> = ({
             >
               💡
             </motion.button>
-            <motion.span 
+            <motion.span
               className="text-xs font-bold bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1 rounded-full"
               whileHover={{ scale: 1.1, rotate: -5 }}
-              animate={{ 
+              animate={{
                 boxShadow: ['0 0 0 0 rgba(59, 130, 246, 0.7)', '0 0 0 10px rgba(59, 130, 246, 0)']
               }}
               transition={{ duration: 1.5, repeat: Infinity }}
@@ -103,13 +123,12 @@ export const TrueFalseQuestion: React.FC<TrueFalseQuestionProps> = ({
         </AnimatePresence>
 
         <RadioGroup value={value} onValueChange={handleChange} disabled={disabled} className="flex gap-6">
-          <motion.label 
-            className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all ${
-              selectedValue === 'true' ? 'bg-green-100 dark:bg-green-900/30 border-2 border-green-500' : 'hover:bg-muted'
-            }`}
+          <motion.label
+            className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all ${selectedValue === 'true' ? 'bg-green-100 dark:bg-green-900/30 border-2 border-green-500' : 'hover:bg-muted'
+              }`}
             whileHover={{ scale: 1.05, x: 5 }}
             whileTap={{ scale: 0.95 }}
-            animate={selectedValue === 'true' ? { 
+            animate={selectedValue === 'true' ? {
               boxShadow: ['0 0 0 0 rgba(34, 197, 94, 0.7)', '0 0 0 10px rgba(34, 197, 94, 0)']
             } : {}}
             transition={{ duration: 0.5 }}
@@ -128,14 +147,13 @@ export const TrueFalseQuestion: React.FC<TrueFalseQuestionProps> = ({
               <span className="text-green-600 dark:text-green-400 font-medium text-lg">✅ True</span>
             </div>
           </motion.label>
-          
-          <motion.label 
-            className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all ${
-              selectedValue === 'false' ? 'bg-red-100 dark:bg-red-900/30 border-2 border-red-500' : 'hover:bg-muted'
-            }`}
+
+          <motion.label
+            className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all ${selectedValue === 'false' ? 'bg-red-100 dark:bg-red-900/30 border-2 border-red-500' : 'hover:bg-muted'
+              }`}
             whileHover={{ scale: 1.05, x: -5 }}
             whileTap={{ scale: 0.95 }}
-            animate={selectedValue === 'false' ? { 
+            animate={selectedValue === 'false' ? {
               boxShadow: ['0 0 0 0 rgba(239, 68, 68, 0.7)', '0 0 0 10px rgba(239, 68, 68, 0)']
             } : {}}
             transition={{ duration: 0.5 }}

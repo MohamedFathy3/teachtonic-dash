@@ -12,7 +12,7 @@ class SubjectService extends BaseService<Subject> {
   }
 
   async getAllSubjects(
-    filters?: SubjectFilters, 
+    filters?: SubjectFilters,
     perPage: number = 10,
     page: number = 1,
     search?: string,
@@ -84,12 +84,12 @@ class SubjectService extends BaseService<Subject> {
       const response = await api.post('/subject', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      
+
       toast({
         title: "Success",
         description: "Subject created successfully",
       });
-      
+
       return response.data.data;
     } catch (error: any) {
       toast({
@@ -102,36 +102,36 @@ class SubjectService extends BaseService<Subject> {
   }
 
 
-async updateSubject(id: number, data: Partial<SubjectFormData>): Promise<Subject> {
-  try {
-    const formData = new FormData();
-    if (data.name) formData.append('name', data.name);
-    if (data.name_ar) formData.append('name_ar', data.name_ar);
-    if (data.stage_id) formData.append('stage_id', data.stage_id.toString());
-    if (data.position) formData.append('position', data.position.toString());
-    if (data.active !== undefined) formData.append('active', data.active ? '1' : '0');
-    if (data.image) formData.append('image', data.image);
-    formData.append('_method', 'PATCH');
+  async updateSubject(id: number, data: Partial<SubjectFormData>): Promise<Subject> {
+    try {
+      const formData = new FormData();
+      if (data.name) formData.append('name', data.name);
+      if (data.name_ar) formData.append('name_ar', data.name_ar);
+      if (data.stage_id) formData.append('stage_id', data.stage_id.toString());
+      if (data.position) formData.append('position', data.position.toString());
+      if (data.active !== undefined) formData.append('active', data.active ? '1' : '0');
+      if (data.image) formData.append('image', data.image);
+      formData.append('_method', 'PATCH');
 
-    const response = await api.put(`/subject/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    
-    toast({
-      title: "Success",
-      description: "Subject updated successfully",
-    });
-    
-    return response.data.data;
-  } catch (error: any) {
-    toast({
-      title: "Error",
-      description: error.response?.data?.message || "Failed to update subject",
-      variant: "destructive",
-    });
-    throw error;
+      const response = await api.post(`/subject/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      toast({
+        title: "Success",
+        description: "Subject updated successfully",
+      });
+
+      return response.data.data;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update subject",
+        variant: "destructive",
+      });
+      throw error;
+    }
   }
-}
 
   async deleteSubject(id: number): Promise<void> {
     try {

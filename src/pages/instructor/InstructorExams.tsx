@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// src/pages/instructor/InstructorExams.tsx
 
+import { Variants } from "framer-motion";
 import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { examService } from '@/services/exam.service';
@@ -18,11 +17,11 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { 
-  Plus, Trash2, Save, Clock, FileText, HelpCircle, X, CheckCircle, 
-  Sparkles, GraduationCap, Trophy, Zap, Award, 
+import {
+  Plus, Trash2, Save, Clock, FileText, HelpCircle, X, CheckCircle,
+  Sparkles, GraduationCap, Trophy, Zap, Award,
   ChevronRight, ChevronLeft, Loader2, AlertCircle, Timer, Search,
-  XCircle, Shuffle, ListOrdered, Eye, Power, Settings2, 
+  XCircle, Shuffle, ListOrdered, Eye, Power, Settings2,
   ChevronDown, ChevronUp
 } from 'lucide-react';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
@@ -36,22 +35,25 @@ interface QuestionBuilder {
   mark: number;
   correct_answer?: string;
   options?: { option_text: string; is_correct: boolean }[];
+  image?: number | null;
 }
-import { XCircle } from "lucide-react";
+
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
-// ✅ Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
+
+export const containerVariants: Variants = {
+  hidden: { opacity: 0, y: 20, scale: 0.98 },
   visible: {
     opacity: 1,
+    y: 0,
+    scale: 1,
     transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
+      type: "spring" as const,
+      stiffness: 300,
+      damping: 20,
     },
   },
 };
-
 const itemVariants = {
   hidden: { opacity: 0, y: 30, scale: 0.95 },
   visible: {
@@ -75,7 +77,7 @@ const cardHover = {
 const ExamTimer: React.FC<{ duration: number; onTimeEnd: () => void }> = ({ duration, onTimeEnd }) => {
   const [timeLeft, setTimeLeft] = useState(duration * 60);
   const [warning, setWarning] = useState(false);
-  
+
   useEffect(() => {
     if (timeLeft <= 0) {
       onTimeEnd();
@@ -84,23 +86,24 @@ const ExamTimer: React.FC<{ duration: number; onTimeEnd: () => void }> = ({ dura
     const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
     return () => clearInterval(timer);
   }, [timeLeft, onTimeEnd]);
-  
+
   useEffect(() => {
-    if (timeLeft <= 300) setWarning(true);
-  }, [timeLeft]);
-  
+    if (timeLeft <= 300 && !warning) {
+      setWarning(true);
+    }
+  }, [timeLeft, warning]);
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const percentage = (timeLeft / (duration * 60)) * 100;
-  
+
   return (
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       className="flex flex-col items-end gap-2"
     >
-      <Badge 
-        variant={warning ? "destructive" : "outline"} 
+      <Badge
+        variant={warning ? "destructive" : "outline"}
         className={`text-lg px-4 py-2 gap-2 ${warning ? 'animate-pulse' : ''}`}
       >
         <Timer className={`h-4 w-4 ${warning ? 'text-white' : ''}`} />
@@ -116,7 +119,7 @@ const ExamResultCard: React.FC<{ result: any; exam: any; onClose: () => void }> 
   const { t, lang } = useApp();
   const isPassed = result.score >= (exam.total_marks_pass_marks || exam.total_marks / 2);
   const percentage = (result.score / exam.total_marks) * 100;
-  
+
   return (
     <motion.div
       initial={{ scale: 0.8, opacity: 0, rotateY: 180 }}
@@ -129,17 +132,16 @@ const ExamResultCard: React.FC<{ result: any; exam: any; onClose: () => void }> 
         className="max-w-md w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        <Card className={`relative overflow-hidden border-4 ${
-          isPassed 
-            ? 'bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950/30 dark:to-emerald-950/30 border-green-400'
-            : 'bg-gradient-to-br from-red-50 to-orange-100 dark:from-red-950/30 dark:to-orange-950/30 border-red-400'
-        }`}>
+        <Card className={`relative overflow-hidden border-4 ${isPassed
+          ? 'bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950/30 dark:to-emerald-950/30 border-green-400'
+          : 'bg-gradient-to-br from-red-50 to-orange-100 dark:from-red-950/30 dark:to-orange-950/30 border-red-400'
+          }`}>
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
             animate={{ x: ['-100%', '100%'] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           />
-          
+
           <CardContent className="p-8 text-center relative">
             <Button
               variant="ghost"
@@ -149,7 +151,7 @@ const ExamResultCard: React.FC<{ result: any; exam: any; onClose: () => void }> 
             >
               <X className="h-4 w-4" />
             </Button>
-            
+
             <motion.div
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 0.5 }}
@@ -160,11 +162,11 @@ const ExamResultCard: React.FC<{ result: any; exam: any; onClose: () => void }> 
                 <Trophy className="h-20 w-20 text-orange-500 mx-auto mb-4" />
               )}
             </motion.div>
-            
+
             <h3 className="text-2xl font-bold mb-2">
               {isPassed ? (lang === 'ar' ? '🎉 مبروك! 🎉' : '🎉 Congratulations! 🎉') : (lang === 'ar' ? '💪 استمر في التدريب! 💪' : '💪 Keep Practicing! 💪')}
             </h3>
-            
+
             <div className="flex justify-center items-center gap-4 my-6">
               <motion.div
                 initial={{ scale: 0 }}
@@ -175,9 +177,9 @@ const ExamResultCard: React.FC<{ result: any; exam: any; onClose: () => void }> 
                 <p className="text-5xl font-bold text-primary">{result.score}</p>
                 <p className="text-sm text-muted-foreground">{t('yourScore')}</p>
               </motion.div>
-              
+
               <div className="text-3xl font-bold text-muted-foreground">/</div>
-              
+
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -188,7 +190,7 @@ const ExamResultCard: React.FC<{ result: any; exam: any; onClose: () => void }> 
                 <p className="text-sm text-muted-foreground">{t('totalMarks')}</p>
               </motion.div>
             </div>
-            
+
             <div className="max-w-md mx-auto mb-4">
               <div className="flex justify-between text-sm mb-1">
                 <span>{t('score')}</span>
@@ -199,35 +201,33 @@ const ExamResultCard: React.FC<{ result: any; exam: any; onClose: () => void }> 
                   initial={{ width: 0 }}
                   animate={{ width: `${percentage}%` }}
                   transition={{ duration: 1, delay: 0.5 }}
-                  className={`h-full rounded-full ${
-                    isPassed ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-red-500 to-orange-500'
-                  }`}
+                  className={`h-full rounded-full ${isPassed ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-red-500 to-orange-500'
+                    }`}
                 />
               </div>
             </div>
-            
+
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", delay: 0.4 }}
             >
-              <Badge className={`gap-2 px-4 py-2 text-base ${
-                isPassed 
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                  : 'bg-gradient-to-r from-red-500 to-orange-500'
-              }`}>
+              <Badge className={`gap-2 px-4 py-2 text-base ${isPassed
+                ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                : 'bg-gradient-to-r from-red-500 to-orange-500'
+                }`}>
                 {isPassed ? (lang === 'ar' ? 'نجاح' : 'Passed') : (lang === 'ar' ? 'رسب' : 'Failed')}
               </Badge>
             </motion.div>
-            
+
             {exam.total_marks_pass_marks && (
               <p className="text-sm text-muted-foreground mt-4">
                 {lang === 'ar' ? 'درجة النجاح' : 'Pass Marks'}: {exam.total_marks_pass_marks} / {exam.total_marks}
               </p>
             )}
-            
+
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, transition: { type: "spring" as const } }}
               whileTap={{ scale: 0.95 }}
               onClick={onClose}
               className="mt-6 px-6 py-2 bg-gradient-to-r from-primary to-secondary rounded-xl text-white font-medium"
@@ -280,7 +280,7 @@ export const InstructorExams: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [examStartedAt, setExamStartedAt] = useState<Date | null>(null);
   const [showResult, setShowResult] = useState(false);
-  
+
   // ✅ Pagination
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -288,17 +288,17 @@ export const InstructorExams: React.FC = () => {
     total: 0,
     perPage: 12,
   });
-  
+
   // ✅ Search
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  
+
   // ✅ Settings expanded state
   const [expandedSettings, setExpandedSettings] = useState<Record<number, boolean>>({});
-  
+
   // ✅ Creating state
   const [isCreating, setIsCreating] = useState(false);
-  
+
   // ✅ Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
@@ -315,23 +315,26 @@ export const InstructorExams: React.FC = () => {
         page,
         debouncedSearch
       );
+
       setExams(response.data || []);
-      setPagination({
+
+      setPagination(prev => ({
+        ...prev,
         currentPage: response.meta?.current_page || 1,
         lastPage: response.meta?.last_page || 1,
         total: response.meta?.total || 0,
         perPage: response.meta?.per_page || 12,
-      });
+      }));
     } catch (err: any) {
       setError(err.message);
       toast.error(lang === 'ar' ? 'حدث خطأ في جلب الامتحانات' : 'Error fetching exams');
     } finally {
       setLoading(false);
     }
-  }, [user?.id, pagination.perPage, debouncedSearch, lang]);
-
+  }, [user?.id, debouncedSearch, lang]);
   useEffect(() => {
-    fetchExams();
+    // fetchExams uses React state safely; only call inside effect
+    void fetchExams();
   }, [fetchExams]);
 
   // ✅ معالج رفع الصورة
@@ -353,6 +356,7 @@ export const InstructorExams: React.FC = () => {
         question_type: 'multiple_choice',
         question: '',
         mark: 1,
+        image: '',
         options: [
           { option_text: '', is_correct: false },
           { option_text: '', is_correct: false },
@@ -379,13 +383,23 @@ export const InstructorExams: React.FC = () => {
 
     setSavingQuestions(true);
     try {
-      const formattedQuestions = questions.map(q => ({
-        question_type: q.question_type,
-        question: q.question,
-        mark: q.mark,
-        ...(q.question_type === 'true_false' && { correct_answer: q.correct_answer }),
-        ...(q.question_type === 'multiple_choice' && { options: q.options }),
-      }));
+      const formattedQuestions = questions.map(q => {
+        const base: any = {
+          question_type: q.question_type,
+          question: q.question,
+          mark: q.mark,
+        };
+
+        if (q.image) base.image = q.image;
+        if (q.question_type === 'true_false') {
+          base.correct_answer = q.correct_answer;
+        }
+        if (q.question_type === 'multiple_choice') {
+          base.options = q.options;
+        }
+
+        return base;
+      });
 
       await examService.addQuestions(selectedExamId, formattedQuestions);
       toast.success(lang === 'ar' ? 'تم حفظ الأسئلة بنجاح' : 'Questions saved successfully');
@@ -405,7 +419,7 @@ export const InstructorExams: React.FC = () => {
   const toggleRandomQuestions = async (examId: number, currentValue: boolean) => {
     try {
       await examService.toggleRandomQuestions(examId, !currentValue);
-      setExams(prev => prev.map(e => 
+      setExams(prev => prev.map(e =>
         e.id === examId ? { ...e, random_questions: !currentValue } : e
       ));
       toast.success(lang === 'ar' ? 'تم تغيير ترتيب الأسئلة' : 'Random questions toggled');
@@ -417,7 +431,7 @@ export const InstructorExams: React.FC = () => {
   const toggleRandomAnswers = async (examId: number, currentValue: boolean) => {
     try {
       await examService.toggleRandomAnswers(examId, !currentValue);
-      setExams(prev => prev.map(e => 
+      setExams(prev => prev.map(e =>
         e.id === examId ? { ...e, random_answers: !currentValue } : e
       ));
       toast.success(lang === 'ar' ? 'تم تغيير ترتيب الإجابات' : 'Random answers toggled');
@@ -429,7 +443,7 @@ export const InstructorExams: React.FC = () => {
   const toggleShowResult = async (examId: number, currentValue: boolean) => {
     try {
       await examService.toggleShowResult(examId, !currentValue);
-      setExams(prev => prev.map(e => 
+      setExams(prev => prev.map(e =>
         e.id === examId ? { ...e, show_result: !currentValue } : e
       ));
       toast.success(lang === 'ar' ? 'تم تغيير إظهار النتيجة' : 'Show result toggled');
@@ -441,7 +455,7 @@ export const InstructorExams: React.FC = () => {
   const toggleExamActive = async (examId: number, currentValue: boolean) => {
     try {
       await examService.toggleExamActive(examId);
-      setExams(prev => prev.map(e => 
+      setExams(prev => prev.map(e =>
         e.id === examId ? { ...e, active: currentValue ? 0 : 1 } : e
       ));
       toast.success(lang === 'ar' ? 'تم تغيير حالة الامتحان' : 'Exam status toggled');
@@ -461,7 +475,7 @@ export const InstructorExams: React.FC = () => {
   const startExam = async (exam: any) => {
     try {
       let fullExam = await examService.getExam(exam.id);
-      
+
       // ✅ ترتيب الأسئلة عشوائياً إذا كان مطلوباً
       if (fullExam.random_questions && fullExam.questions) {
         fullExam = {
@@ -469,7 +483,7 @@ export const InstructorExams: React.FC = () => {
           questions: [...fullExam.questions].sort(() => Math.random() - 0.5)
         };
       }
-      
+
       // ✅ ترتيب الإجابات عشوائياً إذا كان مطلوباً
       if (fullExam.random_answers && fullExam.questions) {
         fullExam = {
@@ -485,7 +499,7 @@ export const InstructorExams: React.FC = () => {
           })
         };
       }
-      
+
       setCurrentExam(fullExam);
       setTakingExam(true);
       setAnswers({});
@@ -510,7 +524,7 @@ export const InstructorExams: React.FC = () => {
         submitted_at: new Date().toISOString(),
       });
       setResult(submissionResult);
-      
+
       // ✅ إظهار النتيجة فقط إذا كان مسموحاً
       if (currentExam.show_result) {
         setShowResult(true);
@@ -532,24 +546,24 @@ export const InstructorExams: React.FC = () => {
   // ✅ إنشاء امتحان جديد
   const createExamHandler = async () => {
     if (isCreating) return;
-    
+
     if (!examFormData.title) {
       toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الامتحان' : 'Please enter exam title');
       return;
     }
-    
+
     if (!examFormData.stage_id) {
       toast.error(lang === 'ar' ? 'يرجى اختيار المرحلة' : 'Please select stage');
       return;
     }
-    
+
     if (!examFormData.course_detail_id) {
       toast.error(lang === 'ar' ? 'يرجى اختيار الدرس' : 'Please select lesson');
       return;
     }
-    
+
     setIsCreating(true);
-    
+
     try {
       const newExam = await examService.createExam({
         ...examFormData,
@@ -557,14 +571,14 @@ export const InstructorExams: React.FC = () => {
         type: 'exam',
         image: imageId || undefined,
       });
-      
+
       setSelectedExamId(newExam.id);
       setShowExamForm(false);
       setActiveTab('questions');
       toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
-      
+
       resetExamForm();
-      
+
     } catch (error) {
       console.error('Error creating exam:', error);
       toast.error(lang === 'ar' ? 'حدث خطأ في إنشاء الامتحان' : 'Error creating exam');
@@ -683,7 +697,7 @@ export const InstructorExams: React.FC = () => {
                   className="rounded-xl transition-all focus:ring-2 focus:ring-primary"
                 />
               </motion.div>
-              
+
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -698,7 +712,7 @@ export const InstructorExams: React.FC = () => {
                   dir="rtl"
                 />
               </motion.div>
-              
+
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -712,7 +726,7 @@ export const InstructorExams: React.FC = () => {
                   className="rounded-xl transition-all focus:ring-2 focus:ring-primary"
                 />
               </motion.div>
-              
+
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -727,7 +741,7 @@ export const InstructorExams: React.FC = () => {
                   dir="rtl"
                 />
               </motion.div>
-              
+
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -768,7 +782,7 @@ export const InstructorExams: React.FC = () => {
                   />
                 </div>
               </motion.div>
-              
+
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -801,14 +815,14 @@ export const InstructorExams: React.FC = () => {
                   />
                 </div>
               </motion.div>
-              
+
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ delay: 0.4 }}
               >
-                <Button 
-                  className="w-full gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all" 
+                <Button
+                  className="w-full gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all"
                   onClick={createExamHandler}
                   disabled={isCreating}
                 >
@@ -959,6 +973,21 @@ export const InstructorExams: React.FC = () => {
                       className="rounded-xl text-base focus:ring-2 focus:ring-primary"
                     />
 
+                    {/* ✅ Question Image Upload */}
+                    <div className="space-y-2">
+                      <Label>{lang === 'ar' ? 'صورة السؤال (اختياري)' : 'Question Image (Optional)'}</Label>
+                      <FileUploader
+                        label={lang === 'ar' ? 'رفع صورة للسؤال' : 'Upload question image'}
+                        onUploadSuccess={(id) => updateQuestion(q.id, { image: id })}
+                        onRemoveImage={() => updateQuestion(q.id, { image: null })}
+                        multiple={false}
+                        accept="image/*"
+                        preview={true}
+                        uniqueId={`question-image-${q.id}`}
+                        maxFiles={1}
+                      />
+                    </div>
+
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Label>{t('marks')}</Label>
@@ -1056,138 +1085,157 @@ export const InstructorExams: React.FC = () => {
       </motion.div>
     );
   }
+  // ✅ واجهة الامتحان مع مؤثرات بصرية رائعة
+  // ✅ Minimal Exam UI (Questions Only)
 
-  // ✅ Taking Exam with amazing animations
   if (takingExam && currentExam) {
-    const currentQuestion = currentExam.questions?.[currentQuestionIndex];
-    const totalQuestions = currentExam.questions?.length || 0;
-    const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
-    
+    const questions = currentExam.questions || [];
+
     return (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="max-w-3xl mx-auto space-y-6"
+        className="min-h-screen bg-background py-10 px-4"
       >
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <motion.div whileHover={{ x: -5 }}>
-            <Button variant="ghost" onClick={() => setTakingExam(false)} className="gap-2">
-              <ChevronLeft className="h-4 w-4" />
-              {t('back')}
-            </Button>
+        <div className="max-w-4xl mx-auto">
+
+          {/* TOP BAR */}
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="sticky top-4 z-50 mb-8"
+          >
+            <Card className="backdrop-blur bg-background/90 border shadow-xl rounded-2xl">
+              <CardContent className="flex items-center justify-between py-4 px-6">
+
+                <div>
+                  <h1 className="text-2xl font-bold">
+                    {currentExam.title}
+                  </h1>
+
+                  <p className="text-sm text-muted-foreground">
+                    {currentExam.description}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 bg-primary/10 px-4 py-2 rounded-xl">
+                  <Timer className="h-5 w-5 text-primary" />
+
+                  <ExamTimer
+                    duration={currentExam.duration_minutes}
+                    onTimeEnd={handleTimeEnd}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </motion.div>
-          <div className="flex items-center gap-4">
-            <ExamTimer duration={currentExam.duration_minutes} onTimeEnd={handleTimeEnd} />
-            <Badge variant="outline" className="gap-2 px-3 py-1.5">
-              <Trophy className="h-3 w-3 text-yellow-500" />
-              {currentExam.total_marks} {t('marks')}
-            </Badge>
-          </div>
-        </div>
 
-        <motion.div
-          initial={{ scale: 0.95, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 400 }}
-        >
-          <Card className="p-8 shadow-xl border-2">
-            <motion.div
-              initial={{ y: -20 }}
-              animate={{ y: 0 }}
-              className="text-center mb-8"
-            >
+          {/* QUESTIONS */}
+          <div className="space-y-6">
+
+            {questions.map((q: any, idx: number) => (
               <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
-                className="inline-block"
+                key={q.id}
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
               >
-                <GraduationCap className="h-12 w-12 text-primary mx-auto mb-3" />
+                <Card className="rounded-3xl border shadow-lg hover:shadow-2xl transition-all duration-300">
+
+                  <CardContent className="p-8">
+
+                    {/* Question Header */}
+                    <div className="flex items-center gap-4 mb-6">
+
+                      <div className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">
+                        {idx + 1}
+                      </div>
+
+                      <div>
+                        <h2 className="font-bold text-xl">
+                          {lang === 'ar'
+                            ? `السؤال ${idx + 1}`
+                            : `Question ${idx + 1}`}
+                        </h2>
+
+                        <p className="text-sm text-muted-foreground">
+                          {q.mark} {t('marks')}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Question Component */}
+                    <QuestionCard
+                      question={q}
+                      index={idx}
+                      answer={answers[q.id]}
+                      onAnswerChange={(ans) =>
+                        setAnswers({
+                          ...answers,
+                          [q.id]: ans,
+                        })
+                      }
+                    />
+                  </CardContent>
+                </Card>
               </motion.div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                {currentExam.title}
-              </h1>
-              <p className="text-muted-foreground mt-2">{currentExam.description}</p>
-            </motion.div>
+            ))}
+          </div>
 
-            <div className="mb-6">
-              <div className="flex justify-between text-sm mb-2">
-                <span>{t('question')} {currentQuestionIndex + 1} / {totalQuestions}</span>
-                <span>{Math.round(progress)}%</span>
-              </div>
-              <Progress value={progress} className="h-2" />
-            </div>
+          {/* SUBMIT BUTTON */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="sticky bottom-4 mt-8"
+          >
+            <Card className="border-0 shadow-2xl bg-background/95 backdrop-blur rounded-3xl">
+              <CardContent className="p-5">
 
-            <div className="space-y-6">
-              {currentQuestion && (
-                <QuestionCard
-                  question={currentQuestion}
-                  index={currentQuestionIndex}
-                  answer={answers[currentQuestion.id]}
-                  onAnswerChange={(ans) => setAnswers({ ...answers, [currentQuestion.id]: ans })}
-                />
-              )}
-            </div>
-
-            <div className="flex justify-between gap-4 mt-8">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
-                disabled={currentQuestionIndex === 0}
-                className="gap-2"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                {t('previous')}
-              </Button>
-              
-              {currentQuestionIndex === totalQuestions - 1 ? (
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex-1"
-                >
-                  <Button
-                    className="w-full gap-3 py-6 text-lg bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-xl transition-all"
-                    size="lg"
-                    onClick={submitExam}
-                    disabled={submitting}
-                  >
-                    {submitting ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <CheckCircle className="h-5 w-5" />
-                    )}
-                    {t('submitExam')}
-                  </Button>
-                </motion.div>
-              ) : (
                 <Button
-                  onClick={() => setCurrentQuestionIndex(prev => Math.min(totalQuestions - 1, prev + 1))}
-                  className="gap-2 flex-1"
+                  size="lg"
+                  className="
+                  w-full
+                  py-7
+                  text-lg
+                  rounded-2xl
+                  bg-gradient-to-r
+                  from-green-500
+                  to-emerald-600
+                  hover:scale-[1.01]
+                  transition-all
+                "
+                  onClick={submitExam}
+                  disabled={submitting}
                 >
-                  {t('next')}
-                  <ChevronRight className="h-4 w-4" />
+                  {submitting ? (
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  ) : (
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                  )}
+
+                  {lang === 'ar'
+                    ? 'إرسال الامتحان'
+                    : 'Submit Exam'}
                 </Button>
-              )}
-            </div>
-          </Card>
-        </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
       </motion.div>
     );
   }
-
   // ✅ Show Result Modal
   if (showResult && result && currentExam) {
     return (
-      <ExamResultCard 
-        result={result} 
-        exam={currentExam} 
+      <ExamResultCard
+        result={result}
+        exam={currentExam}
         onClose={() => {
           setShowResult(false);
           setTakingExam(false);
           setCurrentExam(null);
           fetchExams();
-        }} 
+        }}
       />
     );
   }
@@ -1217,28 +1265,29 @@ export const InstructorExams: React.FC = () => {
                   className="pl-9 w-64 rounded-xl"
                 />
               </div>
-            <div className="flex items-center gap-3"> {/* ✅ مجموع زرين جنب بعض */}
+              <div className="flex items-center gap-3"> {/* ✅ مجموع زرين جنب بعض */}
 
-              {/* زرار التصدير */}
-              <ExportExcelButton
-                data={exams}
-                fileName="exams-list"
-                label={lang === 'ar' ? 'تصدير' : 'Export'}
-                disabled={loading || exams.length === 0}
-              />
+                {/* زرار التصدير */}
+                <ExportExcelButton
+                  data={exams}
+                  fileName="exams-list"
+                  label={lang === 'ar' ? 'تصدير' : 'Export'}
+                  disabled={loading || exams.length === 0}
+                />
 
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                initial={{ rotate: -180, scale: 0 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <Button onClick={() => setShowExamForm(true)} className="gap-2 shadow-lg rounded-full px-6">
-                  <Plus className="h-4 w-4" />
-                  {t('createExam')}
-                </Button>
-              </motion.div>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  initial={{ rotate: -180, scale: 0 }}
+                  animate={{ rotate: 0, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <Button onClick={() => setShowExamForm(true)} className="gap-2 shadow-lg rounded-full px-6">
+                    <Plus className="h-4 w-4" />
+                    {t('createExam')}
+                  </Button>
+                </motion.div>
+              </div>
             </div>
           }
         />
@@ -1312,7 +1361,7 @@ export const InstructorExams: React.FC = () => {
                   whileHover={{ x: "100%" }}
                   transition={{ duration: 0.6 }}
                 />
-                
+
                 <div className="h-32 bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center relative overflow-hidden">
                   {exam.image?.fullUrl ? (
                     <img src={exam.image.fullUrl} alt={exam.title} className="w-full h-full object-cover" />
@@ -1335,189 +1384,190 @@ export const InstructorExams: React.FC = () => {
                     </Badge>
                   </div>
                 </div>
-                
+
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-3">
-
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <motion.h3
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        className="font-bold text-xl line-clamp-1"
-                      >
-                        {isRTL && exam.title_ar ? exam.title_ar : exam.title}
-                      </motion.h3>
-                      <motion.p
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.05 }}
-                        className="text-sm text-muted-foreground line-clamp-2 mt-1"
-                      >
-                        {isRTL && exam.description_ar ? exam.description_ar : exam.description}
-                      </motion.p>
-                    </div>
-                  </div>
-
-                  <motion.div
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                    className="flex gap-4 mt-4 text-sm"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-primary" />
-                      <span className="font-semibold">{exam.total_marks}</span>
-                      <span className="text-muted-foreground">marks</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-primary" />
-                      <span className="font-semibold">{exam.duration_minutes}</span>
-                      <span className="text-muted-foreground">min</span>
-                    </div>
-                    {exam.total_marks_pass_marks && (
-                      <div className="flex items-center gap-2">
-                        <Award className="h-4 w-4 text-yellow-500" />
-                        <span className="font-semibold text-yellow-600">{exam.total_marks_pass_marks}</span>
-                        <span className="text-muted-foreground">pass</span>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <motion.h3
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            className="font-bold text-xl line-clamp-1"
+                          >
+                            {isRTL && exam.title_ar ? exam.title_ar : exam.title}
+                          </motion.h3>
+                          <motion.p
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.05 }}
+                            className="text-sm text-muted-foreground line-clamp-2 mt-1"
+                          >
+                            {isRTL && exam.description_ar ? exam.description_ar : exam.description}
+                          </motion.p>
+                        </div>
                       </div>
-                    )}
-                  </motion.div>
 
-                  {/* ✅ Exam Settings Toggle Section */}
-                  <div className="mt-3 border-t pt-3">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => toggleSettings(exam.id)}
-                      className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <div className="flex items-center gap-1">
-                        <Settings2 className="h-3 w-3" />
-                        <span>{lang === 'ar' ? 'إعدادات الامتحان' : 'Exam Settings'}</span>
-                      </div>
-                      {expandedSettings[exam.id] ? (
-                        <ChevronUp className="h-3 w-3" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3" />
-                      )}
-                    </motion.button>
-                    
-                    <AnimatePresence>
-                      {expandedSettings[exam.id] && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="mt-3 space-y-2"
+                      <motion.div
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.1 }}
+                        className="flex gap-4 mt-4 text-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-primary" />
+                          <span className="font-semibold">{exam.total_marks}</span>
+                          <span className="text-muted-foreground">marks</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-primary" />
+                          <span className="font-semibold">{exam.duration_minutes}</span>
+                          <span className="text-muted-foreground">min</span>
+                        </div>
+                        {exam.total_marks_pass_marks && (
+                          <div className="flex items-center gap-2">
+                            <Award className="h-4 w-4 text-yellow-500" />
+                            <span className="font-semibold text-yellow-600">{exam.total_marks_pass_marks}</span>
+                            <span className="text-muted-foreground">pass</span>
+                          </div>
+                        )}
+                      </motion.div>
+
+                      {/* ✅ Exam Settings Toggle Section */}
+                      <div className="mt-3 border-t pt-3">
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => toggleSettings(exam.id)}
+                          className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-primary transition-colors"
                         >
-                          {/* Random Questions Toggle */}
-                          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                            <div className="flex items-center gap-2">
-                              <Shuffle className="h-3.5 w-3.5 text-primary" />
-                              <span className="text-xs font-medium">
-                                {lang === 'ar' ? 'ترتيب عشوائي للأسئلة' : 'Random Questions'}
-                              </span>
-                            </div>
-                            <Switch
-                              checked={exam.random_questions || false}
-                              onCheckedChange={() => toggleRandomQuestions(exam.id, exam.random_questions)}
-                              className="data-[state=checked]:bg-primary scale-75"
-                            />
+                          <div className="flex items-center gap-1">
+                            <Settings2 className="h-3 w-3" />
+                            <span>{lang === 'ar' ? 'إعدادات الامتحان' : 'Exam Settings'}</span>
                           </div>
-                          
-                          {/* Random Answers Toggle */}
-                          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                            <div className="flex items-center gap-2">
-                              <ListOrdered className="h-3.5 w-3.5 text-primary" />
-                              <span className="text-xs font-medium">
-                                {lang === 'ar' ? 'ترتيب عشوائي للإجابات' : 'Random Answers'}
-                              </span>
-                            </div>
-                            <Switch
-                              checked={exam.random_answers || false}
-                              onCheckedChange={() => toggleRandomAnswers(exam.id, exam.random_answers)}
-                              className="data-[state=checked]:bg-primary scale-75"
-                            />
-                          </div>
-                          
-                          {/* Show Result Toggle */}
-                          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                            <div className="flex items-center gap-2">
-                              <Eye className="h-3.5 w-3.5 text-primary" />
-                              <span className="text-xs font-medium">
-                                {lang === 'ar' ? 'إظهار النتيجة للطلاب' : 'Show Result to Students'}
-                              </span>
-                            </div>
-                            <Switch
-                              checked={exam.show_result || false}
-                              onCheckedChange={() => toggleShowResult(exam.id, exam.show_result)}
-                              className="data-[state=checked]:bg-primary scale-75"
-                            />
-                          </div>
-                          
-                          {/* Active Toggle */}
-                          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                            <div className="flex items-center gap-2">
-                              <Power className="h-3.5 w-3.5 text-primary" />
-                              <span className="text-xs font-medium">
-                                {lang === 'ar' ? 'تفعيل الامتحان' : 'Activate Exam'}
-                              </span>
-                            </div>
-                            <Switch
-                              checked={exam.active === 1}
-                              onCheckedChange={() => toggleExamActive(exam.id, exam.active === 1)}
-                              className="data-[state=checked]:bg-green-500 scale-75"
-                            />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                          {expandedSettings[exam.id] ? (
+                            <ChevronUp className="h-3 w-3" />
+                          ) : (
+                            <ChevronDown className="h-3 w-3" />
+                          )}
+                        </motion.button>
 
-                  <motion.div
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.15 }}
-                    className="flex gap-3 mt-3"
-                  >
-                    <motion.div className="flex-1" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full gap-1 rounded-lg"
-                        onClick={() => {
-                          setSelectedExamId(exam.id);
-                          setActiveTab('questions');
-                        }}
+                        <AnimatePresence>
+                          {expandedSettings[exam.id] && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="mt-3 space-y-2"
+                            >
+                              {/* Random Questions Toggle */}
+                              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                                <div className="flex items-center gap-2">
+                                  <Shuffle className="h-3.5 w-3.5 text-primary" />
+                                  <span className="text-xs font-medium">
+                                    {lang === 'ar' ? 'ترتيب عشوائي للأسئلة' : 'Random Questions'}
+                                  </span>
+                                </div>
+                                <Switch
+                                  checked={exam.random_questions || false}
+                                  onCheckedChange={() => toggleRandomQuestions(exam.id, exam.random_questions)}
+                                  className="data-[state=checked]:bg-primary scale-75"
+                                />
+                              </div>
+
+                              {/* Random Answers Toggle */}
+                              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                                <div className="flex items-center gap-2">
+                                  <ListOrdered className="h-3.5 w-3.5 text-primary" />
+                                  <span className="text-xs font-medium">
+                                    {lang === 'ar' ? 'ترتيب عشوائي للإجابات' : 'Random Answers'}
+                                  </span>
+                                </div>
+                                <Switch
+                                  checked={exam.random_answers || false}
+                                  onCheckedChange={() => toggleRandomAnswers(exam.id, exam.random_answers)}
+                                  className="data-[state=checked]:bg-primary scale-75"
+                                />
+                              </div>
+
+                              {/* Show Result Toggle */}
+                              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                                <div className="flex items-center gap-2">
+                                  <Eye className="h-3.5 w-3.5 text-primary" />
+                                  <span className="text-xs font-medium">
+                                    {lang === 'ar' ? 'إظهار النتيجة للطلاب' : 'Show Result to Students'}
+                                  </span>
+                                </div>
+                                <Switch
+                                  checked={exam.show_result || false}
+                                  onCheckedChange={() => toggleShowResult(exam.id, exam.show_result)}
+                                  className="data-[state=checked]:bg-primary scale-75"
+                                />
+                              </div>
+
+                              {/* Active Toggle */}
+                              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                                <div className="flex items-center gap-2">
+                                  <Power className="h-3.5 w-3.5 text-primary" />
+                                  <span className="text-xs font-medium">
+                                    {lang === 'ar' ? 'تفعيل الامتحان' : 'Activate Exam'}
+                                  </span>
+                                </div>
+                                <Switch
+                                  checked={exam.active === 1}
+                                  onCheckedChange={() => toggleExamActive(exam.id, exam.active === 1)}
+                                  className="data-[state=checked]:bg-green-500 scale-75"
+                                />
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      <motion.div
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.15 }}
+                        className="flex gap-3 mt-3"
                       >
-                        <Plus className="h-3 w-3" />
-                        {t('addQuestions')}
-                      </Button>
-                    </motion.div>
-                    <motion.div className="flex-1" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        size="sm"
-                        className="w-full gap-1 rounded-lg bg-gradient-to-r from-primary to-secondary hover:shadow-lg"
-                        onClick={() => startExam(exam)}
-                      >
-                        <Zap className="h-3 w-3" />
-                        {t('takeExam')}
-                      </Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="rounded-lg"
-                        onClick={() => deleteExam(exam.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </motion.div>
-                  </motion.div>
+                        <motion.div className="flex-1" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full gap-1 rounded-lg"
+                            onClick={() => {
+                              setSelectedExamId(exam.id);
+                              setActiveTab('questions');
+                            }}
+                          >
+                            <Plus className="h-3 w-3" />
+                            {t('addQuestions')}
+                          </Button>
+                        </motion.div>
+                        <motion.div className="flex-1" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                          <Button
+                            size="sm"
+                            className="w-full gap-1 rounded-lg bg-gradient-to-r from-primary to-secondary hover:shadow-lg"
+                            onClick={() => startExam(exam)}
+                          >
+                            <Zap className="h-3 w-3" />
+                            {t('takeExam')}
+                          </Button>
+                        </motion.div>
+                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="rounded-lg"
+                            onClick={() => deleteExam(exam.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </motion.div>
+                      </motion.div>
+                    </div>
+                  </div>
                 </div>
               </Card>
             </motion.div>

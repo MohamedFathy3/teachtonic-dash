@@ -2,12 +2,12 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseService } from './base.service';
-import type { 
-  Exam, 
-  CreateExamDTO, 
-  UpdateExamDTO, 
-  PaginatedResponse, 
-  Question, 
+import type {
+  Exam,
+  CreateExamDTO,
+  UpdateExamDTO,
+  PaginatedResponse,
+  Question,
   QuestionsResponse,
   AddQuestionsDTO,
   GradeEssayDTO,
@@ -47,7 +47,7 @@ class ExamService extends BaseService<Exam> {
       }
 
       const response = await api.post(`/${this.endpoint}/index`, requestBody);
-      
+
       return {
         data: response.data?.data || [],
         links: response.data?.links || { first: '', last: '', prev: null, next: null },
@@ -104,9 +104,9 @@ class ExamService extends BaseService<Exam> {
       if (this.creatingExams.has(key)) {
         throw new Error('Exam creation already in progress');
       }
-      
+
       this.creatingExams.add(key);
-      
+
       const payload = {
         title: data.title,
         title_ar: data.title_ar,
@@ -124,14 +124,14 @@ class ExamService extends BaseService<Exam> {
 
       const response = await api.post(`/${this.endpoint}`, payload);
       toast({ title: "Success", description: "Exam created successfully" });
-      
+
       this.creatingExams.delete(key);
-      
+
       return response.data.data;
     } catch (error: any) {
       const key = `${data.title}_${data.teacher_id}`;
       this.creatingExams.delete(key);
-      
+
       toast({ title: "Error", description: error.response?.data?.message || "Failed to create exam", variant: "destructive" });
       throw error;
     }
@@ -188,16 +188,16 @@ class ExamService extends BaseService<Exam> {
     try {
       // 🔥 إرسال القيمة كـ query parameter
       const response = await api.put(`/${this.endpoint}/${id}/random_questions`);
-      toast({ 
-        title: "Success", 
-        description: value ? "Random questions enabled" : "Random questions disabled" 
+      toast({
+        title: "Success",
+        description: value ? "Random questions enabled" : "Random questions disabled"
       });
       return response.data.data;
     } catch (error: any) {
-      toast({ 
-        title: "Error", 
-        description: error.response?.data?.message || "Failed to update setting", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update setting",
+        variant: "destructive"
       });
       throw error;
     }
@@ -208,16 +208,16 @@ class ExamService extends BaseService<Exam> {
     try {
       // 🔥 إرسال القيمة كـ query parameter
       const response = await api.put(`/${this.endpoint}/${id}/random_answers`);
-      toast({ 
-        title: "Success", 
-        description: value ? "Random answers enabled" : "Random answers disabled" 
+      toast({
+        title: "Success",
+        description: value ? "Random answers enabled" : "Random answers disabled"
       });
       return response.data.data;
     } catch (error: any) {
-      toast({ 
-        title: "Error", 
-        description: error.response?.data?.message || "Failed to update setting", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update setting",
+        variant: "destructive"
       });
       throw error;
     }
@@ -228,16 +228,16 @@ class ExamService extends BaseService<Exam> {
     try {
       // 🔥 إرسال القيمة كـ query parameter
       const response = await api.put(`/${this.endpoint}/${id}/show_result`);
-      toast({ 
-        title: "Success", 
-        description: value ? "Results will be shown to students" : "Results hidden from students" 
+      toast({
+        title: "Success",
+        description: value ? "Results will be shown to students" : "Results hidden from students"
       });
       return response.data.data;
     } catch (error: any) {
-      toast({ 
-        title: "Error", 
-        description: error.response?.data?.message || "Failed to update setting", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update setting",
+        variant: "destructive"
       });
       throw error;
     }
@@ -269,6 +269,7 @@ class ExamService extends BaseService<Exam> {
           question_type: q.question_type,
           question: q.question,
           mark: q.mark,
+          ...(q.image && { image: q.image }),
           ...(q.correct_answer && { correct_answer: q.correct_answer }),
           ...(q.options && { options: q.options }),
         }))

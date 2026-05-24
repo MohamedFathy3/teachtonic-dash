@@ -7,13 +7,24 @@ export interface Option {
   option_text: string;
   is_correct: boolean;
 }
-
+export interface MediaImage {
+  id: number;
+  name: string;
+  mimeType: string;
+  size: number;
+  fullUrl: string;
+  previewUrl: string;
+  createdAt: string;
+}
 export interface Question {
   id?: number;
   exam_id?: number;
   question_type: 'true_false' | 'multiple_choice' | 'essay';
   question: string;
   mark: number;
+  // ✅ أضف دي
+  image?: MediaImage | null;
+
   correct_answer?: string;
   options?: Option[];
   created_at?: string;
@@ -25,6 +36,7 @@ export interface CreateQuestionDTO {
   question_type: 'true_false' | 'multiple_choice' | 'essay';
   question: string;
   mark: number;
+ 
   correct_answer?: string;
   options?: Omit<Option, 'id'>[];
 }

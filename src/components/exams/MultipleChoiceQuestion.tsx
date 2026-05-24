@@ -15,6 +15,7 @@ interface MultipleChoiceQuestionProps {
   value?: string;
   onChange?: (value: string) => void;
   disabled?: boolean;
+  image?: string | null;
 }
 
 export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
@@ -23,7 +24,8 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
   options,
   value,
   onChange,
-  disabled
+  disabled,
+  image,
 }) => {
   const { t } = useApp();
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
   const gradientClass = `from-${color}-500 to-${color}-600`;
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-3 relative"
       initial={{ opacity: 0, scale: 0.9, rotateY: 30 }}
       animate={{ opacity: 1, scale: 1, rotateY: 0 }}
@@ -50,7 +52,7 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
       {/* Floating particles */}
       <motion.div
         className="absolute -top-5 -right-5 w-20 h-20"
-        animate={{ 
+        animate={{
           y: [0, -10, 0],
           rotate: [0, 180, 360]
         }}
@@ -61,7 +63,7 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
 
       <motion.div
         className="relative bg-gradient-to-br from-card to-muted/30 rounded-xl p-5 border-2 shadow-lg"
-        whileHover={{ 
+        whileHover={{
           y: -5,
           boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
         }}
@@ -70,7 +72,7 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
         <div className="flex justify-between items-start mb-4">
           <div className="flex items-start gap-3 flex-1">
             <motion.div
-              animate={{ 
+              animate={{
                 scale: [1, 1.2, 1],
                 rotate: [0, 10, -10, 0]
               }}
@@ -78,17 +80,32 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
             >
               <AlertCircle className="h-5 w-5 text-primary" />
             </motion.div>
-            <motion.p 
+            <motion.p
               className="font-bold text-lg leading-relaxed"
               whileHover={{ scale: 1.02 }}
             >
               {question}
             </motion.p>
+
+            {image && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.25 }}
+                className="mt-3"
+              >
+                <img
+                  src={image}
+                  alt="question"
+                  className="w-full max-h-64 object-cover rounded-xl border shadow-md hover:scale-[1.02] transition-transform duration-300"
+                />
+              </motion.div>
+            )}
           </div>
-          <motion.span 
+          <motion.span
             className={`text-xs font-bold bg-gradient-to-r ${gradientClass} text-white px-3 py-1 rounded-full shadow-lg`}
             whileHover={{ scale: 1.15, rotate: 5 }}
-            animate={{ 
+            animate={{
               boxShadow: [`0 0 0 0 rgba(139, 92, 246, 0.7)`, `0 0 0 10px rgba(139, 92, 246, 0)`]
             }}
             transition={{ duration: 1.5, repeat: Infinity }}
@@ -99,7 +116,7 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
 
         <RadioGroup value={value} onValueChange={handleChange} disabled={disabled} className="space-y-3">
           {options.map((option, idx) => (
-            <motion.div 
+            <motion.div
               key={idx}
               custom={idx}
               initial={{ x: -30, opacity: 0 }}
@@ -108,12 +125,11 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
               onHoverStart={() => setHoveredOption(idx)}
               onHoverEnd={() => setHoveredOption(null)}
             >
-              <motion.label 
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-300 ${
-                  selectedOption === option.option_text 
-                    ? 'bg-gradient-to-r from-primary/20 to-secondary/20 border-2 border-primary shadow-md' 
-                    : 'hover:bg-muted/50 border-2 border-transparent'
-                }`}
+              <motion.label
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-300 ${selectedOption === option.option_text
+                  ? 'bg-gradient-to-r from-primary/20 to-secondary/20 border-2 border-primary shadow-md'
+                  : 'hover:bg-muted/50 border-2 border-transparent'
+                  }`}
                 whileHover={{ scale: 1.02, x: 10 }}
                 whileTap={{ scale: 0.98 }}
                 animate={
@@ -123,9 +139,9 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
                 }
                 transition={{ duration: 0.2 }}
               >
-                <RadioGroupItem 
-                  value={option.option_text} 
-                  id={`opt-${idx}`} 
+                <RadioGroupItem
+                  value={option.option_text}
+                  id={`opt-${idx}`}
                   className="w-5 h-5 border-2"
                 />
                 <div className="flex items-center gap-3 flex-1">
@@ -139,8 +155,8 @@ export const MultipleChoiceQuestion: React.FC<MultipleChoiceQuestionProps> = ({
                   >
                     {String.fromCharCode(65 + idx)}
                   </motion.div>
-                  <Label 
-                    htmlFor={`opt-${idx}`} 
+                  <Label
+                    htmlFor={`opt-${idx}`}
                     className="cursor-pointer flex-1 text-base font-medium"
                   >
                     {option.option_text}

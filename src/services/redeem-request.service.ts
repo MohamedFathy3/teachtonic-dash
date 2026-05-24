@@ -26,9 +26,13 @@ class RedeemRequestService {
 
   // جلب كل الطلبات للمعلم الحالي
   async getTeacherRequests(): Promise<RedeemRequest[]> {
-    const response = await api.get(this.baseEndpoint);
-    // response.data تكون المصفوفة كما في الـ JSON
-    return response.data;
+    try {
+      const response = await api.get(this.baseEndpoint);
+      return response.data;
+    } catch (error) {
+      console.error('API Error Details:', error);
+      throw error;
+    }
   }
 
   // قبول طلب
