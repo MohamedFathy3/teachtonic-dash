@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/courses/CourseDetails.tsx
 
@@ -22,6 +23,7 @@ import type { Course } from '@/types/course.types';
 import type { CourseDetail } from '@/types/course-detail.types';
 import FileUploader from '@/components/FileUploader';
 import { Switch } from '@/components/ui/switch'; 
+
 interface CourseDetailsProps {
   courseId: number;
   onBack?: () => void;
@@ -70,9 +72,16 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const [activeTab, setActiveTab] = useState('overview');
   const [isLiked, setIsLiked] = useState(false);
   
-  // 🔥 State للدروس
+  // 🔥 State للدروس - استخدام show API
   const [lessons, setLessons] = useState<CourseDetail[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(false);
+  const [lessonsPagination, setLessonsPagination] = useState({
+    currentPage: 1,
+    perPage: 10,
+    total: 0,
+    lastPage: 1
+  });
+  
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [editingLesson, setEditingLesson] = useState<CourseDetail | null>(null);
   const [deletingLesson, setDeletingLesson] = useState<CourseDetail | null>(null);
@@ -108,60 +117,74 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       setLoading(false);
     }
   };
-// 🔥 دالة تبديل must_pass_to_unlock
-const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
-  try {
-    await courseDetailService.toggleMustPassToUnlock(lesson.id, checked);
-    
-    // تحديث القائمة المحلية
-    setCourse(prev => {
-      if (!prev) return prev;
-      const updatedDetails = (prev as any).details?.map((l: any) =>
-        l.id === lesson.id ? { ...l, must_pass_to_unlock: checked } : l
-      );
-      return { ...prev, details: updatedDetails } as Course;
-    });
-    
-    // عرض رسالة نجاح
-    toast.success(
-      checked 
-        ? (lang === 'ar' ? 'تم تفعيل شرط اجتياز الامتحان' : 'Exam pass requirement enabled')
-        : (lang === 'ar' ? 'تم إلغاء شرط اجتياز الامتحان' : 'Exam pass requirement disabled')
-    );
-  } catch (error) {
-    console.error('Error toggling must_pass_to_unlock:', error);
-    toast.error(lang === 'ar' ? 'حدث خطأ أثناء تغيير الإعداد' : 'Error changing setting');
-  }
-};
-  useEffect(() => {
-    fetchCourse();
-  }, [courseId]);
 
-  // جلب الدروس
-  const fetchLessons = async () => {
-    if (!course) return;
+  // 🔥 جلب الدروس باستخدام show API (index مع فلتر)
+  const fetchLessons = async (page = 1) => {
+    if (!courseId) return;
     setLessonsLoading(true);
     try {
-      const courseDetails = (course as any)?.details || [];
-      if (courseDetails.length > 0) {
-        setLessons(courseDetails);
-      } else {
-        const response = await courseDetailService.getAll({ course_id: course.id, perPage: 100 });
-        const lessonsData = response?.data || [];
-        setLessons(lessonsData);
+      const response = await courseDetailService.getAll({
+        course_id: courseId,
+        page: page,
+        perPage: lessonsPagination.perPage
+      });
+      
+      console.log('📚 Lessons from API:', response);
+      
+      // التعامل مع استجابة الـ API
+      const lessonsData = response?.data || [];
+      setLessons(lessonsData);
+      
+      // تحديث معلومات الـ pagination
+      if (response?.pagination) {
+        setLessonsPagination({
+          currentPage: response.pagination.currentPage || page,
+          perPage: response.pagination.perPage || 10,
+          total: response.pagination.total || 0,
+          lastPage: response.pagination.lastPage || 1
+        });
       }
     } catch (error) {
       console.error('Error fetching lessons:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ في تحميل الدروس' : 'Error loading lessons');
     } finally {
       setLessonsLoading(false);
     }
   };
 
+  // 🔥 دالة تبديل must_pass_to_unlock
+  const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
+    try {
+      await courseDetailService.toggleMustPassToUnlock(lesson.id, checked);
+      
+      // تحديث القائمة المحلية
+      setLessons(prev => prev.map(l =>
+        l.id === lesson.id ? { ...l, must_pass_to_unlock: checked } : l
+      ));
+      
+      // عرض رسالة نجاح
+      toast.success(
+        checked 
+          ? (lang === 'ar' ? 'تم تفعيل شرط اجتياز الامتحان' : 'Exam pass requirement enabled')
+          : (lang === 'ar' ? 'تم إلغاء شرط اجتياز الامتحان' : 'Exam pass requirement disabled')
+      );
+    } catch (error) {
+      console.error('Error toggling must_pass_to_unlock:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ أثناء تغيير الإعداد' : 'Error changing setting');
+    }
+  };
+
   useEffect(() => {
-    if (course) {
+    fetchCourse();
+  }, [courseId]);
+
+  // جلب الدروس بعد تحميل الكورس
+  useEffect(() => {
+    if (courseId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchLessons();
     }
-  }, [course]);
+  }, [courseId]);
 
   const formatDate = (date: string) => {
     if (!date) return '—';
@@ -198,14 +221,14 @@ const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
 
   // معالج إضافة/تعديل درس
   const handleSaveLesson = async () => {
-    if (!course) return;
+    if (!courseId) return;
     if (!lessonForm.title && !lessonForm.title_ar) {
       toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الدرس' : 'Please enter lesson title');
       return;
     }
 
     const payload: any = {
-      course_id: course.id,
+      course_id: courseId,
       title: lessonForm.title,
       title_ar: lessonForm.title_ar,
       description: lessonForm.description,
@@ -230,7 +253,8 @@ const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
         await courseDetailService.create(payload);
         toast.success(lang === 'ar' ? 'تم إضافة الدرس بنجاح' : 'Lesson added successfully');
       }
-      await fetchCourse(); // إعادة جلب الكورس لتحديث الدروس
+      // إعادة جلب الدروس
+      await fetchLessons(lessonsPagination.currentPage);
       setShowLessonModal(false);
       resetLessonForm();
     } catch (error) {
@@ -245,7 +269,7 @@ const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
     try {
       await courseDetailService.deleteDetail(deletingLesson.id);
       toast.success(lang === 'ar' ? 'تم حذف الدرس بنجاح' : 'Lesson deleted successfully');
-      await fetchCourse();
+      await fetchLessons(lessonsPagination.currentPage);
       setDeletingLesson(null);
     } catch (error) {
       console.error('Error deleting lesson:', error);
@@ -270,7 +294,7 @@ const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
     setEditingLesson(null);
   };
 
-  const openEditLesson = (lesson: CourseDetail) => {
+  const openEditLesson = async (lesson: CourseDetail) => {
     setEditingLesson(lesson);
     setLessonForm({
       title: lesson.title,
@@ -280,7 +304,7 @@ const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
       content_link: lesson.content_link,
       lession_date: lesson.lession_date,
       lession_time: lesson.lession_time || '20:00',
-      price: parseFloat(lesson.price),
+      price: parseFloat(lesson.price as any),
       image_id: (lesson as any).image?.id || null,
     });
     
@@ -336,8 +360,6 @@ const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
   const teacherEmail = course.teacher?.email;
   const teacherPhone = course.teacher?.phone;
   
-  // 🔥 الدروس موجودة في course.details
-  const courseLessons = (course as any)?.details || [];
   const students = (course as any)?.students || [];
 
   return (
@@ -510,7 +532,7 @@ const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-semibold flex items-center gap-2">
               <Video className="h-5 w-5 text-primary" />
-              {t('courseLessons') || 'دروس الكورس'} ({courseLessons.length})
+              {t('courseLessons') || 'دروس الكورس'} ({lessonsPagination.total})
             </h3>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button size="sm" onClick={() => {
@@ -527,7 +549,7 @@ const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : courseLessons.length === 0 ? (
+          ) : lessons.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -543,104 +565,129 @@ const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
           ) : (
             <div className="space-y-3">
               <AnimatePresence mode="popLayout">
-             {courseLessons.map((lesson: any, idx: number) => (
-  <motion.div
-    key={lesson.id}
-    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-    animate={{ opacity: 1, y: 0, scale: 1 }}
-    exit={{ opacity: 0, y: -20, scale: 0.95 }}
-    transition={{ delay: idx * 0.05 }}
-    whileHover={{ scale: 1.01, y: -2 }}
-    className="p-4 rounded-xl bg-gradient-to-r from-card to-muted/20 border hover:shadow-lg transition-all group"
-  >
-    <div className="flex items-start justify-between">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <Badge variant="outline" className="text-xs rounded-full px-2 py-0.5">
-            #{idx + 1}
-          </Badge>
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            {formatDateTime(lesson.lession_date, lesson.lession_time)}
-          </span>
-          {parseFloat(lesson.price) > 0 && (
-            <Badge variant="secondary" className="text-xs gap-1">
-              <DollarSign className="h-3 w-3" />
-              {lesson.price}
-            </Badge>
-          )}
-          
-          {/* 🔥 شارة شرط اجتياز الامتحان */}
-          {lesson.must_pass_to_unlock && (
-            <Badge variant="warning" className="text-xs gap-1 bg-amber-500/20 text-amber-600 border-amber-300">
-              <Lock className="h-3 w-3" />
-              {lang === 'ar' ? 'يجب اجتياز الامتحان' : 'Must pass exam'}
-            </Badge>
-          )}
-          
-          {/* 🔥 شارة الحضور (للطلاب) */}
-          {lesson.attended && (
-            <Badge variant="success" className="text-xs gap-1 bg-green-500/20 text-green-600 border-green-300">
-              <CheckCircle2 className="h-3 w-3" />
-              {lang === 'ar' ? 'تم الحضور' : 'Attended'}
-            </Badge>
-          )}
-        </div>
-        
-        <h4 className="font-semibold text-base">
-          {isRTL && lesson.title_ar ? lesson.title_ar : lesson.title}
-        </h4>
-        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-          {isRTL && lesson.description_ar ? lesson.description_ar : lesson.description}
-        </p>
-        
-        {lesson.content_link && (
-          <a
-            href={lesson.content_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
-          >
-            <LinkIcon className="h-3 w-3" />
-            {t('watchLesson') || 'مشاهدة الدرس'}
-          </a>
-        )}
-      </div>
-      
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        {/* 🔥 Switch لتحديد شرط اجتياز الامتحان (للمعلم/admin فقط) */}
-        <div className="flex items-center gap-1 mr-2 px-2 py-1 rounded-lg bg-muted/50">
-          <label className="text-[10px] text-muted-foreground cursor-pointer whitespace-nowrap">
-            {lang === 'ar' ? 'امتحان إجباري' : 'Exam required'}
-          </label>
-          <Switch
-            checked={lesson.must_pass_to_unlock || false}
-            onCheckedChange={(checked) => handleToggleMustPass(lesson, checked)}
-            className="data-[state=checked]:bg-amber-500 scale-75"
-          />
-        </div>
-        
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 rounded-full hover:bg-primary/10"
-          onClick={() => openEditLesson(lesson)}
-        >
-          <Edit2 className="h-4 w-4" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 rounded-full hover:bg-red-100 dark:hover:bg-red-900/20 text-red-500"
-          onClick={() => setDeletingLesson(lesson)}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  </motion.div>
-))}
+                {lessons.map((lesson: any, idx: number) => (
+                  <motion.div
+                    key={lesson.id}
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                    transition={{ delay: idx * 0.05 }}
+                    whileHover={{ scale: 1.01, y: -2 }}
+                    className="p-4 rounded-xl bg-gradient-to-r from-card to-muted/20 border hover:shadow-lg transition-all group"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs rounded-full px-2 py-0.5">
+                            #{((lessonsPagination.currentPage - 1) * lessonsPagination.perPage) + idx + 1}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDateTime(lesson.lession_date, lesson.lession_time)}
+                          </span>
+                          {parseFloat(lesson.price as any) > 0 && (
+                            <Badge variant="secondary" className="text-xs gap-1">
+                              <DollarSign className="h-3 w-3" />
+                              {lesson.price}
+                            </Badge>
+                          )}
+                          
+                          {/* 🔥 شارة شرط اجتياز الامتحان */}
+                          {lesson.must_pass_to_unlock && (
+                            <Badge variant="warning" className="text-xs gap-1 bg-amber-500/20 text-amber-600 border-amber-300">
+                              <Lock className="h-3 w-3" />
+                              {lang === 'ar' ? 'يجب اجتياز الامتحان' : 'Must pass exam'}
+                            </Badge>
+                          )}
+                          
+                          {/* 🔥 شارة الحضور (للطلاب) */}
+                          {lesson.attended && (
+                            <Badge variant="success" className="text-xs gap-1 bg-green-500/20 text-green-600 border-green-300">
+                              <CheckCircle2 className="h-3 w-3" />
+                              {lang === 'ar' ? 'تم الحضور' : 'Attended'}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <h4 className="font-semibold text-base">
+                          {isRTL && lesson.title_ar ? lesson.title_ar : lesson.title}
+                        </h4>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {isRTL && lesson.description_ar ? lesson.description_ar : lesson.description}
+                        </p>
+                        
+                        {lesson.content_link && (
+                          <a
+                            href={lesson.content_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                          >
+                            <LinkIcon className="h-3 w-3" />
+                            {t('watchLesson') || 'مشاهدة الدرس'}
+                          </a>
+                        )}
+                      </div>
+                      
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* 🔥 Switch لتحديد شرط اجتياز الامتحان (للمعلم/admin فقط) */}
+                        <div className="flex items-center gap-1 mr-2 px-2 py-1 rounded-lg bg-muted/50">
+                          <label className="text-[10px] text-muted-foreground cursor-pointer whitespace-nowrap">
+                            {lang === 'ar' ? 'امتحان إجباري' : 'Exam required'}
+                          </label>
+                          <Switch
+                            checked={lesson.must_pass_to_unlock || false}
+                            onCheckedChange={(checked) => handleToggleMustPass(lesson, checked)}
+                            className="data-[state=checked]:bg-amber-500 scale-75"
+                          />
+                        </div>
+                        
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 rounded-full hover:bg-primary/10"
+                          onClick={() => openEditLesson(lesson)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 rounded-full hover:bg-red-100 dark:hover:bg-red-900/20 text-red-500"
+                          onClick={() => setDeletingLesson(lesson)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </AnimatePresence>
+              
+              {/* 🔥 Pagination buttons */}
+              {lessonsPagination.lastPage > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchLessons(lessonsPagination.currentPage - 1)}
+                    disabled={lessonsPagination.currentPage === 1}
+                  >
+                    {lang === 'ar' ? 'السابق' : 'Previous'}
+                  </Button>
+                  <span className="text-sm text-muted-foreground py-2 px-3">
+                    {lessonsPagination.currentPage} / {lessonsPagination.lastPage}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchLessons(lessonsPagination.currentPage + 1)}
+                    disabled={lessonsPagination.currentPage === lessonsPagination.lastPage}
+                  >
+                    {lang === 'ar' ? 'التالي' : 'Next'}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>

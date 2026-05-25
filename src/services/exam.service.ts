@@ -96,46 +96,91 @@ class ExamService extends BaseService<Exam> {
   }
 
   // ✅ إنشاء امتحان جديد (مع دعم total_marks_pass_marks)
-  private creatingExams = new Set<string>();
+// ✅ إنشاء امتحان جديد (مع دعم total_marks_pass_marks)
+private creatingExams = new Set<string>();
 
-  async createExam(data: CreateExamDTO): Promise<Exam> {
-    try {
-      const key = `${data.title}_${data.teacher_id}`;
-      if (this.creatingExams.has(key)) {
-        throw new Error('Exam creation already in progress');
-      }
-
-      this.creatingExams.add(key);
-
-      const payload = {
-        title: data.title,
-        title_ar: data.title_ar,
-        description: data.description,
-        description_ar: data.description_ar,
-        type: data.type,
-        teacher_id: data.teacher_id,
-        course_detail_id: data.course_detail_id,
-        stage_id: data.stage_id,
-        total_marks: data.total_marks,
-        total_marks_pass_marks: data.total_marks_pass_marks,
-        duration_minutes: data.duration_minutes,
-        ...(data.image && { image: data.image }),
-      };
-
-      const response = await api.post(`/${this.endpoint}`, payload);
-      toast({ title: "Success", description: "Exam created successfully" });
-
-      this.creatingExams.delete(key);
-
-      return response.data.data;
-    } catch (error: any) {
-      const key = `${data.title}_${data.teacher_id}`;
-      this.creatingExams.delete(key);
-
-      toast({ title: "Error", description: error.response?.data?.message || "Failed to create exam", variant: "destructive" });
-      throw error;
+async createExam(data: CreateExamDTO): Promise<Exam> {
+  try {
+    const key = `${data.title}_${data.teacher_id}`;
+    if (this.creatingExams.has(key)) {
+      throw new Error('Exam creation already in progress');
     }
+
+    this.creatingExams.add(key);
+
+    const payload = {
+      title: data.title,
+      title_ar: data.title_ar,
+      description: data.description,
+      description_ar: data.description_ar,
+      type: data.type,
+      teacher_id: data.teacher_id,
+      course_detail_id: data.course_detail_id,
+      stage_id: data.stage_id,
+      total_marks: data.total_marks,
+      total_marks_pass_marks: data.total_marks_pass_marks,
+      duration_minutes: data.duration_minutes,
+      ...(data.image && { image: data.image }),
+    };
+
+    const response = await api.post(`/${this.endpoint}`, payload);
+    
+    console.log('📦 Create exam response:', response.data);
+    
+    toast({ title: "Success", description: "Exam created successfully" });
+
+    this.creatingExams.delete(key);
+
+    // 🔥 مهم: التعامل مع الحالة لما يكون data null
+    if (response.data?.data) {
+      return response.data.data;
+    }
+    
+    // 🔥 لو الـ API رجع data = null، نرجع الـ exam من الـ payload مع ID مؤقت
+    // أو نطلب الـ exam تاني
+    if (response.data?.status === 200 && response.data?.result === 'Success') {
+      // نحاول نجلب الامتحان اللي اتعمل عن طريق الفلتر
+      const exams = await this.getAllExams({ 
+        title: data.title,
+        teacher_id: data.teacher_id 
+      }, 1, 1);
+      
+      if (exams.data && exams.data.length > 0) {
+        return exams.data[0];
+      }
+    }
+    
+    // لو كل حاجة فشلت، نرجع بيانات مؤقتة عشان الواجهة متكسرش
+    return {
+      id: Date.now(), // ID مؤقت
+      title: data.title,
+      title_ar: data.title_ar || '',
+      description: data.description || '',
+      description_ar: data.description_ar || '',
+      type: data.type,
+      teacher_id: data.teacher_id,
+      course_detail_id: data.course_detail_id,
+      stage_id: data.stage_id,
+      total_marks: data.total_marks,
+      total_marks_pass_marks: data.total_marks_pass_marks,
+      duration_minutes: data.duration_minutes,
+      active: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as Exam;
+    
+  } catch (error: any) {
+    const key = `${data.title}_${data.teacher_id}`;
+    this.creatingExams.delete(key);
+
+    toast({ 
+      title: "Error", 
+      description: error.response?.data?.message || "Failed to create exam", 
+      variant: "destructive" 
+    });
+    throw error;
   }
+}
 
   // ✅ تحديث امتحان
   async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {

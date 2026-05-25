@@ -1,4 +1,4 @@
-// components/FileUploader.tsx (المعدل)
+// components/FileUploader.tsx (النسخة النهائية)
 
 import { useState, useRef, useEffect } from "react";
 import { UploadCloud, X, Loader2, Eye } from "lucide-react";
@@ -12,18 +12,20 @@ type Props = {
   preview?: boolean;
   uniqueId?: string;
   maxFiles?: number;
-  defaultImageUrl?: string | null; // 🔥 الصورة الحالية
-  defaultImageId?: number | null;   // 🔥 ID الصورة الحالية
-  onRemoveImage?: () => void;       // 🔥 عند إزالة الصورة الحالية
+  maxVideoSize?: number; 
+  defaultImageUrl?: string | null;
+  defaultImageId?: number | null;
+  onRemoveImage?: () => void;
 };
 
 export default function FileUploader({
   label = "Upload File",
   onUploadSuccess,
   multiple = true,
-  accept = "image/*",
+  accept = "image/*,video/*",
   preview = true,
   uniqueId = "file-upload",
+  maxVideoSize = 5,
   maxFiles = 10,
   defaultImageUrl,
   defaultImageId,
@@ -32,12 +34,25 @@ export default function FileUploader({
   const [uploadedFiles, setUploadedFiles] = useState<{ id: number; name: string; url?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [previewTypes, setPreviewTypes] = useState<string[]>([]); // 🔥 'image' or 'video'
   const [showDefaultImage, setShowDefaultImage] = useState(!!defaultImageUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 🔥 تنظيف الـ blob URLs للفيديو عند إلغاء التحميل
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach(url => {
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, [previewUrls]);
 
   // 🔥 عند تغيير defaultImageUrl
   useEffect(() => {
     if (defaultImageUrl && !uploadedFiles.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowDefaultImage(true);
     } else {
       setShowDefaultImage(false);
@@ -48,6 +63,18 @@ export default function FileUploader({
     e.preventDefault();
     e.stopPropagation();
     fileInputRef.current?.click();
+  };
+
+  // 🔥 التحقق من حجم الفيديو
+  const validateVideoSize = (file: File): boolean => {
+    if (file.type.startsWith('video/')) {
+      const maxSizeInBytes = maxVideoSize * 1024 * 1024;
+      if (file.size > maxSizeInBytes) {
+        alert(`Video size cannot exceed ${maxVideoSize}MB. Current size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+        return false;
+      }
+    }
+    return true;
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,18 +90,40 @@ export default function FileUploader({
       return;
     }
 
+    // 🔥 التحقق من حجم الفيديو لكل الملفات قبل الرفع
+    for (const file of files) {
+      if (!validateVideoSize(file)) {
+        return;
+      }
+    }
+
     setLoading(true);
 
-    // معاينة الصور قبل الرفع
-    if (preview && accept.includes("image")) {
+    // 🔥 معاينة الصور والفيديو قبل الرفع
+    if (preview) {
       const newPreviewUrls: string[] = [];
+      const newPreviewTypes: string[] = [];
+      
       for (let i = 0; i < files.length; i++) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          newPreviewUrls[i] = e.target?.result as string;
+        const file = files[i];
+        
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            newPreviewUrls[i] = e.target?.result as string;
+            newPreviewTypes[i] = 'image';
+            setPreviewUrls([...newPreviewUrls]);
+            setPreviewTypes([...newPreviewTypes]);
+          };
+          reader.readAsDataURL(file);
+        } else if (file.type.startsWith('video/')) {
+          // 🔥 للفيديو: نستخدم blob URL
+          const videoUrl = URL.createObjectURL(file);
+          newPreviewUrls[i] = videoUrl;
+          newPreviewTypes[i] = 'video';
           setPreviewUrls([...newPreviewUrls]);
-        };
-        reader.readAsDataURL(files[i]);
+          setPreviewTypes([...newPreviewTypes]);
+        }
       }
     }
 
@@ -106,7 +155,6 @@ export default function FileUploader({
       }
       
       if (uploadedIds.length > 0) {
-        // 🔥 اختفاء الصورة الافتراضية بعد رفع صورة جديدة
         setShowDefaultImage(false);
         console.log(`✅ ${uploadedIds.length} file(s) uploaded successfully`);
       }
@@ -123,18 +171,25 @@ export default function FileUploader({
   };
 
   const removeFile = (index: number) => {
+    // 🔥 تنظيف blob URL لو كان فيديو
+    if (previewTypes[index] === 'video' && previewUrls[index]?.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrls[index]);
+    }
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setPreviewTypes(prev => prev.filter((_, i) => i !== index));
   };
 
-  // 🔥 إزالة الصورة الحالية
   const handleRemoveDefaultImage = () => {
     setShowDefaultImage(false);
     if (onRemoveImage) {
       onRemoveImage();
     }
-    onUploadSuccess(0); // إرسال 0 يعني إزالة الصورة
+    onUploadSuccess(0);
   };
+
+  // 🔥 معرفة إذا كان default هو فيديو
+  const isDefaultVideo = defaultImageUrl?.match(/\.(mp4|webm|ogg|mov|avi|mkv)$/i);
 
   return (
     <div className="mb-4" onClick={(e) => e.stopPropagation()}>
@@ -144,15 +199,25 @@ export default function FileUploader({
         </label>
       )}
 
-      {/* 🔥 عرض الصورة الحالية */}
+      {/* 🔥 عرض الملف الحالي (صورة أو فيديو) */}
       {showDefaultImage && defaultImageUrl && !uploadedFiles.length && !previewUrls.length && (
         <div className="mb-3 relative group">
           <div className="relative">
-            <img
-              src={defaultImageUrl}
-              alt="Current image"
-              className="w-full h-32 object-cover rounded-lg border border-gray-200"
-            />
+            {isDefaultVideo ? (
+              <video
+                src={defaultImageUrl}
+                className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                controls
+              >
+                Your browser does not support the video tag.
+              </video>
+            ) : (
+              <img
+                src={defaultImageUrl}
+                alt="Current media"
+                className="w-full h-32 object-cover rounded-lg border border-gray-200"
+              />
+            )}
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
               <button
                 type="button"
@@ -166,14 +231,14 @@ export default function FileUploader({
                 type="button"
                 onClick={handleRemoveDefaultImage}
                 className="bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600"
-                title="Remove image"
+                title="Remove media"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           </div>
           <p className="text-xs text-blue-600 mt-1 text-center">
-            Current image (ID: {defaultImageId})
+            Current {isDefaultVideo ? 'video' : 'image'} (ID: {defaultImageId})
           </p>
         </div>
       )}
@@ -195,7 +260,11 @@ export default function FileUploader({
             <UploadCloud className="text-gray-500 mb-2" size={28} />
             <p className="text-gray-600 text-sm">Click to upload or drag & drop</p>
             <p className="text-gray-400 text-xs mt-1">
-              {accept === "image/*" ? "PNG, JPG, GIF up to 10MB" : "PDF, DOC, DOCX up to 10MB"}
+              {accept.includes("video") && accept.includes("image") 
+                ? "📷 Images: PNG, JPG, GIF up to 10MB | 🎥 Videos: MP4, WebM, MOV up to 5MB"
+                : accept === "image/*" 
+                  ? "PNG, JPG, GIF up to 10MB" 
+                  : "PDF, DOC, DOCX up to 10MB"}
             </p>
             {multiple && (
               <p className="text-gray-400 text-xs">Max {maxFiles} files</p>
@@ -215,16 +284,26 @@ export default function FileUploader({
         multiple={multiple}
       />
 
-      {/* معاينة الصور الجديدة */}
+      {/* 🔥 معاينة الملفات الجديدة (صورة أو فيديو) */}
       {preview && previewUrls.length > 0 && (
         <div className="mt-3 grid grid-cols-3 gap-2">
           {previewUrls.map((url, index) => (
             <div key={index} className="relative group">
-              <img
-                src={url}
-                alt={`Preview ${index + 1}`}
-                className="w-full h-20 object-cover rounded-lg border border-gray-200"
-              />
+              {previewTypes[index] === 'video' ? (
+                <video
+                  src={url}
+                  className="w-full h-20 object-cover rounded-lg border border-gray-200"
+                  controls
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img
+                  src={url}
+                  alt={`Preview ${index + 1}`}
+                  className="w-full h-20 object-cover rounded-lg border border-gray-200"
+                />
+              )}
               <button
                 type="button"
                 onClick={(e) => {

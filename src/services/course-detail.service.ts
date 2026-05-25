@@ -56,7 +56,9 @@ class CourseDetailService extends BaseService<CourseDetail> {
   }
 
   async deleteDetail(id: number): Promise<void> {
-    await api.delete(`/${this.endpoint}/${id}`);
+    await api.delete(`/${this.endpoint}/delete`,{
+      data: {items:[id]}
+    });
   }
 
     async toggleMustPassToUnlock(id: number, value: boolean): Promise<CourseDetail> {
