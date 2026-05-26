@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import FileUploader from '@/components/FileUploader';
-import { Edit, Info, Check, Eye, EyeOff, Loader2, Trash2 } from 'lucide-react';
+import { Edit, Info, Trash2, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 
@@ -24,7 +24,12 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
-    name: '', name_ar: '', description: '', description_ar: '', image: undefined as number | undefined
+    name: '',
+    name_ar: '',
+    description: '',
+    description_ar: '',
+    meta: '', // 🔥 meta كـ string
+    image: undefined as number | undefined
   });
 
   const fetchAbout = async () => {
@@ -42,6 +47,7 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
 
   useEffect(() => {
     if (teacherId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchAbout();
     }
   }, [teacherId]);
@@ -51,15 +57,14 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
 
     try {
       await sectionService.delete('about', about.id);
-
       setAbout(null);
       toast({
         title: "Success",
         description: "About section deleted successfully"
       });
-
     } catch (error) {
       console.error(error);
+      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
     }
   };
 
@@ -71,6 +76,7 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
         description: formData.description,
         description_ar: formData.description_ar,
         teacher_id: teacherId,
+        meta: formData.meta, // 🔥 meta كـ string
         ...(formData.image && { image: formData.image })
       };
 
@@ -97,11 +103,17 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
         name_ar: about.name_ar || '',
         description: about.description || '',
         description_ar: about.description_ar || '',
+        meta: about.meta || '', // 🔥 meta كـ string
         image: about.image?.id || undefined
       });
     } else {
       setFormData({
-        name: '', name_ar: '', description: '', description_ar: '', image: undefined
+        name: '',
+        name_ar: '',
+        description: '',
+        description_ar: '',
+        meta: '',
+        image: undefined
       });
     }
     setDialogOpen(true);
@@ -128,6 +140,7 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
       </BaseSection>
     );
   }
+
   return (
     <>
       <BaseSection
@@ -137,17 +150,23 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
       >
         {about ? (
           <div className="group flex items-center justify-between gap-5 p-5 rounded-2xl border bg-card shadow-sm hover:shadow-md transition-all">
-
             {/* LEFT SIDE */}
             <div className="flex items-center gap-4 flex-1">
-
-              {/* IMAGE */}
+              {/* IMAGE / VIDEO */}
               {about.image?.fullUrl ? (
-                <img
-                  src={about.image.fullUrl}
-                  alt={getText()}
-                  className="w-20 h-20 rounded-xl object-cover border"
-                />
+                about.image.fullUrl.match(/\.(mp4|webm|ogg|mov|avi)$/i) ? (
+                  <video
+                    src={about.image.fullUrl}
+                    className="w-20 h-20 rounded-xl object-cover border"
+                    controls
+                  />
+                ) : (
+                  <img
+                    src={about.image.fullUrl}
+                    alt={getText()}
+                    className="w-20 h-20 rounded-xl object-cover border"
+                  />
+                )
               ) : (
                 <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center">
                   <Info className="w-5 h-5 text-muted-foreground" />
@@ -156,34 +175,27 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
 
               {/* CONTENT */}
               <div className="flex-1 space-y-1">
-
-                {/* TITLE + STATUS */}
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-semibold">
                     {getText()}
                   </h3>
-
-                  {/*    {about.active ? (
-                    <span className="flex items-center gap-1 text-green-600 text-xs font-medium">
-                      <Eye className="w-4 h-4" /> Active
-                    </span>
-             ) : (
-                    <span className="flex items-center gap-1 text-red-500 text-xs font-medium">
-                      <EyeOff className="w-4 h-4" /> Hidden
-                    </span>
-                  )} */}
                 </div>
 
-                {/* DESCRIPTION */}
                 <p className="text-sm text-muted-foreground line-clamp-2">
                   {getDescription()}
                 </p>
+                
+                {/* 🔥 عرض الـ meta لو موجود */}
+                {about.meta && (
+                  <p className="text-xs text-muted-foreground/70 line-clamp-1">
+                    <span className="font-medium">Meta:</span> {about.meta}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* ACTIONS */}
             <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition">
-
               <Button
                 variant="ghost"
                 size="icon"
@@ -201,22 +213,15 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
               >
                 <Trash2 className="h-4 w-4 text-red-500" />
               </Button>
-
             </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-10 text-center rounded-2xl border border-dashed">
             <Info className="h-10 w-10 text-muted-foreground mb-2" />
-
             <p className="text-muted-foreground text-sm">
               No about section added yet
             </p>
-
-            <Button
-              variant="link"
-              onClick={openEdit}
-              className="mt-1"
-            >
+            <Button variant="link" onClick={openEdit} className="mt-1">
               Add About Section
             </Button>
           </div>
@@ -226,7 +231,6 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
       {/* DIALOG */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl">
-
           <DialogHeader>
             <DialogTitle>
               {about ? 'Edit About Section' : 'Add About Section'}
@@ -234,7 +238,6 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
           </DialogHeader>
 
           <div className="space-y-5">
-
             {/* NAME */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -285,43 +288,46 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
               </div>
             </div>
 
-            {/* IMAGE */}
+            {/* 🔥 META كـ STRING */}
             <div>
-              <Label>About Image</Label>
-              <FileUploader
-                onUploadSuccess={(id) =>
-                  setFormData({ ...formData, image: id })
+              <Label>Meta (Additional Info)</Label>
+              <Textarea
+                rows={3}
+                value={formData.meta}
+                onChange={(e) =>
+                  setFormData({ ...formData, meta: e.target.value })
                 }
-                multiple={false}
+                placeholder="Enter additional information like certifications, achievements, etc..."
+                className="resize-none"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                This field can contain any additional information about the teacher
+              </p>
+            </div>
 
-              {about?.image?.fullUrl && (
-                <div className="mt-3 flex items-center gap-3">
-                  <img
-                    src={about.image.fullUrl}
-                    className="w-14 h-14 rounded-lg object-cover border"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Current image
-                  </p>
-                </div>
-              )}
+            {/* IMAGE/VIDEO */}
+            <div>
+              <Label>Media (Image or Video)</Label>
+              <FileUploader
+                onUploadSuccess={(id) => setFormData({ ...formData, image: id })}
+                multiple={false}
+                accept="image/*,video/*"
+                maxVideoSize={5}
+                label="Upload Image or Video"
+                defaultImageUrl={about?.image?.fullUrl}
+                defaultImageId={about?.image?.id}
+                onRemoveImage={() => setFormData({ ...formData, image: undefined })}
+              />
             </div>
 
             {/* ACTIONS */}
             <div className="flex justify-end gap-2 pt-2 border-t">
-
-              <Button
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-              >
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-
               <Button onClick={handleSubmit}>
                 {about ? 'Update' : 'Create'}
               </Button>
-
             </div>
           </div>
         </DialogContent>
