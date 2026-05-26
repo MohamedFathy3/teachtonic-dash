@@ -103,5 +103,13 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version),
       'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
     },
+    // أضف قسم build هنا - خارج server
+    build: {
+      outDir: 'dist',
+      emptyOutDir: true,
+      rollupOptions: {
+        input: path.resolve(__dirname, 'index.html'),
+      },
+    },
   };
 });
