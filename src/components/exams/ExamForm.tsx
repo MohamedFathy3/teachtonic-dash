@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/exams/ExamForm.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,69 +22,87 @@ interface ExamFormProps {
   courseDetailId?: number; // 🔥 يمكن تمرير course_detail_id من الخارج
 }
 
-export const ExamForm: React.FC<ExamFormProps> = ({ 
-  exam, 
-  onSubmit, 
-  onCancel, 
+export const ExamForm: React.FC<ExamFormProps> = ({
+  exam,
+  onSubmit,
+  onCancel,
   loading = false,
   courseDetailId
 }) => {
   const { t, lang, user } = useApp();
   const isRTL = lang === 'ar';
-  
-  const [formData, setFormData] = useState<ExamFormData>({
-    title: '',
-    title_ar: '',
-    description: '',
-    description_ar: '',
-    type: 'exam',
-    teacher_id: user?.id || 1,
-    course_detail_id: courseDetailId || 1,
-    stage_id: 1,
-    total_marks: 0,
-    total_marks_pass_marks: 0, // 🔥 أضف هذا
-    duration_minutes: 0,
-  });
-  
-  const [error, setError] = useState<string | null>(null);
-  const [imageId, setImageId] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (exam) {
-      setFormData({
-        title: exam.title,
-        title_ar: exam.title_ar || '',
-        description: exam.description,
-        description_ar: exam.description_ar || '',
-        type: exam.type,
-        teacher_id: exam.teacher_id,
-        course_detail_id: exam.course_detail_id,
-        stage_id: exam.stage_id,
-        total_marks: exam.total_marks,
-        total_marks_pass_marks: exam.total_marks_pass_marks || 0,
-        duration_minutes: exam.duration_minutes,
-      });
-      setImageId(exam.image || null);
+  const initialFormData: ExamFormData = exam
+    ? {
+      title: exam.title || '',
+      title_ar: exam.title_ar || '',
+      description: exam.description || '',
+      description_ar: exam.description_ar || '',
+      type: exam.type || 'exam',
+      teacher_id: exam.teacher_id,
+      course_detail_id: exam.course_detail_id,
+      stage_id: exam.stage_id,
+      total_marks: exam.total_marks || 0,
+      total_marks_pass_marks:
+        exam.total_marks_pass_marks || 0,
+      duration_minutes: exam.duration_minutes || 0,
+      image: exam.image?.id,
     }
-  }, [exam]);
+    : {
+      title: '',
+      title_ar: '',
+      description: '',
+      description_ar: '',
+      type: 'exam',
+      teacher_id: user?.id || 1,
+      course_detail_id: courseDetailId ?? 1,
+      stage_id: 1,
+      total_marks: 0,
+      total_marks_pass_marks: 0,
+      duration_minutes: 0,
+    };
+
+  const [formData, setFormData] =
+    useState<ExamFormData>(initialFormData);
+
+
+
+  const [error, setError] = useState<string | null>(null);
+  const [imageId, setImageId] =
+    useState<number | null>(exam?.image?.id || null);
+
+  const isFormValid =
+    formData.title.trim() &&
+    formData.total_marks > 0 &&
+    formData.duration_minutes > 0 &&
+    formData.total_marks_pass_marks <= formData.total_marks;
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (loading) return;
+
     setError(null);
-    
-    if (!formData.title) {
+
+    if (!formData.title.trim()) {
       setError(t('required'));
       return;
     }
-    
-    // 🔥 التحقق من أن درجة النجاح لا تتجاوز الدرجة الكلية
-    if (formData.total_marks_pass_marks && formData.total_marks_pass_marks > formData.total_marks) {
-      setError(lang === 'ar' 
-        ? 'درجة النجاح لا يمكن أن تتجاوز الدرجة الكلية' 
-        : 'Pass marks cannot exceed total marks');
+
+    if (
+      formData.total_marks_pass_marks >
+      formData.total_marks
+    ) {
+      setError(
+        lang === 'ar'
+          ? 'درجة النجاح لا يمكن أن تتجاوز الدرجة الكلية'
+          : 'Pass marks cannot exceed total marks'
+      );
       return;
     }
-    
+
     try {
       await onSubmit({
         ...formData,
@@ -273,9 +291,15 @@ export const ExamForm: React.FC<ExamFormProps> = ({
                   {t('cancel')}
                 </Button>
               )}
-              <Button type="submit" disabled={loading} className="gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary">
+              <Button
+                type="submit"
+                disabled={loading || !isFormValid}
+                className="gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary"
+              >
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+
                 <Save className="h-4 w-4" />
+
                 {exam ? t('update') : t('create')}
               </Button>
             </div>

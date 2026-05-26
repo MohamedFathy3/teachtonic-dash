@@ -99,8 +99,9 @@ class ExamService extends BaseService<Exam> {
   private creatingExams = new Set<string>();
 
   async createExam(data: CreateExamDTO): Promise<Exam> {
+    const key = `${data.title}_${data.teacher_id}`;
+
     try {
-      const key = `${data.title}_${data.teacher_id}`;
       if (this.creatingExams.has(key)) {
         throw new Error('Exam creation already in progress');
       }
@@ -123,20 +124,39 @@ class ExamService extends BaseService<Exam> {
       };
 
       const response = await api.post(`/${this.endpoint}`, payload);
-      toast({ title: "Success", description: "Exam created successfully" });
 
-      this.creatingExams.delete(key);
+      console.log("CREATE EXAM RESPONSE:", response.data);
 
-      return response.data.data;
+      // نجاح فقط
+      if (
+        response.data?.status === 200 ||
+        response.data?.result === 'Success'
+      ) {
+        // اعمل refetch
+
+
+
+        return response.data;
+      }
+
+      throw new Error('Failed to create exam');
+
     } catch (error: any) {
-      const key = `${data.title}_${data.teacher_id}`;
-      this.creatingExams.delete(key);
+      toast({
+        title: 'Error',
+        description:
+          error.response?.data?.message ||
+          error.message ||
+          'Failed to create exam',
+        variant: 'destructive',
+      });
 
-      toast({ title: "Error", description: error.response?.data?.message || "Failed to create exam", variant: "destructive" });
       throw error;
+
+    } finally {
+      this.creatingExams.delete(key);
     }
   }
-
   // ✅ تحديث امتحان
   async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {
     try {
@@ -243,48 +263,48 @@ class ExamService extends BaseService<Exam> {
     }
   }
 
-  // ✅ تبديل حالة الامتحان (via URL parameter)
-  async toggleExamActive(id: number, value?: boolean): Promise<{ message: string }> {
-    try {
-      // 🔥 إرسال القيمة كـ query parameter إذا وجدت
-      let url = `/${this.endpoint}/${id}/active`;
-      if (value !== undefined) {
-        url += `?value=${value ? 1 : 0}`;
-      }
-      const response = await api.put(url);
-      toast({ title: "Success", description: response.data?.message || "Exam status changed successfully" });
-      return response.data;
-    } catch (error: any) {
-      toast({ title: "Error", description: error.response?.data?.message || "Failed to toggle exam status", variant: "destructive" });
-      throw error;
-    }
-  }
 
   // ✅ إضافة أسئلة متعددة للامتحان (باستخدام add-questions endpoint)
-  async addQuestions(examId: number, questions: any[]): Promise<QuestionsResponse> {
-    try {
-      const payload: AddQuestionsDTO = {
-        exam_id: examId,
-        questions: questions.map(q => ({
-          question_type: q.question_type,
-          question: q.question,
-          mark: q.mark,
-          ...(q.image && { image: q.image }),
-          ...(q.correct_answer && { correct_answer: q.correct_answer }),
-          ...(q.options && { options: q.options }),
-        }))
-      };
+async addQuestions(examId: number, questions: any[]): Promise<boolean> {
+  try {
+    const payload: AddQuestionsDTO = {
+      exam_id: examId,
+      questions: questions.map(q => ({
+        question_type: q.question_type,
+        question: q.question,
+        mark: q.mark,
+        ...(q.image && { image: q.image }),
+        ...(q.correct_answer && { correct_answer: q.correct_answer }),
+        ...(q.options && { options: q.options }),
+      }))
+    };
 
-      const response = await api.post(`/${this.endpoint}/add-questions`, payload);
-      toast({ title: "Success", description: response.data?.message || "Questions added successfully" });
-      return response.data;
-    } catch (error: any) {
-      console.error('Error adding questions:', error);
-      toast({ title: "Error", description: error.response?.data?.message || "Failed to add questions", variant: "destructive" });
-      throw error;
+    const response = await api.post(`/${this.endpoint}/add-questions`, payload);
+
+    console.log("ADD QUESTIONS RESPONSE:", response.data);
+
+    // 👇 أهم تعديل هنا
+    if (
+      response.data?.status !== 200 &&
+      response.data?.result !== "Success"
+    ) {
+      throw new Error("Failed to add questions");
     }
-  }
 
+    return true;
+
+  } catch (error: any) {
+    console.error('Error adding questions:', error);
+
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Failed to add questions",
+      variant: "destructive"
+    });
+
+    throw error;
+  }
+}
   // ✅ جلب أسئلة الامتحان
   async getExamQuestions(examId: number): Promise<QuestionsResponse> {
     const response = await api.get(`/${this.endpoint}/${examId}/questions`);

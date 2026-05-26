@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { examService } from '@/services/exam.service';
-import type { Exam, ExamFormData, Question } from '@/types/exam.types';
+import type { Exam, ExamFormData, Question,UpdateExamDTO } from '@/types/exam.types';
 import { useApp } from '@/contexts/AppContext';
 
 interface UseExamsOptions {
@@ -165,7 +165,7 @@ const getExamResult = useCallback(async (examId: number, studentId?: number) => 
   }, []);
 
   // ✅ تحديث امتحان
-  const updateExam = useCallback(async (id: number, data: Partial<ExamFormData>) => {
+  const updateExam = useCallback(async (id: number, data: Partial<UpdateExamDTO>) => {
     setLoading(true);
     setError(null);
     

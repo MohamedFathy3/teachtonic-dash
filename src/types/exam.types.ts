@@ -16,6 +16,30 @@ export interface MediaImage {
   previewUrl: string;
   createdAt: string;
 }
+// ✅ الفورم المستخدم في الـ Create / Edit
+export interface ExamFormData {
+  title: string;
+  title_ar?: string;
+
+  description: string;
+  description_ar?: string;
+
+  type: 'exam' | 'quiz' | 'assignment';
+
+  teacher_id: number;
+
+  course_detail_id: number;
+
+  stage_id: number;
+
+  total_marks: number;
+
+  total_marks_pass_marks: number;
+
+  duration_minutes: number;
+
+  image?: number;
+}
 export interface Question {
   id?: number;
   exam_id?: number;
@@ -37,6 +61,7 @@ export interface CreateQuestionDTO {
   question: string;
   mark: number;
  
+  image?: number;
   correct_answer?: string;
   options?: Omit<Option, 'id'>[];
 }
