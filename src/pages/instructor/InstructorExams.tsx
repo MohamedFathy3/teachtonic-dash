@@ -460,6 +460,8 @@ export const InstructorExams: React.FC = () => {
 
     setIsCreating(true);
 
+    
+
     try {
       const newExam = await examService.createExam({
         ...examFormData,

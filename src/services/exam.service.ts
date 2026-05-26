@@ -102,6 +102,11 @@ class ExamService extends BaseService<Exam> {
     const key = `${data.title}_${data.teacher_id}`;
 
     try {
+
+
+
+
+
       if (this.creatingExams.has(key)) {
         throw new Error('Exam creation already in progress');
       }
@@ -265,46 +270,46 @@ class ExamService extends BaseService<Exam> {
 
 
   // ✅ إضافة أسئلة متعددة للامتحان (باستخدام add-questions endpoint)
-async addQuestions(examId: number, questions: any[]): Promise<boolean> {
-  try {
-    const payload: AddQuestionsDTO = {
-      exam_id: examId,
-      questions: questions.map(q => ({
-        question_type: q.question_type,
-        question: q.question,
-        mark: q.mark,
-        ...(q.image && { image: q.image }),
-        ...(q.correct_answer && { correct_answer: q.correct_answer }),
-        ...(q.options && { options: q.options }),
-      }))
-    };
+  async addQuestions(examId: number, questions: any[]): Promise<boolean> {
+    try {
+      const payload: AddQuestionsDTO = {
+        exam_id: examId,
+        questions: questions.map(q => ({
+          question_type: q.question_type,
+          question: q.question,
+          mark: q.mark,
+          ...(q.image && { image: q.image }),
+          ...(q.correct_answer && { correct_answer: q.correct_answer }),
+          ...(q.options && { options: q.options }),
+        }))
+      };
 
-    const response = await api.post(`/${this.endpoint}/add-questions`, payload);
+      const response = await api.post(`/${this.endpoint}/add-questions`, payload);
 
-    console.log("ADD QUESTIONS RESPONSE:", response.data);
+      console.log("ADD QUESTIONS RESPONSE:", response.data);
 
-    // 👇 أهم تعديل هنا
-    if (
-      response.data?.status !== 200 &&
-      response.data?.result !== "Success"
-    ) {
-      throw new Error("Failed to add questions");
+      // 👇 أهم تعديل هنا
+      if (
+        response.data?.status !== 200 &&
+        response.data?.result !== "Success"
+      ) {
+        throw new Error("Failed to add questions");
+      }
+
+      return true;
+
+    } catch (error: any) {
+      console.error('Error adding questions:', error);
+
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to add questions",
+        variant: "destructive"
+      });
+
+      throw error;
     }
-
-    return true;
-
-  } catch (error: any) {
-    console.error('Error adding questions:', error);
-
-    toast({
-      title: "Error",
-      description: error.response?.data?.message || "Failed to add questions",
-      variant: "destructive"
-    });
-
-    throw error;
   }
-}
   // ✅ جلب أسئلة الامتحان
   async getExamQuestions(examId: number): Promise<QuestionsResponse> {
     const response = await api.get(`/${this.endpoint}/${examId}/questions`);
