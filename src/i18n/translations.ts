@@ -349,8 +349,10 @@ export const translations = {
     redeemRequestsDesc: "Manage student redeem requests for courses, semesters, or lessons. Approve or reject requests to control access and earnings.",
     approve: "Approve",
     reject: "Reject",
+  bankQuestions: "Question Bank",
   },
   ar: {
+    bankQuestions: "بنك الأسئلة",
 time: "المنطقة الزمنية",
     enrolledStudents: "الطلاب المسجلون",
     noStudentsYet: "لا يوجد طلاب مسجلون بعد",

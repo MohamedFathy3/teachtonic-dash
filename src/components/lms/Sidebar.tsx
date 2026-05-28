@@ -72,6 +72,8 @@ const instructorNav: NavItem[] = [
   { to: "redeem-requests", labelKey: "redeemRequests", icon: Sparkles },
   { to: "students", labelKey: "students", icon: Users },
   { to: "exams", labelKey: "exams", icon: ClipboardList },
+  { to: "bank-questions", labelKey: "bankQuestions", icon: ClipboardList },
+
   { to: "center-hours", labelKey: "centerhours", icon: TagIcon },
   { to: "books", labelKey: "books", icon: BookOpen },
 
