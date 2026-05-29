@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  startTransition,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+    startTransition,
 } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { bankQuestionsService } from '@/services/bank-questions.service';
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 const getQuestionTypeLabel = (type: string) => {
     switch (type) {
@@ -153,7 +154,7 @@ export const InstructorBankQuestions: React.FC = () => {
                 const res = await bankQuestionsService.getAllBankQuestions({
                     page,
                     perPage: pagination.perPage,
-                        teacher_id: user?.id,
+                    teacher_id: user?.id,
                     ...(debouncedSearch ? { search: debouncedSearch } : {}),
                 });
 
@@ -174,9 +175,9 @@ export const InstructorBankQuestions: React.FC = () => {
         [debouncedSearch, pagination.perPage]
     );
 
-    useEffect(() => 
-        { if (!user) return; startTransition(() => { void fetchQuestions(1); }); 
-}, [fetchQuestions, user]);
+    useEffect(() => {
+        if (!user) return; startTransition(() => { void fetchQuestions(1); });
+    }, [fetchQuestions, user]);
 
     const goToPage = (page: number) => {
         if (page < 1 || page > pagination.lastPage) return;
@@ -191,7 +192,17 @@ export const InstructorBankQuestions: React.FC = () => {
                 title={headerTitle}
                 description={lang === 'ar' ? 'استعرض أسئلة البنك مع Pagination' : 'Browse question bank with pagination'}
                 actions={
+
                     <div className="flex gap-3 items-center">
+
+
+                        <ExportExcelButton
+                            data={questions}
+                            fileName="bank-questions"
+                            label={lang === 'ar' ? 'تصدير' : 'Export'}
+                            disabled={loading || questions.length === 0}
+                        />
+
                         <div className="relative">
                             <Search
                                 className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`}

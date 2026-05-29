@@ -165,15 +165,42 @@ class ExamService extends BaseService<Exam> {
   // ✅ تحديث امتحان
   async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {
     try {
-      const response = await api.patch(`/${this.endpoint}/${id}`, data);
-      toast({ title: "Success", description: "Exam updated successfully" });
-      return response.data.data;
+      // Prepare payload based on your requirement
+      const payload = {
+        title: data.title,
+        title_ar: data.title_ar,
+        description: data.description,
+        description_ar: data.description_ar,
+        teacher_id: data.teacher_id,
+        course_detail_id: data.course_detail_id,
+        stage_id: data.stage_id,
+        total_marks: data.total_marks,
+        // Only include pass marks if it has a value or handled by backend default
+        ...(data.total_marks_pass_marks && { total_marks_pass_marks: data.total_marks_pass_marks }),
+        duration_minutes: data.duration_minutes,
+        // Only send image if it changed or is new
+        ...(data.image && { image: data.image }),
+      };
+
+      const response = await api.patch(`/${this.endpoint}/${id}`, payload);
+
+      // Assuming API returns { status: 200, data: { ...exam } }
+      if (response.data?.status === 200) {
+        toast({ title: "Success", description: "Exam updated successfully" });
+        return response.data.data;
+      }
+
+      throw new Error(response.data?.message || "Failed to update");
+
     } catch (error: any) {
-      toast({ title: "Error", description: error.response?.data?.message || "Failed to update exam", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update exam",
+        variant: "destructive"
+      });
       throw error;
     }
   }
-
   // ✅ نقل امتحان إلى سلة المحذوفات
   async deleteExam(id: number): Promise<void> {
     try {

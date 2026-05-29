@@ -244,6 +244,7 @@ export const InstructorExams: React.FC = () => {
   const [examStartedAt, setExamStartedAt] = useState<Date | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [showingExam, setShowingExam] = useState(false);
+  const [editingExamId, setEditingExamId] = useState<number | null>(null);
   // ✅ Pagination
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -443,16 +444,15 @@ export const InstructorExams: React.FC = () => {
   const createExamHandler = async () => {
     if (isCreating) return;
 
+    // ✅ Validations (Keep your existing validation code here)
     if (!examFormData.title) {
       toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الامتحان' : 'Please enter exam title');
       return;
     }
-
     if (!examFormData.stage_id) {
       toast.error(lang === 'ar' ? 'يرجى اختيار المرحلة' : 'Please select stage');
       return;
     }
-
     if (!examFormData.course_detail_id) {
       toast.error(lang === 'ar' ? 'يرجى اختيار الدرس' : 'Please select lesson');
       return;
@@ -460,30 +460,76 @@ export const InstructorExams: React.FC = () => {
 
     setIsCreating(true);
 
-    
-
     try {
-      const newExam = await examService.createExam({
-        ...examFormData,
-        teacher_id: user?.id || 1,
-        type: 'exam',
-        image: imageId || undefined,
-      });
-      console.log('Created exam:', newExam);
-      setSelectedExamId(newExam.id);
-      setShowExamForm(false);
-      setActiveTab('questions');
-      toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
+      // ✅ Check if Editing or Creating
+      if (editingExamId) {
+        // --- UPDATE LOGIC ---
+        await examService.updateExam(editingExamId, {
+          ...examFormData,
+          teacher_id: user?.id || 1,
+          image: imageId || undefined,
+        });
 
-      resetExamForm();
+        toast.success(lang === 'ar' ? 'تم تحديث الامتحان بنجاح' : 'Exam updated successfully');
 
+        resetExamForm();
+        setShowExamForm(false);
+        fetchExams(); // Refresh list
+
+      } else {
+        // --- CREATE LOGIC (Your existing code) ---
+        const newExam = await examService.createExam({
+          ...examFormData,
+          teacher_id: user?.id || 1,
+          type: 'exam',
+          image: imageId || undefined,
+        });
+
+        setSelectedExamId(newExam.id);
+        setShowExamForm(false);
+        setActiveTab('questions');
+        toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
+
+        resetExamForm();
+        fetchExams();
+      }
     } catch (error) {
-      console.error('Error creating exam:', error);
-      toast.error(lang === 'ar' ? 'حدث خطأ في إنشاء الامتحان' : 'Error creating exam');
+      console.error('Error saving exam:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ في حفظ الامتحان' : 'Error saving exam');
     } finally {
       setIsCreating(false);
     }
   };
+
+  // ✅ Handle Edit Click
+  const handleEditClick = (exam: any) => {
+    setEditingExamId(exam.id);
+
+    // 1. Fill Form Data
+    setExamFormData({
+      title: exam.title || '',
+      title_ar: exam.title_ar || '',
+      description: exam.description || '',
+      description_ar: exam.description_ar || '',
+      total_marks: exam.total_marks || 0,
+      total_marks_pass_marks: exam.total_marks_pass_marks || 0,
+      duration_minutes: exam.duration_minutes || 0,
+      course_detail_id: exam.course_detail_id || null,
+      stage_id: exam.stage_id || null,
+    });
+
+    // 2. Set Image
+    if (exam.image && exam.image.id) {
+      setImageId(exam.image.id);
+    } else {
+      setImageId(null);
+    }
+
+    // 3. Open Form
+    setShowExamForm(true);
+  };
+
+
 
   // ✅ دالة تنظيف الفورم
   const resetExamForm = () => {
@@ -499,6 +545,7 @@ export const InstructorExams: React.FC = () => {
       stage_id: null,
     });
     setImageId(null);
+    setEditingExamId(null);
   };
 
   // ✅ حذف امتحان
@@ -547,7 +594,7 @@ export const InstructorExams: React.FC = () => {
 
           <div className="text-end">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              {t('createNewExam')}
+              {editingExamId ? (lang === 'ar' ? 'تعديل امتحان' : 'Edit Exam') : t('createNewExam')}
             </h1>
 
             <p className="text-muted-foreground mt-1 text-sm">
@@ -894,15 +941,16 @@ export const InstructorExams: React.FC = () => {
                   {isCreating ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin me-2" />
-
-                      {lang === 'ar'
-                        ? 'جاري إنشاء الامتحان...'
-                        : 'Creating Exam...'}
+                      {lang === 'ar' ? 'جاري الحفظ...' : 'Saving...'}
+                    </>
+                  ) : editingExamId ? ( // ✅ if editing
+                    <>
+                      <Save className="h-5 w-5 me-2" />
+                      {lang === 'ar' ? 'حفظ التعديلات' : 'Save Changes'}
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-5 w-5 me-2" />
-
                       {t('createAndAddQuestions')}
                     </>
                   )}
@@ -1777,13 +1825,14 @@ rounded-2xl
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.15 }}
-                        className="flex gap-3 mt-3"
+                        className="flex flex-col gap-2 mt-3"
                       >
-                        <motion.div className="flex-1" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        {/* الصف الأول */}
+                        <div className="flex gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="w-full gap-1 rounded-lg"
+                            className="flex-1 gap-1 rounded-lg"
                             onClick={() => {
                               setSelectedExamId(exam.id);
                               setActiveTab('questions');
@@ -1792,47 +1841,39 @@ rounded-2xl
                             <Plus className="h-3 w-3" />
                             {t('addQuestions')}
                           </Button>
-                        </motion.div>
-                        <motion.div
-                          className="flex-1"
-                          whileHover={{ scale: 1.03 }}
-                          whileTap={{ scale: 0.97 }}
-                        >
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 gap-1 rounded-lg border-warning text-warning hover:bg-warning/10"
+                            onClick={() => handleEditClick(exam)}
+                          >
+                            <Settings2 className="h-3 w-3" />
+                            {lang === 'ar' ? 'تعديل' : 'Edit'}
+                          </Button>
+                        </div>
+
+                        {/* الصف الثاني */}
+                        <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="
-      w-full
-      gap-2
-      rounded-xl
-      border-primary/30
-      bg-primary/5
-      hover:bg-primary/10
-      hover:border-primary/50
-      transition-all
-      duration-300
-      shadow-sm
-      hover:shadow-lg
-    "
+                            className="flex-1 gap-2 rounded-lg border-primary/30 bg-primary/5 hover:bg-primary/10"
                             onClick={() => showExam(exam)}
                           >
-                            <Eye className="h-4 w-4" />
-
-                            {lang === 'ar'
-                              ? 'عرض الامتحان'
-                              : 'Show Exam'}
+                            <Eye className="h-3 w-3" />
+                            {lang === 'ar' ? 'عرض' : 'View'}
                           </Button>
-                        </motion.div>
-                        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+
                           <Button
                             variant="destructive"
                             size="sm"
-                            className="rounded-lg"
+                            className="rounded-lg px-3" // تقليل الحجم
                             onClick={() => deleteExam(exam.id)}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
-                        </motion.div>
+                        </div>
                       </motion.div>
                     </div>
                   </div>
