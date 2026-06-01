@@ -1026,7 +1026,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
               <h3 className="font-semibold text-lg">All Assignments</h3>
               <p className="text-sm text-muted-foreground">Review and grade student submissions</p>
             </div>
-            <Button className="gap-2"><Plus className="h-4 w-4" />Create Assignment</Button>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -1062,7 +1061,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
               <h3 className="font-semibold text-lg">All Exams</h3>
               <p className="text-sm text-muted-foreground">Create and manage examinations</p>
             </div>
-            <Button className="gap-2"><Plus className="h-4 w-4" />Create Exam</Button>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -1183,34 +1181,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
             </Card>
           </div>
 
-          <Card className="p-6">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Download className="h-5 w-5 text-primary" />
-              Export Reports
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Report Type</Label>
-                <select className="w-full mt-1 rounded-lg border p-2">
-                  <option>Student Progress Report</option>
-                  <option>Course Analytics Report</option>
-                  <option>Revenue Report</option>
-                  <option>Exam Performance Report</option>
-                </select>
-              </div>
-              <div>
-                <Label>Date Range</Label>
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  <Input type="date" placeholder="From" />
-                  <Input type="date" placeholder="To" />
-                </div>
-              </div>
-            </div>
-            <Button className="w-full mt-4 gap-2">
-              <Download className="h-4 w-4" />
-              Generate & Download Report
-            </Button>
-          </Card>
+       
         </>
       ) : (
         <div className="text-center py-12">

@@ -12,15 +12,191 @@ import {
   ArrowLeft, Phone, Calendar, CheckCircle, XCircle,
   BookOpen, GraduationCap, Video, Clock, DollarSign,
   Loader2, Sparkles, Trophy, Award, Calendar as CalendarIcon,
-  Monitor, Building2, Users, Eye
+  Monitor, Building2, Users, Eye, FileQuestion, FileText,
+  Edit3, Save, X, AlertCircle, TrendingUp, Star
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import api from '@/lib/api';
 
 interface StudentLearningPageProps {
   studentId: number;
   onBack: () => void;
 }
+
+interface ExamQuestion {
+  id: number;
+  question: string;
+  mark: string;
+  question_type: string;
+  correct_answer: string | null;
+  student_answer: string | null;
+  is_correct: boolean | null;
+  mark_obtained: string | null;
+}
+
+interface StudentExam {
+  exam: {
+    id: number;
+    title: string;
+    total_marks: number;
+    type: string;
+  };
+  student_mark: number | null;
+  questions: ExamQuestion[];
+}
+
+interface GradeEssayModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  question: ExamQuestion | null;
+  examTitle: string;
+  onGradeSubmit: (answerId: number, mark: number) => Promise<void>;
+}
+
+const GradeEssayModal: React.FC<GradeEssayModalProps> = ({
+  isOpen,
+  onClose,
+  question,
+  examTitle,
+  onGradeSubmit
+}) => {
+  const { lang } = useApp();
+  const [mark, setMark] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (question) {
+      setMark(Number(question.mark_obtained) || 0);
+      setError('');
+    }
+  }, [question]);
+
+  const maxMark = question ? parseFloat(question.mark) : 0;
+
+  const handleSubmit = async () => {
+    if (mark < 0 || mark > maxMark) {
+      setError(lang === 'ar' ? `الدرجة يجب أن تكون بين 0 و ${maxMark}` : `Mark must be between 0 and ${maxMark}`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onGradeSubmit(question!.id, mark);
+      toast.success(lang === 'ar' ? 'تم حفظ التصحيح بنجاح' : 'Grade saved successfully');
+      onClose();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'حدث خطأ أثناء حفظ التصحيح' : 'Error saving grade'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Edit3 className="h-5 w-5 text-primary" />
+            {lang === 'ar' ? 'تصحيح السؤال' : 'Grade Question'}
+          </DialogTitle>
+          <DialogDescription>
+            {examTitle} - {lang === 'ar' ? 'تصحيح السؤال المقالي' : 'Essay Question Grading'}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* السؤال */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">
+              {lang === 'ar' ? 'السؤال' : 'Question'}
+            </Label>
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-sm">{question?.question}</p>
+            </div>
+          </div>
+
+          {/* إجابة الطالب */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">
+              {lang === 'ar' ? 'إجابة الطالب' : 'Student Answer'}
+            </Label>
+            <div className="p-3 bg-muted/30 rounded-lg border">
+              <p className="text-sm whitespace-pre-wrap">
+                {question?.student_answer || (lang === 'ar' ? 'لم يتم تقديم إجابة' : 'No answer provided')}
+              </p>
+            </div>
+          </div>
+
+          {/* درجة السؤال */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">
+              {lang === 'ar' ? 'الدرجة' : 'Mark'} ({lang === 'ar' ? 'الحد الأقصى' : 'Max'}: {maxMark})
+            </Label>
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                value={mark}
+                onChange={(e) => setMark(parseFloat(e.target.value) || 0)}
+                className="w-32"
+                min={0}
+                max={maxMark}
+                step={0.5}
+              />
+              <span className="text-sm text-muted-foreground">/ {maxMark}</span>
+            </div>
+            {error && (
+              <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                <AlertCircle className="h-3 w-3" />
+                {error}
+              </p>
+            )}
+          </div>
+
+          {/* ملاحظات (اختياري) */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">
+              {lang === 'ar' ? 'ملاحظات (اختياري)' : 'Feedback (Optional)'}
+            </Label>
+            <Textarea
+              placeholder={lang === 'ar' ? 'أضف ملاحظات للطالب...' : 'Add feedback for the student...'}
+              className="resize-none"
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>
+            <X className="h-4 w-4 ml-2" />
+            {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+          </Button>
+          <Button onClick={handleSubmit} disabled={loading}>
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin ml-2" />
+            ) : (
+              <Save className="h-4 w-4 ml-2" />
+            )}
+            {lang === 'ar' ? 'حفظ التصحيح' : 'Save Grade'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studentId, onBack }) => {
   const { t, lang } = useApp();
@@ -29,6 +205,14 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<StudentLearningData | null>(null);
   const [activeTab, setActiveTab] = useState('courses');
+  
+  // Grade Essay Modal
+  const [gradeModalOpen, setGradeModalOpen] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<ExamQuestion | null>(null);
+  const [selectedExamTitle, setSelectedExamTitle] = useState('');
+  
+  // Refresh trigger
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,12 +222,35 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
         setData(result);
       } catch (error) {
         console.error('Failed to fetch student learning data:', error);
+        toast.error(lang === 'ar' ? 'فشل في تحميل بيانات الطالب' : 'Failed to load student data');
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [studentId]);
+  }, [studentId, refreshKey]);
+
+  const handleGradeEssay = async (answerId: number, mark: number) => {
+    try {
+      await api.post('/exam/grade-essay', {
+        answer_id: answerId,
+        mark: mark
+      });
+      // Refresh data
+      setRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Grade essay error:', error);
+      throw error;
+    }
+  };
+
+  const openGradeModal = (question: ExamQuestion, examTitle: string) => {
+    if (question.question_type === 'essay' && question.student_answer) {
+      setSelectedQuestion(question);
+      setSelectedExamTitle(examTitle);
+      setGradeModalOpen(true);
+    }
+  };
 
   if (loading) {
     return (
@@ -63,7 +270,8 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
     );
   }
 
-  const { student, semesters, courses, lessons } = data;
+  const { student, semesters, courses, lessons, exams, assignments } = data as any;
+  console.log('📊 Student Learning Data:', exams);
   const studentName = isRTL && (student as any).name_ar ? (student as any).name_ar : student.name;
   const stageName = isRTL && student.stage?.name_ar ? student.stage.name_ar : student.stage?.name;
 
@@ -86,12 +294,40 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
     });
   };
 
+  const getQuestionTypeLabel = (type: string) => {
+    const types: Record<string, { label: string; color: string }> = {
+      true_false: { label: 'صح/خطأ', color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400' },
+      multiple_choice: { label: 'اختيار من متعدد', color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400' },
+      essay: { label: 'مقالي', color: 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400' },
+    };
+    return types[type] || { label: type, color: 'bg-gray-100 text-gray-700' };
+  };
+
+  const getStatusIcon = (isCorrect: boolean | null) => {
+    if (isCorrect === true) return <CheckCircle className="h-4 w-4 text-green-500" />;
+    if (isCorrect === false) return <XCircle className="h-4 w-4 text-red-500" />;
+    return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+  };
+
   // إحصائيات
   const stats = {
     totalCourses: courses?.length || 0,
     totalSemesters: semesters?.length || 0,
     totalLessons: lessons?.length || 0,
+    totalExams: exams?.length || 0,
+    totalAssignments: assignments?.length || 0,
   };
+
+  // حساب متوسط الدرجات
+  const calculateAverageScore = (items: StudentExam[]) => {
+    if (!items || items.length === 0) return 0;
+    const total = items.reduce((sum, item) => sum + (item.student_mark || 0), 0);
+    const totalMax = items.reduce((sum, item) => sum + item.exam.total_marks, 0);
+    return totalMax > 0 ? Math.round((total / totalMax) * 100) : 0;
+  };
+
+  const examAvgScore = calculateAverageScore(exams || []);
+  const assignmentAvgScore = calculateAverageScore(assignments || []);
 
   return (
     <motion.div
@@ -99,7 +335,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
       animate={{ opacity: 1 }}
       className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950"
     >
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
         
         {/* Header with Back Button */}
         <div className="flex items-center gap-3">
@@ -121,7 +357,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
           transition={{ type: "spring", stiffness: 300 }}
         >
           <Card className="relative overflow-hidden rounded-3xl border-0 shadow-xl">
-            {/* Header Gradient */}
             <div className="relative h-32 bg-gradient-to-r from-blue-600 to-cyan-600">
               <div className="absolute -bottom-12 left-6">
                 <div className="w-24 h-24 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-xl border-4 border-white dark:border-gray-800">
@@ -132,7 +367,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
               </div>
             </div>
 
-            {/* Student Info */}
             <div className="p-6 pt-14">
               <div className="flex flex-wrap justify-between items-start gap-4">
                 <div>
@@ -152,7 +386,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                 </div>
               </div>
 
-              {/* Contact Details Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 p-4 bg-muted/30 rounded-2xl">
                 <div className="flex items-center gap-3">
                   <Phone className="h-5 w-5 text-primary" />
@@ -192,33 +425,65 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
         </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
           {[
             { label: t('courses') || 'الكورسات', value: stats.totalCourses, icon: BookOpen, color: 'from-blue-500 to-cyan-500' },
             { label: t('semesters') || 'الترم', value: stats.totalSemesters, icon: CalendarIcon, color: 'from-purple-500 to-pink-500' },
             { label: t('lessons') || 'الدروس', value: stats.totalLessons, icon: Video, color: 'from-green-500 to-emerald-500' },
+            { label: t('exams') || 'الامتحانات', value: stats.totalExams, icon: FileQuestion, color: 'from-red-500 to-rose-500' },
+            { label: t('assignments') || 'الواجبات', value: stats.totalAssignments, icon: FileText, color: 'from-orange-500 to-amber-500' },
           ].map((stat, idx) => (
             <motion.div
               key={idx}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
+              transition={{ delay: idx * 0.05 }}
               whileHover={{ scale: 1.02, y: -2 }}
-              className="relative overflow-hidden rounded-xl p-4 shadow-lg"
+              className="relative overflow-hidden rounded-xl p-3 md:p-4 shadow-lg"
               style={{ background: `linear-gradient(135deg, ${stat.color.split(' ')[1]}20, ${stat.color.split(' ')[3]}10)` }}
             >
               <div className="relative z-10 flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  <p className="text-2xl font-bold mt-1">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  <p className="text-xl md:text-2xl font-bold mt-1">{stat.value}</p>
                 </div>
-                <div className="p-2 rounded-lg bg-white/20 backdrop-blur">
-                  <stat.icon className="h-5 w-5" />
+                <div className="p-1.5 md:p-2 rounded-lg bg-white/20 backdrop-blur">
+                  <stat.icon className="h-4 w-4 md:h-5 md:w-5" />
                 </div>
               </div>
             </motion.div>
           ))}
         </div>
+
+        {/* Average Scores */}
+        {(examAvgScore > 0 || assignmentAvgScore > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {examAvgScore > 0 && (
+              <Card className="p-4 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/20 dark:to-rose-950/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{lang === 'ar' ? 'متوسط درجات الامتحانات' : 'Average Exam Score'}</p>
+                    <p className="text-2xl font-bold text-red-600">{examAvgScore}%</p>
+                  </div>
+                  <Trophy className="h-8 w-8 text-red-500 opacity-50" />
+                </div>
+                <Progress value={examAvgScore} className="h-2 mt-2 bg-red-200" />
+              </Card>
+            )}
+            {assignmentAvgScore > 0 && (
+              <Card className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{lang === 'ar' ? 'متوسط درجات الواجبات' : 'Average Assignment Score'}</p>
+                    <p className="text-2xl font-bold text-orange-600">{assignmentAvgScore}%</p>
+                  </div>
+                  <Star className="h-8 w-8 text-orange-500 opacity-50" />
+                </div>
+                <Progress value={assignmentAvgScore} className="h-2 mt-2 bg-orange-200" />
+              </Card>
+            )}
+          </div>
+        )}
 
         {/* Learning Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -234,6 +499,14 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
             <TabsTrigger value="lessons" className="rounded-xl px-4 py-2 gap-2">
               <Video className="h-4 w-4" />
               {t('lessons') || 'الدروس'} ({stats.totalLessons})
+            </TabsTrigger>
+            <TabsTrigger value="exams" className="rounded-xl px-4 py-2 gap-2">
+              <FileQuestion className="h-4 w-4" />
+              {t('exams') || 'الامتحانات'} ({stats.totalExams})
+            </TabsTrigger>
+            <TabsTrigger value="assignments" className="rounded-xl px-4 py-2 gap-2">
+              <FileText className="h-4 w-4" />
+              {t('assignments') || 'الواجبات'} ({stats.totalAssignments})
             </TabsTrigger>
           </TabsList>
 
@@ -358,10 +631,10 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                               <h4 className="font-semibold">{isRTL ? lesson.title_ar : lesson.title}</h4>
                               <p className="text-sm text-muted-foreground line-clamp-1 mt-1">{lesson.description}</p>
                             </div>
-                            {lesson.completed && (
+                            {lesson.attended && (
                               <Badge className="bg-green-500 gap-1">
                                 <CheckCircle className="h-3 w-3" />
-                                مكتمل
+                                تم الحضور
                               </Badge>
                             )}
                           </div>
@@ -385,7 +658,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                               </span>
                             )}
                           </div>
-                          {lesson.content_link && (
+                          {lesson.content_link && lesson.content_link !== 'You must pass the exam first' && (
                             <a
                               href={lesson.content_link}
                               target="_blank"
@@ -396,7 +669,247 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                               مشاهدة الدرس
                             </a>
                           )}
+                          {lesson.content_link === 'You must pass the exam first' && (
+                            <p className="text-xs text-yellow-600 flex items-center gap-1 mt-2">
+                              <AlertCircle className="h-3 w-3" />
+                              يجب اجتياز الامتحان أولاً
+                            </p>
+                          )}
                         </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Exams Tab */}
+          <TabsContent value="exams" className="mt-6">
+            {exams?.length === 0 ? (
+              <Card className="p-12 text-center">
+                <FileQuestion className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">{t('noExams') || 'لا توجد امتحانات مسجلة لهذا الطالب'}</p>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {exams?.map((exam: StudentExam, idx: number) => (
+                  <motion.div
+                    key={exam.exam.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                  >
+                    <Card className="overflow-hidden rounded-xl">
+                      {/* Exam Header */}
+                      <div className="p-4 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border-b">
+                        <div className="flex flex-wrap justify-between items-start gap-3">
+                          <div>
+                            <h3 className="font-bold text-lg flex items-center gap-2">
+                              <FileQuestion className="h-5 w-5 text-red-500" />
+                              {exam.exam.title}
+                            </h3>
+                            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                              <span>الدرجة الكلية: {exam.exam.total_marks}</span>
+                              {exam.student_mark !== null && (
+                                <span className="font-semibold text-red-600">
+                                  درجة الطالب: {exam.student_mark} / {exam.exam.total_marks}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            امتحان
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Exam Questions */}
+                      <div className="divide-y">
+                        {exam.questions?.map((question, qIdx) => {
+                          const typeInfo = getQuestionTypeLabel(question.question_type);
+                          const isEssay = question.question_type === 'essay';
+                          const needsGrading = isEssay && question.student_answer && question.mark_obtained === null;
+                          
+                          return (
+                            <div key={question.id} className="p-4 hover:bg-muted/20 transition-colors">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      السؤال {qIdx + 1}
+                                    </span>
+                                    <Badge className={`text-xs ${typeInfo.color}`}>
+                                      {typeInfo.label}
+                                    </Badge>
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      {getStatusIcon(question.is_correct)}
+                                      <span>({question.mark_obtained || 0}/{question.mark})</span>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm font-medium">{question.question}</p>
+                                  
+                                  {/* Student Answer */}
+                                  {question.student_answer && (
+                                    <div className="mt-2 p-2 bg-muted/30 rounded-lg">
+                                      <p className="text-xs text-muted-foreground mb-1">
+                                        {lang === 'ar' ? 'إجابة الطالب:' : 'Student Answer:'}
+                                      </p>
+                                      <p className="text-sm">{question.student_answer}</p>
+                                    </div>
+                                  )}
+                                  
+                                  {!question.student_answer && (
+                                    <p className="text-xs text-yellow-600 mt-2 flex items-center gap-1">
+                                      <AlertCircle className="h-3 w-3" />
+                                      {lang === 'ar' ? 'لم يتم تقديم إجابة' : 'No answer provided'}
+                                    </p>
+                                  )}
+                                </div>
+                                
+                                {/* Grade Essay Button */}
+                                {isEssay && question.student_answer && (
+                                  <Button
+                                    size="sm"
+                                    variant={needsGrading ? "default" : "outline"}
+                                    onClick={() => openGradeModal(question, exam.exam.title)}
+                                    className="shrink-0"
+                                  >
+                                    {needsGrading ? (
+                                      <>
+                                        <Edit3 className="h-3 w-3 ml-1" />
+                                        {lang === 'ar' ? 'تصحيح' : 'Grade'}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Eye className="h-3 w-3 ml-1" />
+                                        {lang === 'ar' ? 'عرض التصحيح' : 'View Grade'}
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Assignments Tab */}
+          <TabsContent value="assignments" className="mt-6">
+            {assignments?.length === 0 ? (
+              <Card className="p-12 text-center">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">{t('noAssignments') || 'لا توجد واجبات مسجلة لهذا الطالب'}</p>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {assignments?.map((assignment: StudentExam, idx: number) => (
+                  <motion.div
+                    key={assignment.exam.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                  >
+                    <Card className="overflow-hidden rounded-xl">
+                      {/* Assignment Header */}
+                      <div className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border-b">
+                        <div className="flex flex-wrap justify-between items-start gap-3">
+                          <div>
+                            <h3 className="font-bold text-lg flex items-center gap-2">
+                              <FileText className="h-5 w-5 text-orange-500" />
+                              {assignment.exam.title}
+                            </h3>
+                            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                              <span>الدرجة الكلية: {assignment.exam.total_marks}</span>
+                              {assignment.student_mark !== null && (
+                                <span className="font-semibold text-orange-600">
+                                  درجة الطالب: {assignment.student_mark} / {assignment.exam.total_marks}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            واجب
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Assignment Questions */}
+                      <div className="divide-y">
+                        {assignment.questions?.map((question, qIdx) => {
+                          const typeInfo = getQuestionTypeLabel(question.question_type);
+                          const isEssay = question.question_type === 'essay';
+                          const needsGrading = isEssay && question.student_answer && question.mark_obtained === null;
+                          
+                          return (
+                            <div key={question.id} className="p-4 hover:bg-muted/20 transition-colors">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      السؤال {qIdx + 1}
+                                    </span>
+                                    <Badge className={`text-xs ${typeInfo.color}`}>
+                                      {typeInfo.label}
+                                    </Badge>
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      {getStatusIcon(question.is_correct)}
+                                      <span>({question.mark_obtained || 0}/{question.mark})</span>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm font-medium">{question.question}</p>
+                                  
+                                  {/* Student Answer */}
+                                  {question.student_answer && (
+                                    <div className="mt-2 p-2 bg-muted/30 rounded-lg">
+                                      <p className="text-xs text-muted-foreground mb-1">
+                                        {lang === 'ar' ? 'إجابة الطالب:' : 'Student Answer:'}
+                                      </p>
+                                      <p className="text-sm">{question.student_answer}</p>
+                                    </div>
+                                  )}
+                                  
+                                  {!question.student_answer && (
+                                    <p className="text-xs text-yellow-600 mt-2 flex items-center gap-1">
+                                      <AlertCircle className="h-3 w-3" />
+                                      {lang === 'ar' ? 'لم يتم تقديم إجابة' : 'No answer provided'}
+                                    </p>
+                                  )}
+                                </div>
+                                
+                                {/* Grade Essay Button */}
+                                {isEssay && question.student_answer && (
+                                  <Button
+                                    size="sm"
+                                    variant={needsGrading ? "default" : "outline"}
+                                    onClick={() => openGradeModal(question, assignment.exam.title)}
+                                    className="shrink-0"
+                                  >
+                                    {needsGrading ? (
+                                      <>
+                                        <Edit3 className="h-3 w-3 ml-1" />
+                                        {lang === 'ar' ? 'تصحيح' : 'Grade'}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Eye className="h-3 w-3 ml-1" />
+                                        {lang === 'ar' ? 'عرض التصحيح' : 'View Grade'}
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </Card>
                   </motion.div>
@@ -406,6 +919,18 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Grade Essay Modal */}
+      <GradeEssayModal
+        isOpen={gradeModalOpen}
+        onClose={() => {
+          setGradeModalOpen(false);
+          setSelectedQuestion(null);
+        }}
+        question={selectedQuestion}
+        examTitle={selectedExamTitle}
+        onGradeSubmit={handleGradeEssay}
+      />
     </motion.div>
   );
 };

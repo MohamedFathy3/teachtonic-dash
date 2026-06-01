@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/payment-codes/PaymentCodesPage.tsx
-import { ExportExcelButton } from '@/components/common/ExportExcelButton'; // ✅ أضف هذا الاستيراد
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,12 +9,20 @@ import { useApp } from '@/contexts/AppContext';
 import {
   Plus, Trash2, Copy, Check, TrendingUp, Wallet, BookOpen,
   Calendar, FileText, Sparkles, Search, Filter, X, Eye,
-  Tag, DollarSign, Clock, Zap, Layers
+  Tag, DollarSign, Clock, Zap, Layers, ChevronLeft, ChevronRight,
+  ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const PaymentCodesPage: React.FC = () => {
   const { lang } = useApp();
@@ -25,6 +32,11 @@ export const PaymentCodesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
   const [filters, setFilters] = useState({
     type: '',
     is_used: undefined as boolean | undefined,
@@ -34,7 +46,7 @@ export const PaymentCodesPage: React.FC = () => {
   const { data, isLoading, refetch } = useGetAllCodes({
     ...filters,
     search: debouncedSearch,
-    perPage: 1000,
+    perPage: 1000, // نحتاج كل البيانات للفلترة والترتيب
   });
 
   const deleteCodes = useDeleteCodes();
@@ -42,11 +54,19 @@ export const PaymentCodesPage: React.FC = () => {
 
   // Debounce search
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1); // إعادة تعيين الصفحة عند البحث
+    }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // 🔥 استخراج الكودات من الهيكل المتداخل الفعلي
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters.type, filters.is_used]);
+
+  // استخراج الكودات من الهيكل المتداخل الفعلي وترتيبها من الأحدث إلى الأقدم
   const extractCodesFromResponse = (responseData: any): any[] => {
     if (!responseData) return [];
 
@@ -88,7 +108,14 @@ export const PaymentCodesPage: React.FC = () => {
       });
     }
 
-    // تطبيق الفلترة حسب النص (لأن الـ API يمكن لا يدعم البحث في كل الأنواع)
+    // ترتيب الكودات من الأحدث إلى الأقدم (حسب created_at)
+    allCodes.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return dateB - dateA; // الأحدث أولاً
+    });
+
+    // تطبيق الفلترة حسب النص
     if (debouncedSearch) {
       allCodes = allCodes.filter((code: any) =>
         code.code.toLowerCase().includes(debouncedSearch.toLowerCase())
@@ -108,21 +135,36 @@ export const PaymentCodesPage: React.FC = () => {
     return allCodes;
   };
 
-  const codes = useMemo(() => {
+  const allCodes = useMemo(() => {
     return extractCodesFromResponse(data?.data);
   }, [data?.data, debouncedSearch, filters.type, filters.is_used]);
 
-  // إحصائيات من البيانات المستخلصة (أو من الـ statistics إذا كان موثوقًا)
+  // Pagination calculations
+  const totalPages = Math.ceil(allCodes.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentCodes = allCodes.slice(startIndex, endIndex);
+
+  // إحصائيات من البيانات المستخلصة
   const statsData = useMemo(() => {
-    const total = codes.length;
-    const used = codes.filter((c: any) => c.is_used === 1 || c.is_used === true).length;
+    const total = allCodes.length;
+    const used = allCodes.filter((c: any) => c.is_used === 1 || c.is_used === true).length;
     const unused = total - used;
+    const walletCodes = allCodes.filter((c: any) => c.type === 'wallet').length;
+    const courseCodes = allCodes.filter((c: any) => c.type === 'course').length;
+    const semesterCodes = allCodes.filter((c: any) => c.type === 'semester').length;
+    const lessonCodes = allCodes.filter((c: any) => c.type === 'lesson').length;
+    
     return {
       total_codes: total,
       used_codes: used,
       unused_codes: unused,
+      wallet_codes: walletCodes,
+      course_codes: courseCodes,
+      semester_codes: semesterCodes,
+      lesson_codes: lessonCodes,
     };
-  }, [codes]);
+  }, [allCodes]);
 
   const statsCards = [
     {
@@ -168,7 +210,7 @@ export const PaymentCodesPage: React.FC = () => {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(codes.map((c: any) => c.id));
+      setSelectedIds(currentCodes.map((c: any) => c.id));
     } else {
       setSelectedIds([]);
     }
@@ -185,6 +227,43 @@ export const PaymentCodesPage: React.FC = () => {
   const clearSearch = () => {
     setSearchQuery('');
     setDebouncedSearch('');
+  };
+
+  // Pagination handlers
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const goToFirstPage = () => setCurrentPage(1);
+  const goToLastPage = () => setCurrentPage(totalPages);
+  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
   };
 
   const getTypeBadge = (type: string) => {
@@ -244,6 +323,8 @@ export const PaymentCodesPage: React.FC = () => {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -323,21 +404,15 @@ export const PaymentCodesPage: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-3">
-            {/* ✅ زرار التصدير */}
-            <ExportExcelButton
-              data={codes}
-              fileName="payment-codes"
-              label={lang === 'ar' ? 'تصدير' : 'Export'}
-              disabled={isLoading || codes.length === 0}
-            />
             <motion.button
               whileHover={{ scale: 1.05, rotate: 90 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowFilters(!showFilters)}
-              className={`p-2.5 rounded-xl border transition-all ${showFilters
+              className={`p-2.5 rounded-xl border transition-all ${
+                showFilters
                   ? 'bg-blue-500 text-white border-blue-500 shadow-md'
                   : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300'
-                }`}
+              }`}
             >
               <Filter size={18} />
             </motion.button>
@@ -471,31 +546,33 @@ export const PaymentCodesPage: React.FC = () => {
         </div>
 
         {/* Select All row */}
-        {codes.length > 0 && (
+        {allCodes.length > 0 && (
           <div className="flex items-center justify-between mb-3 px-2">
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              {lang === 'ar' ? `🔢 إجمالي النتائج: ${codes.length}` : `📊 Total results: ${codes.length}`}
+              {lang === 'ar' 
+                ? `🔢 إجمالي النتائج: ${allCodes.length} | عرض ${startIndex + 1}-${Math.min(endIndex, allCodes.length)}` 
+                : `📊 Total: ${allCodes.length} | Showing ${startIndex + 1}-${Math.min(endIndex, allCodes.length)}`}
             </div>
             <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer hover:text-blue-600 transition-colors">
               <input
                 type="checkbox"
-                checked={selectedIds.length === codes.length && codes.length > 0}
+                checked={selectedIds.length === currentCodes.length && currentCodes.length > 0}
                 onChange={(e) => handleSelectAll(e.target.checked)}
                 className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
               />
-              {lang === 'ar' ? 'اختر الكل' : 'Select All'}
+              {lang === 'ar' ? 'اختر الكل في هذه الصفحة' : 'Select All on this page'}
             </label>
           </div>
         )}
 
-        {/* Codes Table - Enhanced Design */}
+        {/* Codes Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="bg-white dark:bg-gray-800/50 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 backdrop-blur-sm"
         >
-          {codes.length === 0 ? (
+          {allCodes.length === 0 ? (
             <div className="text-center py-20">
               <motion.div
                 animate={{ y: [0, -10, 0] }}
@@ -516,114 +593,221 @@ export const PaymentCodesPage: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
-                  <tr>
-                    <th className="px-5 py-4 text-right w-12">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.length === codes.length && codes.length > 0}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        className="rounded border-gray-300 dark:border-gray-600 w-4 h-4"
-                      />
-                    </th>
-                    <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {lang === 'ar' ? '🏷️ الكود' : '🏷️ Code'}
-                    </th>
-                    <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {lang === 'ar' ? '📂 النوع' : '📂 Type'}
-                    </th>
-                    <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {lang === 'ar' ? '💎 القيمة / المرتبط' : '💎 Value / Linked'}
-                    </th>
-                    <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {lang === 'ar' ? '🟢 الحالة' : '🟢 Status'}
-                    </th>
-                    <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {lang === 'ar' ? '📅 تاريخ الإنشاء' : '📅 Created'}
-                    </th>
-                    <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {lang === 'ar' ? '⚡ الإجراءات' : '⚡ Actions'}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
-                  {codes.map((code: any, index: number) => {
-                    const typeConfig = getTypeBadge(code.type);
-                    const isUsed = code.is_used === 1 || code.is_used === true;
-                    return (
-                      <motion.tr
-                        key={code.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.02 }}
-                        whileHover={{ backgroundColor: lang === 'ar' ? 'rgba(59,130,246,0.05)' : 'rgba(59,130,246,0.03)' }}
-                        className="transition-colors duration-150"
-                      >
-                        <td className="px-5 py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(code.id)}
-                            onChange={(e) => handleSelectCode(code.id, e.target.checked)}
-                            className="rounded border-gray-300 dark:border-gray-600"
-                          />
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <motion.code
-                              whileHover={{ scale: 1.02 }}
-                              className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-sm font-mono font-bold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 shadow-sm"
-                            >
-                              {code.code}
-                            </motion.code>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${typeConfig.bg} ${typeConfig.text} border ${typeConfig.border}`}>
-                            {React.createElement(typeConfig.icon, { size: 14 })}
-                            {typeConfig.label}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-sm">
-                          {getValueDisplay(code)}
-                        </td>
-                        <td className="px-5 py-4">
-                          {getStatusBadge(isUsed)}
-                        </td>
-                        <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                          <Clock size={12} />
-                          {formatDate(code.created_at)}
-                        </td>
-                        <td className="px-5 py-4">
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleCopyCode(code.code)}
-                            className={`text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${copiedCode === code.code
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                                : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50'
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+                    <tr>
+                      <th className="px-5 py-4 text-right w-12">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.length === currentCodes.length && currentCodes.length > 0}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                          className="rounded border-gray-300 dark:border-gray-600 w-4 h-4"
+                        />
+                      </th>
+                      <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        {lang === 'ar' ? '🏷️ الكود' : '🏷️ Code'}
+                      </th>
+                      <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        {lang === 'ar' ? '📂 النوع' : '📂 Type'}
+                      </th>
+                      <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        {lang === 'ar' ? '💎 القيمة / المرتبط' : '💎 Value / Linked'}
+                      </th>
+                      <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        {lang === 'ar' ? '🟢 الحالة' : '🟢 Status'}
+                      </th>
+                      <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        {lang === 'ar' ? '📅 تاريخ الإنشاء' : '📅 Created'}
+                      </th>
+                      <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        {lang === 'ar' ? '⚡ الإجراءات' : '⚡ Actions'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                    {currentCodes.map((code: any, index: number) => {
+                      const typeConfig = getTypeBadge(code.type);
+                      const isUsed = code.is_used === 1 || code.is_used === true;
+                      return (
+                        <motion.tr
+                          key={code.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.02 }}
+                          whileHover={{ backgroundColor: 'rgba(59,130,246,0.03)' }}
+                          className="transition-colors duration-150"
+                        >
+                          <td className="px-5 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(code.id)}
+                              onChange={(e) => handleSelectCode(code.id, e.target.checked)}
+                              className="rounded border-gray-300 dark:border-gray-600"
+                            />
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-2">
+                              <motion.code
+                                whileHover={{ scale: 1.02 }}
+                                className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl text-sm font-mono font-bold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 shadow-sm"
+                              >
+                                {code.code}
+                              </motion.code>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${typeConfig.bg} ${typeConfig.text} border ${typeConfig.border}`}>
+                              {React.createElement(typeConfig.icon, { size: 14 })}
+                              {typeConfig.label}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-sm">
+                            {getValueDisplay(code)}
+                          </td>
+                          <td className="px-5 py-4">
+                            {getStatusBadge(isUsed)}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                            <Clock size={12} />
+                            {formatDate(code.created_at)}
+                          </td>
+                          <td className="px-5 py-4">
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleCopyCode(code.code)}
+                              className={`text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                                copiedCode === code.code
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-950/50'
                               }`}
+                            >
+                              {copiedCode === code.code ? (
+                                <>
+                                  <Check size={14} />
+                                  {lang === 'ar' ? 'تم النسخ' : 'Copied'}
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={14} />
+                                  {lang === 'ar' ? 'نسخ' : 'Copy'}
+                                </>
+                              )}
+                            </motion.button>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Section */}
+              {totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    {/* Items per page selector */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {lang === 'ar' ? 'عرض' : 'Show'}
+                      </span>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                          setItemsPerPage(Number(value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-20 h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[10, 25, 50, 100].map((num) => (
+                            <SelectItem key={num} value={num.toString()}>
+                              {num}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {lang === 'ar' ? 'نتيجة' : 'items'}
+                      </span>
+                    </div>
+
+                    {/* Pagination buttons */}
+                    <div className="flex items-center gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={goToFirstPage}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <ChevronsLeft size={18} />
+                      </motion.button>
+                      
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <ChevronLeft size={18} />
+                      </motion.button>
+
+                      <div className="flex gap-1">
+                        {getPageNumbers().map((page, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => typeof page === 'number' && goToPage(page)}
+                            className={`min-w-[36px] h-9 px-3 rounded-lg text-sm font-medium transition-all ${
+                              currentPage === page
+                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                                : typeof page === 'number'
+                                  ? 'border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                  : 'cursor-default'
+                            }`}
+                            disabled={typeof page !== 'number'}
                           >
-                            {copiedCode === code.code ? (
-                              <>
-                                <Check size={14} />
-                                {lang === 'ar' ? 'تم النسخ' : 'Copied'}
-                              </>
-                            ) : (
-                              <>
-                                <Copy size={14} />
-                                {lang === 'ar' ? 'نسخ' : 'Copy'}
-                              </>
-                            )}
-                          </motion.button>
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            {page}
+                          </button>
+                        ))}
+                      </div>
+
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <ChevronRight size={18} />
+                      </motion.button>
+                      
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={goToLastPage}
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <ChevronsRight size={18} />
+                      </motion.button>
+                    </div>
+
+                    {/* Page info */}
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      {lang === 'ar'
+                        ? `الصفحة ${currentPage} من ${totalPages}`
+                        : `Page ${currentPage} of ${totalPages}`}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </motion.div>
 
@@ -634,6 +818,7 @@ export const PaymentCodesPage: React.FC = () => {
           onSuccess={() => {
             refetch();
             setSelectedIds([]);
+            setCurrentPage(1);
           }}
         />
       </div>

@@ -178,8 +178,6 @@ function LMSApp() {
         case "courses":
           return <AdminCourses />;
 
-        case "payments":
-          return <AdminPayments />;
 
         case "reviews":
           return <AdminReviews />;

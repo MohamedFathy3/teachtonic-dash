@@ -60,7 +60,6 @@ const adminNav: NavItem[] = [
     icon: GraduationCap,
   },
   { to: "courses", labelKey: "courses", icon: BookOpen },
-  { to: "payments", labelKey: "payments", icon: CreditCard },
   { to: "reviews", labelKey: "reviews", icon: Star },
   { to: "settings", labelKey: "settings", icon: Settings },
 ];
