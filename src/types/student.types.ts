@@ -12,7 +12,8 @@ export interface Student {
     progress?: number;
 
     status?: 'active' | 'inactive';
-
+    created_at: string;
+    joined_at?: string;
     enrolledCourses?: number;
 
     completedCourses?: number;
@@ -23,5 +24,6 @@ export interface Student {
 
     totalPoints?: number;
 
+    teacher_id: number;
     lastActive?: string;
 }

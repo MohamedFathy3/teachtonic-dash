@@ -10,7 +10,7 @@ export function useTeacherDashboard(teacherId: number) {
   const [teacherData, setTeacherData] = useState<TeacherResponse | null>(null);
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
 
 
 
@@ -27,7 +27,7 @@ export function useTeacherDashboard(teacherId: number) {
     }
   }, [teacherId]);
 
-  
+
 
 
   // ================= FETCH COURSES (الجديد!) =================
@@ -43,13 +43,28 @@ export function useTeacherDashboard(teacherId: number) {
       setLoading(false);
     }
   }, [teacherId]);
+  const fetchStudents = useCallback(async () => {
+    try {
+      const response =
+        await teachersService.getStudents();
+
+      console.log("STUDENTS => ", response);
+
+      setStudents(response);
+    } catch (error) {
+      console.error(
+        "Error fetching students:",
+        error
+      );
+    }
+  }, []);
+
 
   useEffect(() => {
     fetchTeacher();
     fetchCourses();
-  }, [fetchTeacher, fetchCourses
-  ]);
-
+    fetchStudents();
+  }, [fetchTeacher, fetchCourses, fetchStudents]);
 
 
   // ================= COURSES =================
@@ -95,70 +110,43 @@ export function useTeacherDashboard(teacherId: number) {
     });
   }, [courses]);
 
+
+
+
+
+
   // ================= STUDENTS =================
   const dashboardStudents: Student[] = useMemo(() => {
-    if (!teacherData?.website?.courses) return [];
+    return students
+      .filter(student => student.teacher_id === teacherId)
+      .map(student => ({
+        ...student,
 
-    const studentsMap = new Map<number, Student>();
+        avatar:
+          student.name?.charAt(0)?.toUpperCase() ?? "S",
 
-    teacherData.website.courses.forEach((course) => {
-      const enrolledStudents = (course as any).students ?? [];
+        progress: 0,
 
-      enrolledStudents.forEach((student: any) => {
-        const existingStudent = studentsMap.get(student.id);
+        status: student.active
+          ? "active"
+          : "inactive",
 
-        const lessons = course.details ?? [];
+        enrolledCourses: dashboardCourses.length,
 
-        const examsCount = lessons.reduce(
-          (acc, lesson) => acc + (lesson.exams?.length ?? 0),
-          0
-        );
+        completedCourses: 0,
 
-        const assignmentsCount = lessons.reduce(
-          (acc, lesson) => acc + (lesson.assignments?.length ?? 0),
-          0
-        );
+        totalAssignments: 0,
 
-        const studentData: Student = {
-          id: student.id,
-          name: student.name ?? 'Unknown Student',
-          email: student.email ?? 'No Email',
-          phone: student.phone,
-          avatar: student.name?.charAt(0)?.toUpperCase() ?? 'S',
-          progress: student.progress ?? Math.floor(Math.random() * 100),
-          status: student.active === false ? 'inactive' : 'active',
-          enrolledCourses: (existingStudent?.enrolledCourses ?? 0) + 1,
-          completedCourses: student.completed_courses ?? 0,
-          totalAssignments:
-            (existingStudent?.totalAssignments ?? 0) + assignmentsCount,
-          totalExams: (existingStudent?.totalExams ?? 0) + examsCount,
-          totalPoints: student.total_points ?? 0,
-          lastActive: student.last_active ?? 'Recently Active',
-        };
+        totalExams: 0,
 
-        studentsMap.set(student.id, studentData);
-      });
-    });
+        totalPoints: 0,
 
-    return Array.from(studentsMap.values());
-  }, [teacherData]);
+        lastActive:
+          student.joined_at ??
+          student.created_at,
+      }));
+  }, [students, teacherId, dashboardCourses]);
 
-
-  const fetchStudents = useCallback(async () => {
-    try {
-      const response =
-        await teachersService.getStudents();
-
-      console.log("STUDENTS => ", response);
-
-      setStudents(response);
-    } catch (error) {
-      console.error(
-        "Error fetching students:",
-        error
-      );
-    }
-  }, []);
 
 
   // ================= ASSIGNMENTS =================

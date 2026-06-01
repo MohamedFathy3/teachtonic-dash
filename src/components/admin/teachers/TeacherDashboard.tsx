@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/teachers/TeacherDashboard.tsx
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import teachersService from '@/services/teachers.service';
 
 import { useApp } from '@/contexts/AppContext';
@@ -25,6 +25,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  useEffect,
+  useCallback,
+} from "react";
 interface TeacherDashboardProps {
   teacherId: number;
   teacherName: string;
@@ -43,8 +47,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [courseDetails, setCourseDetails] = useState<any[]>([]);
   const [openDetails, setOpenDetails] = useState(false);
-
-
+  const [searchTerm, setSearchTerm] = useState("");
   const {
     teacherData,
     loading,
@@ -73,6 +76,23 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'theme', label: 'Theme', icon: Award },
   ];
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm.trim()) return dashboardStudents;
+
+    return dashboardStudents.filter(
+      (student) =>
+        student.name
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        student.email
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        student.phone
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase())
+    );
+  }, [dashboardStudents, searchTerm]);
+
 
   if (loading) {
     return (
@@ -103,6 +123,9 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
 
     }
   };
+
+
+
   const courseExams =
     courseDetails.flatMap(
       x => x.exams ?? []
@@ -117,6 +140,9 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     courseDetails.flatMap(
       x => x.books ?? []
     );
+
+
+
   const renderOverview = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -298,7 +324,14 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
       <div className="p-4 border-b">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search students..." className="pl-9" />
+          <Input
+            placeholder="Search students..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) =>
+              setSearchTerm(e.target.value)
+            }
+          />
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -313,7 +346,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
             </tr>
           </thead>
           <tbody>
-            {dashboardStudents.map((student) => (
+            {filteredStudents.map((student) => (
               <tr key={student.id} className="border-t">
                 <td className="p-4">
                   <div className="flex items-center gap-3">

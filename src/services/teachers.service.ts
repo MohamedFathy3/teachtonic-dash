@@ -6,6 +6,7 @@ class TeachersService extends BaseService<TeacherResponse> {
     constructor() {
         super('teacher');
     }
+    
 
     async getTeacherById(teacherId: number): Promise<TeacherResponse> {
         // ✅ استخدم نفس pattern الـ course/index
@@ -72,6 +73,8 @@ class TeachersService extends BaseService<TeacherResponse> {
 
         return response.data?.data ?? [];
     }
+    
+    
     async getStudents() {
     const body = {
         orderBy: "id",
