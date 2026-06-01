@@ -98,15 +98,11 @@ class ExamService extends BaseService<Exam> {
   // ✅ إنشاء امتحان جديد (مع دعم total_marks_pass_marks)
   private creatingExams = new Set<string>();
 
+  // ✅ إنشاء امتحان جديد - يتعامل مع data: null
   async createExam(data: CreateExamDTO): Promise<Exam> {
     const key = `${data.title}_${data.teacher_id}`;
 
     try {
-
-
-
-
-
       if (this.creatingExams.has(key)) {
         throw new Error('Exam creation already in progress');
       }
@@ -132,19 +128,31 @@ class ExamService extends BaseService<Exam> {
 
       console.log("CREATE EXAM RESPONSE:", response.data);
 
-      // نجاح فقط
-      if (
-        response.data?.status === 200 ||
-        response.data?.result === 'Success'
-      ) {
-        // اعمل refetch
+      // ✅ التعامل مع data: null
+      if (response.data?.status === 200 && response.data?.result === "Success") {
+        // ✅ إذا data null، جيب الـ exam من آخر exam تم إنشاؤه
+        if (!response.data?.data) {
+          console.log("⚠️ Data is null, fetching last created exam...");
 
+          // جلب كل الامتحانات وخذ第一个
+          const allExams = await this.getAllExams(
+            { teacher_id: data.teacher_id },
+            1,
+            1
+          );
 
+          if (allExams.data && allExams.data.length > 0) {
+            // رجع أحدث امتحان
+            return allExams.data[0];
+          }
 
-        return response.data;
+          throw new Error('Failed to retrieve created exam');
+        }
+
+        return response.data.data;
       }
 
-      throw new Error('Failed to create exam');
+      throw new Error(response.data?.message || 'Failed to create exam');
 
     } catch (error: any) {
       toast({
@@ -162,10 +170,12 @@ class ExamService extends BaseService<Exam> {
       this.creatingExams.delete(key);
     }
   }
-  // ✅ تحديث امتحان
+  // ✅ function جديدة للـ Edit مع logging
+  // ✅ updateExam - كامل ومصحح
   async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {
+    console.log("📡 updateExam called with:", { id, data });
+
     try {
-      // Prepare payload based on your requirement
       const payload = {
         title: data.title,
         title_ar: data.title_ar,
@@ -175,16 +185,20 @@ class ExamService extends BaseService<Exam> {
         course_detail_id: data.course_detail_id,
         stage_id: data.stage_id,
         total_marks: data.total_marks,
-        // Only include pass marks if it has a value or handled by backend default
-        ...(data.total_marks_pass_marks && { total_marks_pass_marks: data.total_marks_pass_marks }),
+        total_marks_pass_marks: data.total_marks_pass_marks,  // ✅ استخدمي الاسم الصح
         duration_minutes: data.duration_minutes,
-        // Only send image if it changed or is new
-        ...(data.image && { image: data.image }),
       };
 
-      const response = await api.patch(`/${this.endpoint}/${id}`, payload);
+      // ✅ إضافة الصورة لو موجودة
+      if (data.image) {
+        payload.image = data.image;
+      }
 
-      // Assuming API returns { status: 200, data: { ...exam } }
+      console.log("📦 Payload being sent:", payload);
+
+      const response = await api.patch(`/${this.endpoint}/${id}`, payload);
+      console.log("📬 UPDATE EXAM RESPONSE:", response.data);
+
       if (response.data?.status === 200) {
         toast({ title: "Success", description: "Exam updated successfully" });
         return response.data.data;
@@ -193,6 +207,7 @@ class ExamService extends BaseService<Exam> {
       throw new Error(response.data?.message || "Failed to update");
 
     } catch (error: any) {
+      console.error("❌ updateExam error:", error);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to update exam",
@@ -296,7 +311,7 @@ class ExamService extends BaseService<Exam> {
   }
 
 
-  // ✅ إضافة أسئلة متعددة للامتحان (باستخدام add-questions endpoint)
+  // ✅ إضافة أسئلة متعددة للامتحان - تم تصحيح الفحص
   async addQuestions(examId: number, questions: any[]): Promise<boolean> {
     try {
       const payload: AddQuestionsDTO = {
@@ -315,12 +330,14 @@ class ExamService extends BaseService<Exam> {
 
       console.log("ADD QUESTIONS RESPONSE:", response.data);
 
-      // 👇 أهم تعديل هنا
-      if (
-        response.data?.status !== 200 &&
-        response.data?.result !== "Success"
-      ) {
-        throw new Error("Failed to add questions");
+      // ✅ تصحيح الفحص - يتعامل مع status: true أو status: 200
+      const isSuccess =
+        response.data?.status === true ||
+        response.data?.status === 200 ||
+        response.data?.result === "Success";
+
+      if (!isSuccess) {
+        throw new Error(response.data?.message || "Failed to add questions");
       }
 
       return true;

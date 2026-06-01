@@ -6,15 +6,15 @@ import { useApp } from '@/contexts/AppContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
 } from '@/components/ui/popover';
-import { 
-  ChevronDown, 
-  Search, 
-  Loader2, 
+import {
+  ChevronDown,
+  Search,
+  Loader2,
   X,
   ChevronLeft,
   ChevronRight,
@@ -110,14 +110,14 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
     const [lastPage, setLastPage] = useState(1);
     const [fetchingMore, setFetchingMore] = useState(false);
     const [initialLoaded, setInitialLoaded] = useState(false);
-    
+
     const cacheRef = useRef<Map<string, { data: AsyncSelectOption[]; meta: any }>>(new Map());
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
     const scrollRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const isFirstOpenRef = useRef(true);
 
-    const fetchFn = configKey 
+    const fetchFn = configKey
       ? selectFactory.createSelectFetcher(configKey)
       : customFetchFn;
 
@@ -136,9 +136,9 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       append = false
     ) => {
       if (!fetchFn) return;
-      
+
       const cacheKey = getCacheKey(pageNum, perPageNum, searchTerm, extraFilters);
-      
+
       if (cacheData && cacheRef.current.has(cacheKey) && !append) {
         const cached = cacheRef.current.get(cacheKey)!;
         setOptions(cached.data);
@@ -149,7 +149,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
         setInitialLoaded(true);
         return;
       }
-      
+
       if (append) {
         setFetchingMore(true);
       } else {
@@ -212,45 +212,45 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
     }, [search, debounceDelay]);
 
 
-useEffect(() => {
-  if (open) {
-    if (!initialLoaded || page > 1 || searchDebounced !== initialSearch) {
-      if (enableInfiniteScroll && page > 1) {
-        fetchOptions(page, perPage, searchDebounced, true);
-      } else {
-        fetchOptions(page, perPage, searchDebounced, false);
+    useEffect(() => {
+      if (open) {
+        if (!initialLoaded || page > 1 || searchDebounced !== initialSearch) {
+          if (enableInfiniteScroll && page > 1) {
+            fetchOptions(page, perPage, searchDebounced, true);
+          } else {
+            fetchOptions(page, perPage, searchDebounced, false);
+          }
+        }
       }
-    }
-  }
-}, [open, page, perPage, searchDebounced, fetchOptions, enableInfiniteScroll, initialLoaded, extraFilters]);
+    }, [open, page, perPage, searchDebounced, fetchOptions, enableInfiniteScroll, initialLoaded, extraFilters]);
 
 
 
-useEffect(() => {
+    useEffect(() => {
       if (configKey && isFirstOpenRef.current) {
         fetchOptions(1, perPage, '', false);
       }
     }, [configKey]);
 
 
-useEffect(() => {
-  if (open) {
-    setInitialLoaded(false);
-    setPage(1);
-    setOptions([]);
-    // Optional: clear cache for this extraFilters? We rely on re-fetch.
-    fetchOptions(1, perPage, searchDebounced, false);
-  }
-}, [extraFilters]); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+      if (open) {
+        setInitialLoaded(false);
+        setPage(1);
+        setOptions([]);
+        // Optional: clear cache for this extraFilters? We rely on re-fetch.
+        fetchOptions(1, perPage, searchDebounced, false);
+      }
+    }, [extraFilters]); // eslint-disable-line react-hooks/exhaustive-deps
 
-// Also ensure fetchOptions depends on extraFilters (already does)
+    // Also ensure fetchOptions depends on extraFilters (already does)
 
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
       if (!enableInfiniteScroll) return;
-      
+
       const target = e.target as HTMLDivElement;
       const bottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 50;
-      
+
       if (bottom && !loading && !fetchingMore && page < lastPage) {
         setPage(prev => prev + 1);
       }
@@ -325,21 +325,29 @@ useEffect(() => {
               </span>
               <div className="flex items-center gap-1">
                 {clearable && selectedOption && (
-                  <button
-                    type="button"
+                  // ✅ الحل: استبدل button بـ span مع role="button"
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={handleClear}
-                    className="rounded-full p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onChange(null);
+                      }
+                    }}
+                    className="rounded-full p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                   >
                     <X className="h-3 w-3 text-gray-400" />
-                  </button>
+                  </span>
                 )}
                 <ChevronDown className="h-4 w-4 opacity-50" />
               </div>
             </button>
           </PopoverTrigger>
 
-          <PopoverContent 
-            className="w-[--radix-popover-trigger-width] p-0" 
+          <PopoverContent
+            className="w-[--radix-popover-trigger-width] p-0"
             align="start"
             sideOffset={4}
           >
@@ -364,7 +372,7 @@ useEffect(() => {
                     </button>
                   )}
                 </div>
-                
+
                 {showPerPageSelector && showPagination && !enableInfiniteScroll && (
                   <select
                     value={perPage}
@@ -378,8 +386,8 @@ useEffect(() => {
                 )}
               </div>
 
-              <ScrollArea 
-                className="max-h-64 overflow-y-auto" 
+              <ScrollArea
+                className="max-h-64 overflow-y-auto"
                 onScrollCapture={enableInfiniteScroll ? handleScroll : undefined}
                 ref={scrollRef}
               >
@@ -412,7 +420,7 @@ useEffect(() => {
                         )}
                       </button>
                     ))}
-                    
+
                     {enableInfiniteScroll && fetchingMore && (
                       <div className="flex items-center justify-center py-3">
                         <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
@@ -449,7 +457,7 @@ useEffect(() => {
                         </Button>
                       </div>
                     )}
-                    
+
                     {showPagination && !enableInfiniteScroll && total > perPage && (
                       <div className="border-t px-3 py-1.5 text-center text-xs text-gray-400">
                         {total} total items

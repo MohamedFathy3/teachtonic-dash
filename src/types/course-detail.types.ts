@@ -1,5 +1,7 @@
 // src/types/course-detail.types.ts
 
+import { Student } from "./student.types";
+
 export interface CourseDetail {
   id: number;
   course_id: number;
@@ -45,4 +47,15 @@ export interface GetAllCourseDetailsParams {
   page?: number;
   perPage?: number;
   search?: string;
+}
+export interface CourseDetailsResponse {
+  id: number;
+  title: string;
+  title_ar: string;
+  description: string;
+  imageUrl: string;
+
+  students?: Student[];
+
+  details: CourseDetail[];
 }

@@ -8,15 +8,17 @@ import { Assignment } from '@/types/assignment.types';
 
 export function useTeacherDashboard(teacherId: number) {
   const [teacherData, setTeacherData] = useState<TeacherResponse | null>(null);
+  const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [students, setStudents] = useState<any[]>([]);
+
+
 
   // ================= FETCH TEACHER =================
   const fetchTeacher = useCallback(async () => {
     try {
       setLoading(true);
-
       const response = await teachersService.getTeacherById(teacherId);
-
       setTeacherData(response);
     } catch (error) {
       console.error('Error fetching teacher:', error);
@@ -25,51 +27,73 @@ export function useTeacherDashboard(teacherId: number) {
     }
   }, [teacherId]);
 
+  
+
+
+  // ================= FETCH COURSES (الجديد!) =================
+  const fetchCourses = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await teachersService.getTeacherCourses(teacherId);
+      console.log("🚀 COURSES:", response);
+      setCourses(response);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [teacherId]);
+
   useEffect(() => {
     fetchTeacher();
-  }, [fetchTeacher]);
+    fetchCourses();
+  }, [fetchTeacher, fetchCourses
+  ]);
+
+
 
   // ================= COURSES =================
-  const dashboardCourses: DashboardCourse[] = useMemo(() => {
-    if (!teacherData?.website?.courses) return [];
+  const dashboardCourses: any[] = useMemo(() => {
+    if (courses.length === 0) return [];
 
-    return teacherData.website.courses.map((course) => {
-      const lessons = course.details ?? [];
+    return courses.map((courseItem) => {
+      const lessons = courseItem.details ?? [];
 
       const examsCount = lessons.reduce(
-        (acc, d) => acc + (d.exams?.length ?? 0),
+        (acc: number, d: any) => acc + (d.exams?.length ?? 0),
         0
       );
 
       const assignmentsCount = lessons.reduce(
-        (acc, d) => acc + (d.assignments?.length ?? 0),
+        (acc: number, d: any) => acc + (d.assignments?.length ?? 0),
         0
       );
 
       return {
-        id: course.id,
-        title: course.title || 'Untitled Course',
-        category: course.semester?.name ?? 'General',
-        students: course.count_student ?? 0,
-        price: Number(course.price ?? 0),
-        priceBeforeDiscount: Number(course.price_before_discount ?? 0),
-        discount: Number(course.discount ?? 0),
-        status: course.active ? 'published' : 'draft',
-        image: course.imageUrl ?? '',
-        semesterName: course.semester?.name,
+        id: courseItem.id,
+        title: courseItem.title || 'Untitled Course',
+        title_ar: courseItem.title_ar || '',
+        category: courseItem.semester?.name ?? 'General',
+        semesterName: courseItem.semester?.name,
+        students: courseItem.count_student ?? 0,
+        price: Number(courseItem.price ?? 0),
+        priceBeforeDiscount: Number(courseItem.price_before_discount ?? 0),
+        discount: Number(courseItem.discount ?? 0),
+        status: courseItem.active === 1 ? 'published' : 'draft',
+        image: courseItem.imageUrl ?? '',
         lessonsCount: lessons.length,
         examsCount,
         assignmentsCount,
-        description: course.description,
-        stageId: course.stage_id,
-        subjectId: course.subject_id,
-        startDate: course.start_date,
-        endDate: course.end_date,
-        active: !!course.active,
+        type: courseItem.type || 'online', // ✅ TYPE موجود!
+        description: courseItem.description,
+        stageId: courseItem.stage_id,
+        subjectId: courseItem.subject_id,
+        active: courseItem.active === 1,
         totalContent: lessons.length + examsCount + assignmentsCount,
+        teacherName: courseItem.teacher?.name || 'Teacher',
       };
     });
-  }, [teacherData]);
+  }, [courses]);
 
   // ================= STUDENTS =================
   const dashboardStudents: Student[] = useMemo(() => {
@@ -118,6 +142,24 @@ export function useTeacherDashboard(teacherId: number) {
 
     return Array.from(studentsMap.values());
   }, [teacherData]);
+
+
+  const fetchStudents = useCallback(async () => {
+    try {
+      const response =
+        await teachersService.getStudents();
+
+      console.log("STUDENTS => ", response);
+
+      setStudents(response);
+    } catch (error) {
+      console.error(
+        "Error fetching students:",
+        error
+      );
+    }
+  }, []);
+
 
   // ================= ASSIGNMENTS =================
   const dashboardAssignments = useMemo(() => {

@@ -219,9 +219,7 @@ export const InstructorExams: React.FC = () => {
   const [imageId, setImageId] = useState<number | null>(null);
   const [examFormData, setExamFormData] = useState({
     title: '',
-    title_ar: '',
     description: '',
-    description_ar: '',
     total_marks: 0,
     total_marks_pass_marks: 0,
     duration_minutes: 0,
@@ -230,7 +228,8 @@ export const InstructorExams: React.FC = () => {
   });
 
   // ✅ Questions Builder State
-  const [questions, setQuestions] = useState<QuestionBuilder[]>([]);
+  const [questions, setQuestions] = useState<(Omit<QuestionBuilder, 'image'> & { image?: string | number | null })[]>([]);
+
   const [savingQuestions, setSavingQuestions] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<number | null>(null);
 
@@ -438,13 +437,25 @@ export const InstructorExams: React.FC = () => {
       [examId]: !prev[examId]
     }));
   };
-
+  // ✅ حذف امتحان
+  const deleteExam = async (id: number) => {
+    if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا الامتحان؟' : 'Are you sure you want to delete this exam?')) {
+      try {
+        await examService.deleteExam(id);
+        toast.success(lang === 'ar' ? 'تم حذف الامتحان بنجاح' : 'Exam deleted successfully');
+        fetchExams();
+      } catch (error) {
+        toast.error(lang === 'ar' ? 'حدث خطأ في حذف الامتحان' : 'Error deleting exam');
+      }
+    }
+  };
 
   // ✅ إنشاء امتحان جديد
+  // ✅ إنشاء امتحان جديد - يتعامل مع data: null
   const createExamHandler = async () => {
     if (isCreating) return;
 
-    // ✅ Validations (Keep your existing validation code here)
+    // ✅ Validations
     if (!examFormData.title) {
       toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الامتحان' : 'Please enter exam title');
       return;
@@ -461,69 +472,96 @@ export const InstructorExams: React.FC = () => {
     setIsCreating(true);
 
     try {
+      // ✅ البيانات المرسلة
+      const examData = {
+        ...examFormData,
+        teacher_id: user?.id || 1,
+        image: imageId || undefined,
+      };
+
+      console.log("📤 Sending data to service:", examData);
+
       // ✅ Check if Editing or Creating
       if (editingExamId) {
         // --- UPDATE LOGIC ---
-        await examService.updateExam(editingExamId, {
-          ...examFormData,
-          teacher_id: user?.id || 1,
-          image: imageId || undefined,
-        });
+        console.log("🔄 Updating Exam ID:", editingExamId);
+
+        await examService.updateExam(editingExamId, examData);
 
         toast.success(lang === 'ar' ? 'تم تحديث الامتحان بنجاح' : 'Exam updated successfully');
 
         resetExamForm();
         setShowExamForm(false);
-        fetchExams(); // Refresh list
+        fetchExams();
 
       } else {
-        // --- CREATE LOGIC (Your existing code) ---
+        // --- CREATE LOGIC ---
+        console.log("➕ Creating New Exam...", examData);
+
+        // ✅ هنا التصحيح - يجب انتظار الـ response
         const newExam = await examService.createExam({
-          ...examFormData,
-          teacher_id: user?.id || 1,
+          ...examData,
           type: 'exam',
-          image: imageId || undefined,
         });
 
-        setSelectedExamId(newExam.id);
-        setShowExamForm(false);
-        setActiveTab('questions');
-        toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
+        console.log("✅ New Exam Created:", newExam);
 
-        resetExamForm();
-        fetchExams();
+        // ✅ تأكد إن الـ exam تم إنشاؤه صح
+        if (newExam && newExam.id) {
+          setSelectedExamId(newExam.id);
+          setShowExamForm(false);
+          setActiveTab('exams');
+          toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
+
+          resetExamForm();
+          fetchExams();
+        } else {
+          // ✅ إذا ما صار شي،ارجع للـ exams
+          console.error("❌ Exam creation returned invalid data:", newExam);
+          toast.error(lang === 'ar' ? 'حدث خطأ في إنشاء الامتحان' : 'Error creating exam');
+        }
       }
     } catch (error) {
-      console.error('Error saving exam:', error);
+      console.error("❌ Error saving exam:", error);
       toast.error(lang === 'ar' ? 'حدث خطأ في حفظ الامتحان' : 'Error saving exam');
     } finally {
       setIsCreating(false);
     }
   };
-
-  // ✅ Handle Edit Click
+  // ✅ Handle Edit Click - مع console.logصح
   const handleEditClick = (exam: any) => {
+    console.log("🎯 handleEditClick - Raw Exam Data:", exam);
+
     setEditingExamId(exam.id);
 
-    // 1. Fill Form Data
-    setExamFormData({
-      title: exam.title || '',
-      title_ar: exam.title_ar || '',
-      description: exam.description || '',
-      description_ar: exam.description_ar || '',
-      total_marks: exam.total_marks || 0,
-      total_marks_pass_marks: exam.total_marks_pass_marks || 0,
-      duration_minutes: exam.duration_minutes || 0,
-      course_detail_id: exam.course_detail_id || null,
-      stage_id: exam.stage_id || null,
+    // ✅ استخرج البيانات مباشرة من الـ exam object
+    const stageId = exam.stage_id?.id ?? exam.stage_id ?? null;
+    const courseDetailId = exam.course_detail_id?.id ?? exam.course_detail_id ?? null;
+    const imageIdResolved = exam.image?.id ?? exam.image_id ?? exam.image ?? null;
+
+    console.log("📝 Extracted IDs:", {
+      stageId,
+      courseDetailId,
+      imageIdResolved
     });
 
+    // 1. Fill Form Data - بشكل مباشر
+    const formData = {
+      title: exam.title || '',
+      description: exam.description || '',
+      total_marks: Number(exam.total_marks) || 0,
+    total_marks_pass_marks: Number(exam.total_must_pass_marks || exam.total_marks_pass_marks) || 0,  // ✅ صح
+      duration_minutes: Number(exam.duration_minutes) || 0,
+      course_detail_id: courseDetailId,
+      stage_id: stageId,
+    };
+
+    console.log("📋 FormData to set:", formData);
+
+    setExamFormData(formData);
+
     // 2. Set Image
-    if (exam.image && exam.image.id) {
-      setImageId(exam.image.id);
-    } else {
-      setImageId(null);
-    }
+    setImageId(imageIdResolved ? Number(imageIdResolved) : null);
 
     // 3. Open Form
     setShowExamForm(true);
@@ -546,20 +584,20 @@ export const InstructorExams: React.FC = () => {
     });
     setImageId(null);
     setEditingExamId(null);
+    setSelectedExamId(null);
+  };
+  // ✅ دالة إنشاء امتحان جديد (تنظف كل شيء قبل الفتح)
+  const handleCreateNewExam = () => {
+    // 1. تنظيف الـ Form بالكامل
+    resetExamForm();
+
+    // 2. التأكد من فتح الـ Form
+    setShowExamForm(true);
+
+    // 3. التأكد أننا في وضع الإنشاء وليس التعديل
+    setEditingExamId(null);
   };
 
-  // ✅ حذف امتحان
-  const deleteExam = async (id: number) => {
-    if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا الامتحان؟' : 'Are you sure you want to delete this exam?')) {
-      try {
-        await examService.deleteExam(id);
-        toast.success(lang === 'ar' ? 'تم حذف الامتحان بنجاح' : 'Exam deleted successfully');
-        fetchExams();
-      } catch (error) {
-        toast.error(lang === 'ar' ? 'حدث خطأ في حذف الامتحان' : 'Error deleting exam');
-      }
-    }
-  };
 
 
   // ✅ Create Exam Form with Premium UI/UX Animation           
@@ -702,113 +740,51 @@ export const InstructorExams: React.FC = () => {
                   preview
                   uniqueId="exam-image-upload"
                   maxFiles={1}
+                  defaultImageId={imageId}
+                  defaultImageUrl={
+                    editingExamId
+                      ? exams.find((e: any) => e.id === editingExamId)?.image?.fullUrl || null
+                      : null
+                  }
                 />
               </motion.div>
 
-              {/* Titles */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
+              {/* Titles - عنوان بعرض كامل */}
+              <div className="grid grid-cols-1 gap-6">
                 <motion.div
                   initial={{ opacity: 0, x: -15 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 }}
                   className="space-y-2"
                 >
-                  <Label>
-                    {t('title')} (EN)
-                  </Label>
-
+                  <Label>{t('title')}</Label>
                   <Input
                     value={examFormData.title}
-                    onChange={(e) =>
-                      setExamFormData({
-                        ...examFormData,
-                        title: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setExamFormData({ ...examFormData, title: e.target.value })}
                     placeholder="e.g. Midterm Exam"
-                    className="rounded-2xl h-12"
-                  />
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, x: 15 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.15 }}
-                  className="space-y-2"
-                >
-                  <Label>
-                    {t('title')} (AR)
-                  </Label>
-
-                  <Input
-                    dir="rtl"
-                    value={examFormData.title_ar}
-                    onChange={(e) =>
-                      setExamFormData({
-                        ...examFormData,
-                        title_ar: e.target.value,
-                      })
-                    }
-                    placeholder="مثال: امتحان منتصف الفصل"
-                    className="rounded-2xl h-12 text-right"
+                    className="rounded-2xl h-12 w-full"
                   />
                 </motion.div>
               </div>
 
-              {/* Description */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
+              {/* Description - وصف بعرض كامل */}
+              <div className="grid grid-cols-1 gap-6">
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                   className="space-y-2"
                 >
-                  <Label>
-                    {t('description')} (EN)
-                  </Label>
-
+                  <Label>{t('description')}</Label>
                   <Textarea
                     value={examFormData.description}
-                    onChange={(e) =>
-                      setExamFormData({
-                        ...examFormData,
-                        description: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setExamFormData({ ...examFormData, description: e.target.value })}
                     rows={5}
                     placeholder="Exam Description..."
-                    className="rounded-2xl resize-none"
-                  />
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
-                  className="space-y-2"
-                >
-                  <Label>
-                    {t('description')} (AR)
-                  </Label>
-
-                  <Textarea
-                    dir="rtl"
-                    value={examFormData.description_ar}
-                    onChange={(e) =>
-                      setExamFormData({
-                        ...examFormData,
-                        description_ar: e.target.value,
-                      })
-                    }
-                    rows={5}
-                    placeholder="وصف الامتحان..."
-                    className="rounded-2xl resize-none text-right"
+                    className="rounded-2xl resize-none w-full"
                   />
                 </motion.div>
               </div>
-
               {/* Stats */}
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
@@ -836,24 +812,7 @@ export const InstructorExams: React.FC = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-2xl border shadow-sm">
-                  <CardContent className="p-4 space-y-2">
-                    <Label>{t('passMarks')}</Label>
-
-                    <Input
-                      type="number"
-                      value={examFormData.total_marks_pass_marks}
-                      onChange={(e) =>
-                        setExamFormData({
-                          ...examFormData,
-                          total_marks_pass_marks:
-                            parseInt(e.target.value) || 0,
-                        })
-                      }
-                      className="rounded-xl"
-                    />
-                  </CardContent>
-                </Card>
+            
 
                 <Card className="rounded-2xl border shadow-sm">
                   <CardContent className="p-4 space-y-2">
@@ -1582,7 +1541,7 @@ export const InstructorExams: React.FC = () => {
                   animate={{ rotate: 0, scale: 1 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
-                  <Button onClick={() => setShowExamForm(true)} className="gap-2 shadow-lg rounded-full px-6">
+                  <Button onClick={() => handleCreateNewExam()} className="gap-2 shadow-lg rounded-full px-6">
                     <Plus className="h-4 w-4" />
                     {t('createExam')}
                   </Button>
