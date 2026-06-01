@@ -55,6 +55,16 @@ interface TeacherReport {
   books_count: number;
 }
 
+interface ThemeResponse {
+  status: boolean;
+  teacher_id: number;
+  active_theme: string | null;
+  themes: Array<{
+    name: string;
+    active: boolean;
+  }>;
+}
+
 // ===================== COMPONENTS =====================
 
 // Badge Component
@@ -522,6 +532,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
   const [activeDetailTab, setActiveDetailTab] = useState('lessons');
   const [teacherReport, setTeacherReport] = useState<TeacherReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [activeTheme, setActiveTheme] = useState<string | null>(null);
   
   // Students Modal States
   const [studentsModalOpen, setStudentsModalOpen] = useState(false);
@@ -561,27 +572,58 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     }
   }, [teacherId]);
 
-  // تغيير الثيم
-   const handleThemeChange = async (themeName: string) => {
+  // جلب الثيم النشط
+  const fetchActiveTheme = useCallback(async () => {
     try {
-      const response = await api.post('/activate/theme', { theme: themeName });
+      const response = await api.get(`/teachers/${teacherId}/theme`);
+      console.log("Active theme response:", response.data);
+      if (response.data?.status && response.data?.active_theme) {
+        setActiveTheme(response.data.active_theme);
+        setTheme(response.data.active_theme);
+        localStorage.setItem('theme', response.data.active_theme);
+      }
+    } catch (error: any) {
+      console.error("Error fetching theme:", error);
+    }
+  }, [teacherId, setTheme]);
+
+  // تغيير الثيم - نسخة محسنة
+  const handleThemeChange = async (themeName: string) => {
+    try {
+      const response = await api.post<ThemeResponse>('/activate/theme', { 
+        theme: themeName, 
+        teacher_id: teacherId  // تأكد من استخدام teacher_id (underscore) وليس teacherId (camelCase)
+      });
+      
       console.log("Theme change response:", response.data);
       
-      
-      toast.success(`Theme changed to ${themeName}`);
+      if (response.data?.status) {
+        // تحديث الثيم النشط من الاستجابة
+        setActiveTheme(themeName);
+        setTheme(themeName);
+        localStorage.setItem('theme', themeName);
+        
+        toast.success(`Theme changed to ${themeName} successfully! 🎨`);
+        
+        // إعادة جلب الثيم النشط للتأكد
+        await fetchActiveTheme();
+      } else {
+        toast.error("Failed to change theme: Invalid response");
+      }
       
     } catch (error: any) {
       console.error("Error changing theme:", error);
       toast.error(error.response?.data?.message || "Failed to change theme");
-    } 
+    }
   };
 
   // Manual refresh handler
   const handleRefresh = useCallback(async () => {
     await refreshData();
     await fetchTeacherReport();
+    await fetchActiveTheme();
     toast.success("Data refreshed successfully");
-  }, [refreshData, fetchTeacherReport]);
+  }, [refreshData, fetchTeacherReport, fetchActiveTheme]);
 
   // Students Modal Handlers
   const handleViewSemesterStudents = useCallback(async (semester: any) => {
@@ -623,8 +665,9 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
   useEffect(() => {
     if (teacherId) {
       fetchTeacherReport();
+      fetchActiveTheme();
     }
-  }, [teacherId, fetchTeacherReport]);
+  }, [teacherId, fetchTeacherReport, fetchActiveTheme]);
 
   // إحصائيات الديناميكية من التقرير
   const dynamicStats = useMemo(() => {
@@ -793,12 +836,12 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                         <p className="text-xs text-muted-foreground">{course.category}</p>
                       </div>
                     </div>
-                  </td>
+                   </td>
                   <td className="p-4">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${course.type === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                       {course.type}
                     </span>
-                  </td>
+                   </td>
                   <td className="p-4 font-medium">{course.students}</td>
                   <td className="p-4 font-medium text-green-600">${course.price}</td>
                   <td className="p-4">
@@ -810,7 +853,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                         <Users className="h-4 w-4" />
                       </Button>
                     </div>
-                  </td>
+                   </td>
                 </motion.tr>
               ))}
             </tbody>
@@ -960,7 +1003,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                 <th className="text-left p-4 text-sm font-medium">Enrolled Courses</th>
                 <th className="text-left p-4 text-sm font-medium">Progress</th>
                 <th className="text-left p-4 text-sm font-medium">Status</th>
-              </tr>
+               </tr>
             </thead>
             <tbody>
               {filteredStudents.map((student, idx) => (
@@ -996,7 +1039,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                 <th className="text-left p-4 text-sm font-medium">Duration</th>
                 <th className="text-left p-4 text-sm font-medium">Status</th>
                 <th className="text-left p-4 text-sm font-medium">Created</th>
-              </tr>
+               </tr>
             </thead>
             <tbody>
               {dashboardAssignments.map((assignment, idx) => (
@@ -1032,7 +1075,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                 <th className="text-left p-4 text-sm font-medium">Duration</th>
                 <th className="text-left p-4 text-sm font-medium">Result</th>
                 <th className="text-left p-4 text-sm font-medium">Status</th>
-              </tr>
+               </tr>
             </thead>
             <tbody>
               {dashboardExams.map((exam: any, idx) => (
@@ -1186,6 +1229,12 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
           <Sparkles className="h-12 w-12 mx-auto text-primary mb-3" />
           <h3 className="text-2xl font-bold">Customize Your Theme</h3>
           <p className="text-muted-foreground mt-2">Choose a style that matches your preference</p>
+          {activeTheme && (
+            <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
+              <Award className="h-3 w-3" />
+              Current: {activeTheme === 'theme1' ? 'Ocean Breeze' : 'Forest Mist'}
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
@@ -1195,21 +1244,24 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
             <div
               key={theme.name}
               className={`cursor-pointer rounded-2xl border-2 p-6 text-center transition-all hover:shadow-xl ${
-                localStorage.getItem('theme') === theme.name ? 'border-primary shadow-lg' : 'border-border'
+                activeTheme === theme.name ? 'border-primary shadow-lg bg-primary/5' : 'border-border'
               }`}
               onClick={() => handleThemeChange(theme.name)}
             >
-              <div className={`h-32 rounded-xl bg-gradient-to-r ${theme.gradient} mb-4 flex items-center justify-center`}>
+              <div className={`h-32 rounded-xl bg-gradient-to-r ${theme.gradient} mb-4 flex items-center justify-center transition-transform hover:scale-105`}>
                 <Sparkles className="h-8 w-8 text-white opacity-80" />
               </div>
               <p className="font-semibold text-lg">{theme.label}</p>
               <div className="flex items-center justify-center gap-2 mt-3">
                 {theme.colors.map((color, i) => (
-                  <div key={i} className="w-6 h-6 rounded-full" style={{ backgroundColor: color }} />
+                  <div key={i} className="w-6 h-6 rounded-full shadow-md" style={{ backgroundColor: color }} />
                 ))}
               </div>
-              {localStorage.getItem('theme') === theme.name && (
-                <div className="mt-3 text-xs text-primary font-medium">✓ Active</div>
+              {activeTheme === theme.name && (
+                <div className="mt-3 text-xs text-primary font-medium flex items-center justify-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Active Theme
+                </div>
               )}
             </div>
           ))}
