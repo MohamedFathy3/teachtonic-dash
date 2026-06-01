@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-next/no-explicit-any */
 // src/components/admin/teachers/TeacherProfile.tsx
 
 import { useState, useEffect } from 'react';
@@ -7,8 +8,19 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
-import { ArrowLeft, Mail, Phone, Globe, Calendar, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Mail, 
+  Phone, 
+  Globe, 
+  Calendar, 
+  CheckCircle, 
+  XCircle, 
+  Loader2,
+  FileText 
+} from 'lucide-react';
 import { teacherService } from '@/services/teacher.service';
+import { teacherReportService } from '@/services/teacher-report.service';
 import { HeroSection } from './sections/HeroSection';
 import { AboutSection } from './sections/AboutSection';
 import { FeaturesSection } from './sections/FeaturesSection';
@@ -28,6 +40,13 @@ export function TeacherProfile({ teacherId, onBack }: TeacherProfileProps) {
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // State for report date range and download status
+  const [reportDateRange, setReportDateRange] = useState({
+    from: '2025-01-01',
+    to: '2027-12-31'
+  });
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   useEffect(() => {
     const fetchTeacher = async () => {
@@ -46,6 +65,27 @@ export function TeacherProfile({ teacherId, onBack }: TeacherProfileProps) {
       fetchTeacher();
     }
   }, [teacherId]);
+
+  // Handle PDF report download
+  const handleDownloadReport = async () => {
+    if (!reportDateRange.from || !reportDateRange.to) {
+      console.error('Please select both from and to dates');
+      return;
+    }
+    
+    setDownloadingReport(true);
+    try {
+      await teacherReportService.downloadReportPdf(
+        teacherId, 
+        reportDateRange.from, 
+        reportDateRange.to
+      );
+    } catch (error) {
+      console.error('Error downloading report:', error);
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -68,12 +108,47 @@ export function TeacherProfile({ teacherId, onBack }: TeacherProfileProps) {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
-      {/* Header with Back Button */}
-      <div className="flex items-center justify-between">
+      {/* Header with Back Button and Report Download */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <Button variant="ghost" size="sm" onClick={onBack} className="gap-2 -ms-2">
           <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
           Back to Teachers
         </Button>
+        
+        {/* Report Section - Date Picker and Download Button */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5">
+            <span className="text-xs text-muted-foreground font-medium">From:</span>
+            <input
+              type="date"
+              value={reportDateRange.from}
+              onChange={(e) => setReportDateRange(prev => ({ ...prev, from: e.target.value }))}
+              className="bg-transparent text-sm focus:outline-none rounded px-1"
+            />
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5">
+            <span className="text-xs text-muted-foreground font-medium">To:</span>
+            <input
+              type="date"
+              value={reportDateRange.to}
+              onChange={(e) => setReportDateRange(prev => ({ ...prev, to: e.target.value }))}
+              className="bg-transparent text-sm focus:outline-none rounded px-1"
+            />
+          </div>
+          
+          <Button
+            onClick={handleDownloadReport}
+            disabled={downloadingReport}
+            className="gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-sm"
+          >
+            {downloadingReport ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+            {downloadingReport ? 'Generating PDF...' : 'Download Report PDF'}
+          </Button>
+        </div>
       </div>
 
       {/* Hero Card - Teacher Info */}
