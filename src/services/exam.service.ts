@@ -22,7 +22,7 @@ class ExamService extends BaseService<Exam> {
     super('exam');
   }
 
-  // ✅ جلب الامتحانات
+  // ✅ الدالة الأساسية لجلب الامتحانات - مطورة بنفس نظام CourseService
   async getAllExams(
     filters?: Record<string, any>,
     perPage: number = 12,
@@ -31,8 +31,20 @@ class ExamService extends BaseService<Exam> {
     showDeleted: boolean = false
   ): Promise<PaginatedResponse<Exam>> {
     try {
+      const baseFilters: Record<string, any> = { ...(filters || {}) };
+
+      // ✅ إضافة البحث في عدة حقول
+      if (search && search.trim()) {
+        // الطريقة الأولى: search field منفصل
+        // baseFilters.search = search.trim();
+        
+        // الطريقة الثانية: بحث في title و description
+        baseFilters.title = search.trim();
+        // baseFilters.description = search.trim(); // اختياري
+      }
+
       const requestBody: Record<string, any> = {
-        filters: filters || {},
+        filters: baseFilters,
         orderBy: 'created_at',
         orderByDirection: 'desc',
         perPage,
@@ -41,7 +53,8 @@ class ExamService extends BaseService<Exam> {
         delete: showDeleted,
       };
 
-      if (search && search.trim()) {
+      // ✅ لو في search منفصل، نضيفه كـ property منفصل
+      if (search && search.trim() && !baseFilters.title) {
         requestBody.search = search.trim();
         requestBody.searchFields = ['title', 'title_ar', 'description', 'description_ar'];
       }
@@ -72,18 +85,51 @@ class ExamService extends BaseService<Exam> {
   }
 
   // ✅ جلب الامتحانات المحذوفة
-  async getDeletedExams(perPage: number = 12, page: number = 1, search?: string): Promise<PaginatedResponse<Exam>> {
+  async getDeletedExams(
+    perPage: number = 12,
+    page: number = 1,
+    search?: string
+  ): Promise<PaginatedResponse<Exam>> {
     return this.getAllExams({}, perPage, page, search, true);
   }
 
   // ✅ جلب امتحانات معلم معين
-  async getTeacherExams(teacherId: number): Promise<PaginatedResponse<Exam>> {
-    return this.getAllExams({ teacher_id: teacherId });
+  async getTeacherExams(
+    teacherId: number,
+    perPage: number = 12,
+    page: number = 1,
+    search?: string
+  ): Promise<PaginatedResponse<Exam>> {
+    return this.getAllExams({ teacher_id: teacherId }, perPage, page, search);
   }
 
   // ✅ جلب امتحانات درس معين
-  async getExamsByLesson(lessonId: number): Promise<PaginatedResponse<Exam>> {
-    return this.getAllExams({ course_detail_id: lessonId });
+  async getExamsByLesson(
+    lessonId: number,
+    perPage: number = 12,
+    page: number = 1,
+    search?: string
+  ): Promise<PaginatedResponse<Exam>> {
+    return this.getAllExams({ course_detail_id: lessonId }, perPage, page, search);
+  }
+
+  // ✅ جلب امتحانات المرحلة معينة
+  async getExamsByStage(
+    stageId: number,
+    perPage: number = 12,
+    page: number = 1,
+    search?: string
+  ): Promise<PaginatedResponse<Exam>> {
+    return this.getAllExams({ stage_id: stageId }, perPage, page, search);
+  }
+
+  // ✅ جلب الامتحانات النشطة فقط
+  async getActiveExams(
+    perPage: number = 12,
+    page: number = 1,
+    search?: string
+  ): Promise<PaginatedResponse<Exam>> {
+    return this.getAllExams({ active: 1 }, perPage, page, search);
   }
 
   // ✅ جلب امتحان بالـ ID مع أسئلته
@@ -95,10 +141,9 @@ class ExamService extends BaseService<Exam> {
     throw new Error('Invalid response structure');
   }
 
-  // ✅ إنشاء امتحان جديد (مع دعم total_marks_pass_marks)
+  // ✅ إنشاء امتحان جديد
   private creatingExams = new Set<string>();
 
-  // ✅ إنشاء امتحان جديد - يتعامل مع data: null
   async createExam(data: CreateExamDTO): Promise<Exam> {
     const key = `${data.title}_${data.teacher_id}`;
 
@@ -126,15 +171,13 @@ class ExamService extends BaseService<Exam> {
 
       const response = await api.post(`/${this.endpoint}`, payload);
 
-      console.log("CREATE EXAM RESPONSE:", response.data);
+      toast({
+        title: "Success",
+        description: "Exam created successfully",
+      });
 
-      // ✅ التعامل مع data: null
       if (response.data?.status === 200 && response.data?.result === "Success") {
-        // ✅ إذا data null، جيب الـ exam من آخر exam تم إنشاؤه
         if (!response.data?.data) {
-          console.log("⚠️ Data is null, fetching last created exam...");
-
-          // جلب كل الامتحانات وخذ第一个
           const allExams = await this.getAllExams(
             { teacher_id: data.teacher_id },
             1,
@@ -142,7 +185,6 @@ class ExamService extends BaseService<Exam> {
           );
 
           if (allExams.data && allExams.data.length > 0) {
-            // رجع أحدث امتحان
             return allExams.data[0];
           }
 
@@ -157,26 +199,19 @@ class ExamService extends BaseService<Exam> {
     } catch (error: any) {
       toast({
         title: 'Error',
-        description:
-          error.response?.data?.message ||
-          error.message ||
-          'Failed to create exam',
+        description: error.response?.data?.message || error.message || 'Failed to create exam',
         variant: 'destructive',
       });
-
       throw error;
-
     } finally {
       this.creatingExams.delete(key);
     }
   }
-  // ✅ function جديدة للـ Edit مع logging
-  // ✅ updateExam - كامل ومصحح
-  async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {
-    console.log("📡 updateExam called with:", { id, data });
 
+  // ✅ تحديث امتحان
+  async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {
     try {
-      const payload = {
+      const payload: any = {
         title: data.title,
         title_ar: data.title_ar,
         description: data.description,
@@ -185,29 +220,23 @@ class ExamService extends BaseService<Exam> {
         course_detail_id: data.course_detail_id,
         stage_id: data.stage_id,
         total_marks: data.total_marks,
-        total_marks_pass_marks: data.total_marks_pass_marks,  // ✅ استخدمي الاسم الصح
+        total_marks_pass_marks: data.total_marks_pass_marks,
         duration_minutes: data.duration_minutes,
       };
 
-      // ✅ إضافة الصورة لو موجودة
       if (data.image) {
         payload.image = data.image;
       }
 
-      console.log("📦 Payload being sent:", payload);
-
       const response = await api.patch(`/${this.endpoint}/${id}`, payload);
-      console.log("📬 UPDATE EXAM RESPONSE:", response.data);
 
-      if (response.data?.status === 200) {
-        toast({ title: "Success", description: "Exam updated successfully" });
-        return response.data.data;
-      }
+      toast({
+        title: "Success",
+        description: "Exam updated successfully",
+      });
 
-      throw new Error(response.data?.message || "Failed to update");
-
+      return response.data.data;
     } catch (error: any) {
-      console.error("❌ updateExam error:", error);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to update exam",
@@ -216,6 +245,7 @@ class ExamService extends BaseService<Exam> {
       throw error;
     }
   }
+
   // ✅ نقل امتحان إلى سلة المحذوفات
   async deleteExam(id: number): Promise<void> {
     try {
@@ -250,14 +280,32 @@ class ExamService extends BaseService<Exam> {
     }
   }
 
-  // ✅ تبديل ترتيب الأسئلة عشوائي (via URL parameter)
-  async toggleRandomQuestions(id: number, value: boolean): Promise<Exam> {
+  // ✅ تبديل حالة التفعيل
+  async toggleExamActive(id: number): Promise<{ message: string }> {
     try {
-      // 🔥 إرسال القيمة كـ query parameter
+      const result = await this.toggleActive(id);
+      toast({
+        title: "Success",
+        description: result.message || "Exam status changed successfully",
+      });
+      return result;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to toggle exam status",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }
+
+  // ✅ تبديل ترتيب الأسئلة عشوائي
+  async toggleRandomQuestions(id: number): Promise<Exam> {
+    try {
       const response = await api.put(`/${this.endpoint}/${id}/random_questions`);
       toast({
         title: "Success",
-        description: value ? "Random questions enabled" : "Random questions disabled"
+        description: "Random questions toggled successfully"
       });
       return response.data.data;
     } catch (error: any) {
@@ -270,14 +318,13 @@ class ExamService extends BaseService<Exam> {
     }
   }
 
-  // ✅ تبديل ترتيب الإجابات عشوائي (via URL parameter)
-  async toggleRandomAnswers(id: number, value: boolean): Promise<Exam> {
+  // ✅ تبديل ترتيب الإجابات عشوائي
+  async toggleRandomAnswers(id: number): Promise<Exam> {
     try {
-      // 🔥 إرسال القيمة كـ query parameter
       const response = await api.put(`/${this.endpoint}/${id}/random_answers`);
       toast({
         title: "Success",
-        description: value ? "Random answers enabled" : "Random answers disabled"
+        description: "Random answers toggled successfully"
       });
       return response.data.data;
     } catch (error: any) {
@@ -290,14 +337,13 @@ class ExamService extends BaseService<Exam> {
     }
   }
 
-  // ✅ تبديل إظهار النتيجة (via URL parameter)
-  async toggleShowResult(id: number, value: boolean): Promise<Exam> {
+  // ✅ تبديل إظهار النتيجة
+  async toggleShowResult(id: number): Promise<Exam> {
     try {
-      // 🔥 إرسال القيمة كـ query parameter
       const response = await api.put(`/${this.endpoint}/${id}/show_result`);
       toast({
         title: "Success",
-        description: value ? "Results will be shown to students" : "Results hidden from students"
+        description: "Show result toggled successfully"
       });
       return response.data.data;
     } catch (error: any) {
@@ -310,8 +356,7 @@ class ExamService extends BaseService<Exam> {
     }
   }
 
-
-  // ✅ إضافة أسئلة متعددة للامتحان - تم تصحيح الفحص
+  // ✅ إضافة أسئلة متعددة للامتحان
   async addQuestions(examId: number, questions: any[]): Promise<boolean> {
     try {
       const payload: AddQuestionsDTO = {
@@ -328,32 +373,22 @@ class ExamService extends BaseService<Exam> {
 
       const response = await api.post(`/${this.endpoint}/add-questions`, payload);
 
-      console.log("ADD QUESTIONS RESPONSE:", response.data);
-
-      // ✅ تصحيح الفحص - يتعامل مع status: true أو status: 200
-      const isSuccess =
-        response.data?.status === true ||
-        response.data?.status === 200 ||
-        response.data?.result === "Success";
-
-      if (!isSuccess) {
-        throw new Error(response.data?.message || "Failed to add questions");
-      }
+      toast({
+        title: "Success",
+        description: "Questions added successfully"
+      });
 
       return true;
-
     } catch (error: any) {
-      console.error('Error adding questions:', error);
-
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to add questions",
         variant: "destructive"
       });
-
       throw error;
     }
   }
+
   // ✅ جلب أسئلة الامتحان
   async getExamQuestions(examId: number): Promise<QuestionsResponse> {
     const response = await api.get(`/${this.endpoint}/${examId}/questions`);
