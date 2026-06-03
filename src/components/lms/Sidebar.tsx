@@ -78,11 +78,11 @@ const instructorNav: NavItem[] = [
 
   { to: "payment-codes", labelKey: "paymentCodes", icon: TagIcon },
   { to: "assignments", labelKey: "assignments", icon: FileEdit },
-  { to: "analytics", labelKey: "analytics", icon: BarChart3 },
-  { to: "earnings", labelKey: "earnings", icon: DollarSign },
-  { to: "assistants", labelKey: "assistants", icon: UserCog },
-  { to: "website", labelKey: "websiteBuilder", icon: Globe2 },
-  { to: "settings", labelKey: "settings", icon: Settings },
+  // { to: "analytics", labelKey: "analytics", icon: BarChart3 },
+  // { to: "earnings", labelKey: "earnings", icon: DollarSign },
+  // { to: "assistants", labelKey: "assistants", icon: UserCog },
+  // { to: "website", labelKey: "websiteBuilder", icon: Globe2 },
+  // { to: "settings", labelKey: "settings", icon: Settings },
 ];
 
 interface SidebarProps {

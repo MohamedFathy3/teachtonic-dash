@@ -362,10 +362,7 @@ export const InstructorCourses: React.FC = () => {
                     {pagination.total}
                   </span>
                 </TabsTrigger>
-                <TabsTrigger value="deleted" className="rounded-lg gap-2 px-4">
-                  <Archive className="h-4 w-4" />
-                  {t('deletedCourses')}
-                </TabsTrigger>
+              
               </TabsList>
 
               <div className="flex gap-2">
