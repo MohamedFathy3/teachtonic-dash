@@ -2,15 +2,146 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from "@/contexts/AppContext";
 import { PageHeader } from "@/components/lms/PageHeader";
-import { StatCard } from "@/components/lms/StatCard";
 import { AvatarBadge } from "@/components/lms/AvatarBadge";
-import { Users, BookOpen, DollarSign, GraduationCap, TrendingUp, Sparkles, FileQuestion, FileText, Layers, Ticket, BookMarked, Mail, RefreshCw } from "lucide-react";
+import { 
+  Users, BookOpen, DollarSign, GraduationCap, TrendingUp, Sparkles, 
+  FileQuestion, FileText, Layers, Ticket, BookMarked, Mail, RefreshCw,
+  Trophy, Award, Zap, Clock, Target, Globe2, Building2, CheckCircle,
+  XCircle, Activity, BarChart3, PieChart as PieChartIcon, Calendar,
+  ArrowUpRight, ArrowDownRight, Eye, UserPlus, CreditCard, Crown, Gem, Rocket,
+  Server, Database, Cloud, Shield, Download, Upload, Bell, Settings, School, Library
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, Legend } from "recharts";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, 
+  Tooltip, XAxis, YAxis, PieChart, Pie, Cell, Legend, Line, LineChart,
+  RadialBarChart, RadialBar
+} from "recharts";
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+// ======================== الترجمة ========================
+const translations: any = {
+  en: {
+    adminDashboard: "Admin Dashboard",
+    dashboardSubtitle: "Welcome back. Here's what's happening on your platform today.",
+    generateReport: "Generate Report",
+    refresh: "Refresh",
+    teachers: "Teachers",
+    students: "Students", 
+    courses: "Courses",
+    revenue: "Revenue",
+    exams: "Exams",
+    books: "Books",
+    coupons: "Coupons",
+    requests: "Requests",
+    completionRate: "Completion Rate",
+    engagementRate: "Engagement Rate",
+    onlineVsCenter: "Online/Center",
+    avgStudentsPerCourse: "Avg/Course",
+    profitMargin: "Profit Margin",
+    revenueOverview: "Revenue Overview",
+    last12Months: "Last 12 months",
+    vsLastMonth: "vs last month",
+    monthlyAverage: "Monthly average",
+    bestMonth: "Best month",
+    totalRevenue: "Total Revenue",
+    courseDistribution: "Course Distribution",
+    onlineCourses: "Online",
+    centerCourses: "Center",
+    platformActivity: "Platform Activity",
+    contentMetrics: "Content metrics",
+    enrollmentTrend: "Enrollment Trend",
+    last6Months: "Last 6 months",
+    totalEnrolled: "Total Enrolled",
+    growthRate: "Growth Rate",
+    latestUpdates: "Latest Updates",
+    viewAll: "View All",
+    loading: "Loading dashboard...",
+    error: "Error",
+    tryAgain: "Please try again",
+    active: "Active",
+    inactive: "Inactive",
+    totalCourses: "Total Courses",
+    totalStudents: "Total Students",
+    weeklyActivity: "Weekly Activity",
+    performanceScore: "Performance Score",
+    studentSatisfaction: "Student Satisfaction",
+    courseCompletion: "Course Completion",
+    achievements: "Achievements",
+    topPerformers: "Top Performers",
+    insights: "Insights",
+    noData: "No data available",
+    totalTeachers: "Total Teachers",
+    totalExams: "Total Exams",
+    totalBooks: "Total Books",
+    usedCoupons: "Used Coupons",
+    pendingRequests: "Pending Requests",
+    semesters: "Semesters"
+  },
+  ar: {
+    adminDashboard: "لوحة تحكم المدير",
+    dashboardSubtitle: "مرحباً بعودتك. إليك ما يحدث على منصتك اليوم.",
+    generateReport: "إنشاء تقرير",
+    refresh: "تحديث",
+    teachers: "المعلمون",
+    students: "الطلاب",
+    courses: "الكورسات",
+    revenue: "الإيرادات",
+    exams: "الاختبارات",
+    books: "الكتب",
+    coupons: "الكوبونات",
+    requests: "الطلبات",
+    completionRate: "نسبة الإكمال",
+    engagementRate: "نسبة التفاعل",
+    onlineVsCenter: "أونلاين/سنتر",
+    avgStudentsPerCourse: "متوسط/كورس",
+    profitMargin: "هامش الربح",
+    revenueOverview: "نظرة عامة على الإيرادات",
+    last12Months: "آخر 12 شهراً",
+    vsLastMonth: "مقابل الشهر الماضي",
+    monthlyAverage: "المتوسط الشهري",
+    bestMonth: "أفضل شهر",
+    totalRevenue: "إجمالي الإيرادات",
+    courseDistribution: "توزيع الكورسات",
+    onlineCourses: "أونلاين",
+    centerCourses: "سنتر",
+    platformActivity: "نشاط المنصة",
+    contentMetrics: "مقاييس المحتوى",
+    enrollmentTrend: "اتجاه التسجيل",
+    last6Months: "آخر 6 أشهر",
+    totalEnrolled: "إجمالي المسجلين",
+    growthRate: "معدل النمو",
+    latestUpdates: "آخر التحديثات",
+    viewAll: "عرض الكل",
+    loading: "جاري تحميل لوحة التحكم...",
+    error: "خطأ",
+    tryAgain: "يرجى المحاولة مرة أخرى",
+    active: "نشط",
+    inactive: "غير نشط",
+    totalCourses: "إجمالي الكورسات",
+    totalStudents: "إجمالي الطلاب",
+    weeklyActivity: "النشاط الأسبوعي",
+    performanceScore: "درجة الأداء",
+    studentSatisfaction: "رضا الطلاب",
+    courseCompletion: "إكمال الكورس",
+    achievements: "الإنجازات",
+    topPerformers: "الأفضل أداءً",
+    insights: "رؤى وتحليلات",
+    noData: "لا توجد بيانات متاحة",
+    totalTeachers: "إجمالي المعلمين",
+    totalExams: "إجمالي الاختبارات",
+    totalBooks: "إجمالي الكتب",
+    usedCoupons: "الكوبونات المستخدمة",
+    pendingRequests: "الطلبات المعلقة",
+    semesters: "الفصول الدراسية"
+  }
+};
 
 interface AdminReport {
   teachers_count: number;
@@ -26,431 +157,289 @@ interface AdminReport {
   books_count: number;
 }
 
-interface MonthlyData {
-  month: string;
-  revenue: number;
-  users: number;
-}
-
-// Colors for charts
-const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
-
-// أسماء الأشهر
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function AdminOverview() {
-  const { t } = useApp();
+  const { dir, lang } = useApp();
+  const t = (key: string) => {
+    return translations[lang]?.[key] || translations.en[key] || key;
+  };
+  
   const [report, setReport] = useState<AdminReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
-  // جلب تقرير الـ Admin
   const fetchAdminReport = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/admin/report');
-      console.log("Admin Report:", response.data);
       setReport(response.data?.data);
-      
-      // بعد جلب التقرير، جلب البيانات الشهرية
-      await fetchMonthlyRevenue();
     } catch (error: any) {
       console.error("Error fetching admin report:", error);
-      toast.error("Failed to load report data");
+      toast.error(t("error") + ": " + (error.response?.data?.message || t("tryAgain")));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // جلب الإيرادات الشهرية من API
-  const fetchMonthlyRevenue = useCallback(async () => {
-    try {
-      const response = await api.get('/teachers/monthly-profit-report');
-      console.log("Monthly Revenue:", response.data);
-      
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        setMonthlyData(response.data.data);
-      } else {
-        // إذا مفيش API، نستخدم البيانات من التقرير ونوزعها على الشهور
-        generateMonthlyDataFromReport();
-      }
-    } catch (error) {
-      console.log("No monthly revenue API, generating from report data");
-      generateMonthlyDataFromReport();
-    }
-  }, []);
-
-  // توليد بيانات شهرية من التقرير (حل مؤقت)
-  const generateMonthlyDataFromReport = () => {
-    if (!report) return;
-    
-    // توزيع الإيرادات على الشهور بشكل تدريجي
-    const totalRevenue = report.profits || 0;
-    const monthlyRevenue: MonthlyData[] = [];
-    
-    for (let i = 0; i < 12; i++) {
-      // نمو تدريجي بنسبة زيادة 5-15% كل شهر
-      const growthFactor = 1 + (i * 0.08);
-      const revenue = Math.round((totalRevenue / 12) * growthFactor * 100) / 100;
-      const users = Math.round((report.students_count / 12) * growthFactor);
-      
-      monthlyRevenue.push({
-        month: MONTHS[i],
-        revenue: revenue,
-        users: users,
-      });
-    }
-    
-    setMonthlyData(monthlyRevenue);
-  };
-
   useEffect(() => {
     fetchAdminReport();
   }, [fetchAdminReport]);
 
-  // بيانات توزيع الكورسات
-  const courseDistribution = report ? [
-    { name: 'Online Courses', value: report.online_courses, color: '#3b82f6' },
-    { name: 'Center Courses', value: report.center_courses, color: '#8b5cf6' },
-  ] : [];
+  const totalCourses = (report?.online_courses || 0) + (report?.center_courses || 0);
+  const totalRevenue = report?.profits || 0;
+  
+  // بيانات الرسم البياني لتوزيع الكورسات - من البيانات الحقيقية
+  const courseDistribution = [
+    { name: t("onlineCourses"), value: report?.online_courses || 0, color: '#3b82f6' },
+    { name: t("centerCourses"), value: report?.center_courses || 0, color: '#8b5cf6' },
+  ];
 
-  // بيانات الأداء
-  const performanceData = report ? [
-    { name: 'Exams', value: report.exams_count, icon: FileQuestion, color: '#ef4444' },
-    { name: 'Assignments', value: report.assignments_count, icon: FileText, color: '#f59e0b' },
-    { name: 'Semesters', value: report.semesters_count, icon: Layers, color: '#06b6d4' },
-    { name: 'Books', value: report.books_count, icon: BookMarked, color: '#84cc16' },
-    { name: 'Coupons', value: report.used_coupons, icon: Ticket, color: '#ec4899' },
-    { name: 'Requests', value: report.requests_count, icon: Mail, color: '#f97316' },
-  ] : [];
-
-  // حساب النسبة المئوية للتغير
-  const calculateGrowth = (current: number, previous: number) => {
-    if (previous === 0) return 100;
-    return Math.round(((current - previous) / previous) * 100);
-  };
-
-  // جلب آخر 6 أشهر للـ bar chart
-  const lastSixMonths = monthlyData.slice(-6);
+  // بيانات الأداء - من البيانات الحقيقية
+  const performanceData = [
+    { name: t("exams"), value: report?.exams_count || 0, color: '#ef4444', icon: FileQuestion },
+    { name: t("assignments"), value: report?.assignments_count || 0, color: '#f59e0b', icon: FileText },
+    { name: t("semesters"), value: report?.semesters_count || 0, color: '#06b6d4', icon: Layers },
+    { name: t("books"), value: report?.books_count || 0, color: '#84cc16', icon: BookMarked },
+    { name: t("coupons"), value: report?.used_coupons || 0, color: '#ec4899', icon: Ticket },
+  ];
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[70vh]">
         <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Loading dashboard data...</p>
+          <div className="relative">
+            <div className="h-16 w-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin mx-auto" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+            </div>
+          </div>
+          <p className="text-muted-foreground animate-pulse">{t("loading")}</p>
         </div>
       </div>
     );
   }
 
-  // حساب الإجماليات
-  const totalCourses = (report?.online_courses || 0) + (report?.center_courses || 0);
-  const totalRevenue = monthlyData.reduce((sum, m) => sum + m.revenue, 0);
-  const averageMonthlyRevenue = totalRevenue / 12;
-  const lastMonthRevenue = monthlyData[monthlyData.length - 1]?.revenue || 0;
-  const previousMonthRevenue = monthlyData[monthlyData.length - 2]?.revenue || 0;
-  const revenueGrowth = calculateGrowth(lastMonthRevenue, previousMonthRevenue);
-
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6">
-      <PageHeader
-        title={`${t("dashboard")} ✨`}
-        description="Welcome back. Here's what's happening on your platform today."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={fetchAdminReport} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
-            <Button className="gap-2 rounded-xl gradient-primary shadow-glow border-0">
-              <Sparkles className="h-4 w-4" />
-              Generate report
-            </Button>
-          </div>
-        }
-      />
-
-      {/* Primary Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard 
-          label="Total Teachers" 
-          value={report?.teachers_count?.toString() || "0"} 
-          delta={12.4} 
-          icon={GraduationCap} 
-          variant="primary" 
-        />
-        <StatCard 
-          label="Total Students" 
-          value={report?.students_count?.toString() || "0"} 
-          delta={18.2} 
-          icon={Users} 
-          variant="accent" 
-        />
-        <StatCard 
-          label="Total Revenue" 
-          value={`$${totalRevenue.toLocaleString()}`} 
-          delta={revenueGrowth} 
-          icon={DollarSign} 
-          variant="warm" 
-        />
-        <StatCard 
-          label="Total Courses" 
-          value={totalCourses.toString()} 
-          delta={8.1} 
-          icon={BookOpen} 
-          variant="info" 
-        />
-      </div>
-
-      {/* Secondary Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {performanceData.map((stat, idx) => (
-          <Card key={stat.name} className="p-4 text-center hover:shadow-md transition-all">
-            <div className={`h-10 w-10 rounded-xl mx-auto mb-2 flex items-center justify-center`} style={{ backgroundColor: `${stat.color}20` }}>
-              <stat.icon className="h-5 w-5" style={{ color: stat.color }} />
-            </div>
-            <p className="text-2xl font-bold">{stat.value}</p>
-            <p className="text-xs text-muted-foreground">{stat.name}</p>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Revenue Chart - الآن يعرض بيانات حقيقية */}
-        <Card className="lg:col-span-2 rounded-2xl border-border p-6 shadow-soft">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold">Monthly Revenue</h3>
-              <p className="text-sm text-muted-foreground">Last 12 months</p>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-              <TrendingUp className="h-3.5 w-3.5" />
-              +{revenueGrowth}% vs last month
-            </div>
-          </div>
-          <div className="mt-6 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={monthlyData}>
-                <defs>
-                  <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "0.75rem",
-                    fontSize: "12px",
-                  }}
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, 'Revenue']}
-                />
-                <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#rev)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-            <div className="p-2 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">Total Revenue</p>
-              <p className="text-lg font-bold text-green-600">${totalRevenue.toLocaleString()}</p>
-            </div>
-            <div className="p-2 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">Monthly Average</p>
-              <p className="text-lg font-bold">${Math.round(averageMonthlyRevenue).toLocaleString()}</p>
-            </div>
-            <div className="p-2 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">Best Month</p>
-              <p className="text-lg font-bold text-primary">
-                {monthlyData.reduce((max, m) => m.revenue > max.revenue ? m : max, monthlyData[0])?.month}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Course Distribution Pie Chart */}
-        <Card className="rounded-2xl border-border p-6 shadow-soft">
-          <h3 className="text-base font-semibold">Course Distribution</h3>
-          <p className="text-sm text-muted-foreground">Online vs Center</p>
-          <div className="mt-6 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={courseDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={5}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                >
-                  {courseDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-center">
-            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30">
-              <p className="text-2xl font-bold text-blue-600">{report?.online_courses || 0}</p>
-              <p className="text-xs text-muted-foreground">Online Courses</p>
-            </div>
-            <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950/30">
-              <p className="text-2xl font-bold text-purple-600">{report?.center_courses || 0}</p>
-              <p className="text-xs text-muted-foreground">Center Courses</p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Enrollment Trend (آخر 6 أشهر) */}
-        <Card className="rounded-2xl border-border p-6 shadow-soft">
-          <h3 className="text-base font-semibold">Enrollment Trend</h3>
-          <p className="text-sm text-muted-foreground">New students per month (Last 6 months)</p>
-          <div className="mt-6 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={lastSixMonths}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "0.75rem",
-                    fontSize: "12px",
-                  }}
-                  formatter={(value: number) => [value, 'New Students']}
-                />
-                <Bar dataKey="users" fill="hsl(var(--accent))" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Performance Bar Chart */}
-        <Card className="rounded-2xl border-border p-6 shadow-soft">
-          <h3 className="text-base font-semibold">Platform Activity</h3>
-          <p className="text-sm text-muted-foreground">Content & engagement metrics</p>
-          <div className="mt-6 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={performanceData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={true} vertical={false} />
-                <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "0.75rem",
-                    fontSize: "12px",
-                  }}
-                />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 8, 8, 0]}>
-                  {performanceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-
-      {/* Summary Stats Card */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 rounded-2xl border-border p-6 shadow-soft">
-          <h3 className="text-base font-semibold mb-4">Platform Summary</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">Teachers</p>
-              <p className="text-2xl font-bold">{report?.teachers_count || 0}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">Students</p>
-              <p className="text-2xl font-bold">{report?.students_count || 0}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">Total Courses</p>
-              <p className="text-2xl font-bold">{totalCourses}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">Total Revenue</p>
-              <p className="text-2xl font-bold text-green-600">${totalRevenue.toLocaleString()}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">Used Coupons</p>
-              <p className="text-2xl font-bold">{report?.used_coupons || 0}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-muted/30">
-              <p className="text-xs text-muted-foreground">Pending Requests</p>
-              <p className="text-2xl font-bold text-orange-600">{report?.requests_count || 0}</p>
-            </div>
-          </div>
-        </Card>
-
-        {/* Quick Stats */}
-        <Card className="rounded-2xl border-border p-6 shadow-soft">
-          <h3 className="text-base font-semibold mb-4">Quick Stats</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/30 transition-colors">
-              <span className="text-sm">Exams / Assignments Ratio</span>
-              <span className="font-bold">{((report?.exams_count || 0) / (report?.assignments_count || 1)).toFixed(1)}x</span>
-            </div>
-            <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/30 transition-colors">
-              <span className="text-sm">Students per Course</span>
-              <span className="font-bold">{totalCourses > 0 ? Math.round((report?.students_count || 0) / totalCourses) : 0}</span>
-            </div>
-            <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/30 transition-colors">
-              <span className="text-sm">Coupon Usage Rate</span>
-              <span className="font-bold">{((report?.used_coupons || 0) / (report?.students_count || 1)).toFixed(1)}%</span>
-            </div>
-            <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/30 transition-colors">
-              <span className="text-sm">Content Items</span>
-              <span className="font-bold">{(report?.exams_count || 0) + (report?.assignments_count || 0) + (report?.books_count || 0)}</span>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Recent Activity - سيتم تعديله من API حقيقي */}
-      <Card className="rounded-2xl border-border p-6 shadow-soft">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold">{t("recentActivity")}</h3>
-          <Button variant="ghost" size="sm" className="text-primary">{t("viewAll")}</Button>
-        </div>
-        <ul className="mt-4 divide-y divide-border">
-          {recentActivity.length > 0 ? (
-            recentActivity.map((a) => (
-              <li key={a.id} className="flex items-center gap-3 py-3">
-                <AvatarBadge initials={a.user?.split(" ").map((n: string) => n[0]).join("") || "U"} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm">
-                    <span className="font-semibold">{a.user}</span>{" "}
-                    <span className="text-muted-foreground">{a.action}</span>{" "}
-                    <span className="font-medium">{a.target}</span>
-                  </p>
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 ${dir === 'rtl' ? 'font-arabic' : ''}`}>
+      <div className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+        
+        {/* ==================== HEADER ==================== */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600/10 via-purple-600/10 to-pink-600/10 p-6 backdrop-blur-sm">
+          <div className="absolute top-0 right-0 -mt-20 -mr-20 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl" />
+          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-64 w-64 rounded-full bg-pink-500/20 blur-3xl" />
+          <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 p-2 shadow-lg">
+                  <Crown className="h-5 w-5 text-white" />
                 </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{a.time}</span>
-              </li>
-            ))
-          ) : (
-            <li className="text-center py-8 text-muted-foreground">
-              No recent activity
-            </li>
-          )}
-        </ul>
-      </Card>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-pink-600 dark:from-indigo-400 dark:to-pink-400 bg-clip-text text-transparent">
+                    {t("adminDashboard")}
+                  </h1>
+                  <p className="text-sm text-muted-foreground mt-0.5">{t("dashboardSubtitle")}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={fetchAdminReport} className="gap-2 rounded-xl border-2 hover:border-indigo-500/50 transition-all">
+                <RefreshCw className="h-4 w-4" />
+                {t("refresh")}
+              </Button>
+              <Button className="gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 shadow-lg hover:shadow-xl transition-all duration-300">
+                <Sparkles className="h-4 w-4" />
+                {t("generateReport")}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* ==================== STATS CARDS - 8 CARDS ==================== */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
+          {[
+            { label: t("teachers"), value: report?.teachers_count || 0, icon: GraduationCap, gradient: "from-blue-500 to-cyan-500", bg: "from-blue-500/20 to-cyan-500/10" },
+            { label: t("students"), value: report?.students_count || 0, icon: Users, gradient: "from-green-500 to-emerald-500", bg: "from-green-500/20 to-emerald-500/10" },
+            { label: t("courses"), value: totalCourses, icon: BookOpen, gradient: "from-purple-500 to-pink-500", bg: "from-purple-500/20 to-pink-500/10" },
+            { label: t("revenue"), value: `${totalRevenue.toLocaleString()} EGP`, icon: DollarSign, gradient: "from-orange-500 to-amber-500", bg: "from-orange-500/20 to-amber-500/10" },
+            { label: t("exams"), value: report?.exams_count || 0, icon: FileQuestion, gradient: "from-red-500 to-rose-500", bg: "from-red-500/20 to-rose-500/10" },
+            { label: t("books"), value: report?.books_count || 0, icon: BookMarked, gradient: "from-teal-500 to-emerald-500", bg: "from-teal-500/20 to-emerald-500/10" },
+            { label: t("coupons"), value: report?.used_coupons || 0, icon: Ticket, gradient: "from-pink-500 to-rose-500", bg: "from-pink-500/20 to-rose-500/10" },
+            { label: t("requests"), value: report?.requests_count || 0, icon: Mail, gradient: "from-amber-500 to-orange-500", bg: "from-amber-500/20 to-orange-500/10" },
+          ].map((stat, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.04 }}
+              whileHover={{ y: -4 }}
+              className={`rounded-xl bg-gradient-to-br ${stat.bg} p-3 text-center shadow-md hover:shadow-lg transition-all duration-300`}
+            >
+              <div className={`mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-r ${stat.gradient} shadow-md`}>
+                <stat.icon className="h-4 w-4 text-white" />
+              </div>
+              <p className="text-xl font-bold">{stat.value}</p>
+              <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* ==================== MAIN CHARTS ROW ==================== */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          
+          {/* Course Distribution Pie Chart */}
+          <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-md hover:shadow-lg transition-all duration-300">
+            <div className="p-5">
+              <h3 className="font-semibold text-base flex items-center gap-2 mb-3">
+                <PieChartIcon className="h-4 w-4 text-purple-500" />
+                {t("courseDistribution")}
+              </h3>
+              <div className="h-52">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={courseDistribution} dataKey="value" innerRadius={45} outerRadius={65} paddingAngle={3}>
+                      {courseDistribution.map((entry, idx) => (
+                        <Cell key={idx} fill={entry.color} stroke="none" />
+                      ))}
+                    </Pie>
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: "11px" }} />
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="rounded-lg bg-blue-500/10 p-2 text-center">
+                  <p className="text-xl font-bold text-blue-600">{report?.online_courses || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">{t("onlineCourses")}</p>
+                </div>
+                <div className="rounded-lg bg-purple-500/10 p-2 text-center">
+                  <p className="text-xl font-bold text-purple-600">{report?.center_courses || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">{t("centerCourses")}</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Performance Bar Chart */}
+          <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-md hover:shadow-lg transition-all duration-300">
+            <div className="p-5">
+              <h3 className="font-semibold text-base flex items-center gap-2 mb-3">
+                <BarChart3 className="h-4 w-4 text-orange-500" />
+                {t("platformActivity")}
+              </h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={performanceData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={true} vertical={false} />
+                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} width={dir === 'rtl' ? 80 : 65} />
+                    <Tooltip contentStyle={{ borderRadius: "12px", border: "none", fontSize: "11px" }} />
+                    <Bar dataKey="value" radius={[0, 8, 8, 0]}>
+                      {performanceData.map((entry, idx) => (
+                        <Cell key={idx} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </Card>
+
+          {/* Quick Stats Summary */}
+          <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-md hover:shadow-lg transition-all duration-300">
+            <div className="p-5">
+              <h3 className="font-semibold text-base flex items-center gap-2 mb-4">
+                <Target className="h-4 w-4 text-emerald-500" />
+                {t("insights")}
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <span className="text-xs">{t("completionRate")}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-24 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, (report?.exams_count || 0) * 10)}%` }} />
+                    </div>
+                    <span className="text-xs font-semibold">{Math.min(100, (report?.exams_count || 0) * 10)}%</span>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <span className="text-xs">{t("avgStudentsPerCourse")}</span>
+                  <span className="text-xs font-semibold">{totalCourses > 0 ? Math.round((report?.students_count || 0) / totalCourses) : 0}</span>
+                </div>
+                <div className="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <span className="text-xs">{t("onlineVsCenter")}</span>
+                  <span className="text-xs font-semibold">{report?.online_courses || 0} / {report?.center_courses || 0}</span>
+                </div>
+                <div className="flex justify-between items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <span className="text-xs">{t("profitMargin")}</span>
+                  <span className="text-xs font-semibold text-emerald-600">0%</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* ==================== SECOND ROW ==================== */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          
+          {/* Performance Metrics Grid */}
+          <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-md hover:shadow-lg transition-all duration-300">
+            <div className="p-5">
+              <h3 className="font-semibold text-base flex items-center gap-2 mb-4">
+                <Activity className="h-4 w-4 text-indigo-500" />
+                {t("contentMetrics")}
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {performanceData.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 dark:bg-slate-800">
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${item.color}20` }}>
+                      <item.icon className="h-4 w-4" style={{ color: item.color }} />
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold">{item.value}</p>
+                      <p className="text-[10px] text-muted-foreground">{item.name}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+
+          {/* Summary Stats */}
+          <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-md hover:shadow-lg transition-all duration-300">
+            <div className="p-5">
+              <h3 className="font-semibold text-base flex items-center gap-2 mb-4">
+                <Trophy className="h-4 w-4 text-yellow-500" />
+                {t("achievements")}
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-3 text-center">
+                  <School className="h-5 w-5 text-amber-500 mx-auto mb-1" />
+                  <p className="text-xl font-bold">{report?.teachers_count || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">{t("teachers")}</p>
+                </div>
+                <div className="rounded-lg bg-gradient-to-br from-blue-500/10 to-indigo-500/5 p-3 text-center">
+                  <Library className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+                  <p className="text-xl font-bold">{report?.books_count || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">{t("books")}</p>
+                </div>
+                <div className="rounded-lg bg-gradient-to-br from-green-500/10 to-emerald-500/5 p-3 text-center">
+                  <FileQuestion className="h-5 w-5 text-green-500 mx-auto mb-1" />
+                  <p className="text-xl font-bold">{report?.exams_count || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">{t("exams")}</p>
+                </div>
+                <div className="rounded-lg bg-gradient-to-br from-purple-500/10 to-pink-500/5 p-3 text-center">
+                  <Ticket className="h-5 w-5 text-purple-500 mx-auto mb-1" />
+                  <p className="text-xl font-bold">{report?.used_coupons || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">{t("coupons")}</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+    
+      </div>
     </div>
   );
 }

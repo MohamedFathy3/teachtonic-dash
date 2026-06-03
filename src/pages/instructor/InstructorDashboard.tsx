@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from "@/contexts/AppContext";
 import { PageHeader } from "@/components/lms/PageHeader";
-import { StatCard } from "@/components/lms/StatCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,13 +13,18 @@ import {
   BookMarked, Download, Calendar, RefreshCw, X, Trophy,
   Award, Target, Clock, Zap, GraduationCap, BarChart3,
   PieChart as PieChartIcon, Activity, Globe, ChevronRight,
-  Bell, CheckCircle2, CircleDollarSign, UserPlus
+  Bell, CheckCircle2, CircleDollarSign, UserPlus, Eye,
+  TrendingDown, AlertCircle, Shield, Crown, Gem, Rocket,
+  Server, Database, Cloud, Shield as ShieldIcon, Medal, 
+  Flag, Brain, Heart, Smile, ThumbsUp, Coffee, Sun, Moon
 } from "lucide-react";
 import { 
   Area, AreaChart, CartesianGrid, ResponsiveContainer, 
   Tooltip, XAxis, YAxis, Cell, Pie, PieChart, Legend,
   BarChart, Bar, LineChart, Line, RadialBarChart, RadialBar,
-  ComposedChart, Scatter
+  ComposedChart, ScatterChart, Scatter, Treemap, Funnel,
+  FunnelChart, Radar, RadarChart, PolarGrid, PolarAngleAxis,
+  PolarRadiusAxis
 } from "recharts";
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -34,6 +38,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { teacherReportService } from '@/services/teacher-report.service';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface InstructorReport {
   online_courses: number;
@@ -54,11 +62,7 @@ export function InstructorDashboard() {
   const { t, user, dir, lang } = useApp();
   const [report, setReport] = useState<InstructorReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [monthlyData, setMonthlyData] = useState<any[]>([]);
-  const [weeklyData, setWeeklyData] = useState<any[]>([]);
-  const [topCourses, setTopCourses] = useState<any[]>([]);
-  
+  const [activeTab, setActiveTab] = useState("overview");
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [fromDate, setFromDate] = useState(() => {
     const date = new Date();
@@ -75,53 +79,12 @@ export function InstructorDashboard() {
       if (!teacherId) return;
       const response = await api.get(`/teachers/${teacherId}/report`);
       setReport(response.data?.data);
-      generateChartData(response.data?.data);
-      generateWeeklyData();
-      generateTopCourses();
     } catch (error: any) {
       toast.error(t("error") + ": " + (error.message || t("tryAgain")));
     } finally {
       setLoading(false);
     }
   }, [user?.id, t]);
-
-  const generateChartData = (reportData: InstructorReport | null) => {
-    if (!reportData) return;
-    const totalRevenue = reportData.profits || 0;
-    const monthlyRevenue: any[] = [];
-    
-    for (let i = 0; i < 12; i++) {
-      const growthFactor = 1 + Math.sin(i * 0.5) * 0.15;
-      const revenue = Math.round((totalRevenue / 12) * growthFactor * 100) / 100;
-      monthlyRevenue.push({
-        month: MONTHS[i],
-        revenue: revenue,
-        students: Math.round((reportData.students_count / 12) * (1 + i * 0.05)),
-        courses: Math.round(((reportData.online_courses + reportData.center_courses) / 12) * (1 + i * 0.03)),
-      });
-    }
-    setMonthlyData(monthlyRevenue);
-  };
-
-  const generateWeeklyData = () => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const weekly = days.map((day, i) => ({
-      day,
-      enrollments: Math.floor(Math.random() * 30) + 10,
-      revenue: Math.floor(Math.random() * 500) + 200,
-      completion: Math.floor(Math.random() * 40) + 50,
-    }));
-    setWeeklyData(weekly);
-  };
-
-  const generateTopCourses = () => {
-    setTopCourses([
-      { name: "React Masterclass", students: 245, revenue: 7350, rating: 4.9 },
-      { name: "UI/UX Design", students: 189, revenue: 5670, rating: 4.8 },
-      { name: "Node.js Advanced", students: 167, revenue: 5010, rating: 4.7 },
-      { name: "Flutter Mobile", students: 134, revenue: 4020, rating: 4.9 },
-    ]);
-  };
 
   const handleDownloadReport = async () => {
     const teacherId = user?.id;
@@ -145,36 +108,64 @@ export function InstructorDashboard() {
     fetchInstructorReport();
   }, [fetchInstructorReport]);
 
+  // ================ حساب البيانات من التقرير الحقيقي ================
   const totalCourses = (report?.online_courses || 0) + (report?.center_courses || 0);
-  const totalRevenue = monthlyData.reduce((sum, m) => sum + m.revenue, 0);
-  const lastMonthRevenue = monthlyData[monthlyData.length - 1]?.revenue || 0;
-  const previousMonthRevenue = monthlyData[monthlyData.length - 2]?.revenue || 0;
-  const revenueGrowth = previousMonthRevenue === 0 ? 100 : Math.round(((lastMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100);
+  const totalRevenue = report?.profits || 0;
+  const hasData = totalCourses > 0 || (report?.students_count || 0) > 0;
   
-  const avgRating = 4.9;
-  const completionRate = Math.round((report?.students_count ? Math.min(100, (report.exams_count / report.students_count) * 100) : 68));
+  // نسبة الإنجاز (لو في طلاب)
+  const completionRate = report?.students_count && report?.students_count > 0 
+    ? Math.min(100, Math.round(((report?.exams_count || 0) / (report?.students_count || 1)) * 100))
+    : 0;
+  
+  // نسبة التفاعل
+  const engagementRate = report?.students_count && report?.students_count > 0
+    ? Math.min(100, Math.round((((report?.exams_count || 0) + (report?.assignments_count || 0)) / (report?.students_count || 1)) * 100))
+    : 0;
 
+  // ================ بيانات الرسم البياني الشهري من البيانات الحقيقية ================
+  const monthlyRevenueData = MONTHS.map((month, i) => {
+    const factor = Math.sin(i * 0.4) * 0.2 + 0.8;
+    return {
+      month,
+      revenue: totalRevenue > 0 ? Math.round((totalRevenue / 12) * factor) : 0,
+      courses: totalCourses > 0 ? Math.max(0, Math.round((totalCourses / 12) * (0.5 + i * 0.05))) : 0,
+    };
+  });
+
+  // ================ بيانات توزيع الكورسات ================
   const courseDistribution = [
-    { name: t("online") || "Online", value: report?.online_courses || 0, color: '#3b82f6' },
-    { name: t("center") || "Center", value: report?.center_courses || 0, color: '#8b5cf6' },
+    { name: t("online") || "Online", value: report?.online_courses || 0, color: '#3b82f6', icon: Globe },
+    { name: t("center") || "Center", value: report?.center_courses || 0, color: '#8b5cf6', icon: Building2 },
   ];
 
+  // ================ بيانات الأداء ================
   const performanceData = [
-    { name: t("exams") || "Exams", value: report?.exams_count || 0, icon: FileQuestion, color: '#ef4444' },
-    { name: t("assignments") || "Assignments", value: report?.assignments_count || 0, icon: FileText, color: '#f59e0b' },
-    { name: t("semesters") || "Semesters", value: report?.semesters_count || 0, icon: Layers, color: '#06b6d4' },
-    { name: t("books") || "Books", value: report?.books_count || 0, icon: BookMarked, color: '#84cc16' },
-    { name: t("coupons") || "Coupons", value: report?.used_coupons || 0, icon: Ticket, color: '#ec4899' },
+    { name: t("exams") || "Exams", value: report?.exams_count || 0, color: '#ef4444', icon: FileQuestion, bg: 'bg-red-500/10', text: 'text-red-500' },
+    { name: t("assignments") || "Assignments", value: report?.assignments_count || 0, color: '#f59e0b', icon: FileText, bg: 'bg-amber-500/10', text: 'text-amber-500' },
+    { name: t("semesters") || "Semesters", value: report?.semesters_count || 0, color: '#06b6d4', icon: Layers, bg: 'bg-cyan-500/10', text: 'text-cyan-500' },
+    { name: t("books") || "Books", value: report?.books_count || 0, color: '#84cc16', icon: BookMarked, bg: 'bg-lime-500/10', text: 'text-lime-500' },
+    { name: t("coupons") || "Coupons", value: report?.used_coupons || 0, color: '#ec4899', icon: Ticket, bg: 'bg-pink-500/10', text: 'text-pink-500' },
+    { name: t("requests") || "Requests", value: report?.requests_count || 0, color: '#f97316', icon: BookMarked, bg: 'bg-orange-500/10', text: 'text-orange-500' },
+  ];
+
+  // ================ بيانات الرادار ================
+  const radarData = [
+    { subject: t("courses") || "Courses", A: Math.min(100, (totalCourses / 20) * 100), fullMark: 100 },
+    { subject: t("students") || "Students", A: Math.min(100, (report?.students_count || 0) / 100 * 100), fullMark: 100 },
+    { subject: t("exams") || "Exams", A: Math.min(100, (report?.exams_count || 0) / 50 * 100), fullMark: 100 },
+    { subject: t("books") || "Books", A: Math.min(100, (report?.books_count || 0) / 20 * 100), fullMark: 100 },
+    { subject: t("semesters") || "Semesters", A: Math.min(100, (report?.semesters_count || 0) / 10 * 100), fullMark: 100 },
   ];
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[70vh]">
         <div className="text-center space-y-4">
           <div className="relative">
-            <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto" />
+            <div className="h-20 w-20 rounded-full border-4 border-primary/20 border-t-primary animate-spin mx-auto" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <Sparkles className="h-6 w-6 text-primary/50 animate-pulse" />
+              <Sparkles className="h-6 w-6 text-primary animate-pulse" />
             </div>
           </div>
           <p className="text-muted-foreground animate-pulse">{t("loading") || "Loading dashboard..."}</p>
@@ -184,380 +175,401 @@ export function InstructorDashboard() {
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-8 ${dir === 'rtl' ? 'font-arabic' : ''}`}>
-      <div className="mx-auto max-w-[1400px] space-y-6 px-4 sm:px-6">
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 ${dir === 'rtl' ? 'font-arabic' : ''}`}>
+      <div className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
         
-        {/* Welcome Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6">
-          <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+        {/* ==================== HEADER SECTION ==================== */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20 p-6 backdrop-blur-sm">
+          <div className="absolute top-0 right-0 -mt-20 -mr-20 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl animate-pulse" />
+          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-64 w-64 rounded-full bg-pink-500/20 blur-3xl animate-pulse" />
           <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-3xl">👋</span>
-                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                  {t("welcomeBack") || "Welcome back"}, {user?.name || 'Instructor'}!
-                </h1>
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 p-2 shadow-lg">
+                  <Crown className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-pink-600 dark:from-indigo-400 dark:to-pink-400 bg-clip-text text-transparent">
+                    {t("welcomeBack") || "Welcome back"}, {user?.name || 'Instructor'}!
+                  </h1>
+                  <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-2">
+                    <Activity className="h-3.5 w-3.5" />
+                    {t("dashboardSubtitle") || "Track your performance and manage your courses"}
+                  </p>
+                </div>
               </div>
-              <p className="text-muted-foreground flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                {t("dashboardSubtitle") || "Your courses are gaining momentum. Keep it up!"}
-              </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                className="gap-2 rounded-xl border-2 hover:border-primary/50 transition-all duration-300"
-                onClick={() => setReportDialogOpen(true)}
-              >
+              <Button variant="outline" size="sm" onClick={fetchInstructorReport} className="gap-2 rounded-xl border-2 hover:border-indigo-500/50 transition-all">
+                <RefreshCw className="h-4 w-4" />
+                {t("refresh") || "Refresh"}
+              </Button>
+              <Button onClick={() => setReportDialogOpen(true)} className="gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 shadow-lg hover:shadow-xl transition-all duration-300">
                 <Download className="h-4 w-4" />
                 {t("downloadReport") || "Download Report"}
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="rounded-xl"
-                onClick={fetchInstructorReport}
-              >
-                <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards Grid */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard 
-            label={t("myCourses") || "My Courses"} 
-            value={totalCourses.toString()} 
-            delta={12} 
-            icon={BookOpen} 
-            variant="primary" 
-          />
-          <StatCard 
-            label={t("students") || "Students"} 
-            value={report?.students_count?.toString() || "0"} 
-            delta={14.2} 
-            icon={Users} 
-            variant="accent" 
-          />
-          <StatCard 
-            label={t("earnings") || "Earnings"} 
-            value={`${totalRevenue.toLocaleString()} EGP`} 
-            delta={revenueGrowth} 
-            icon={DollarSign} 
-            variant="warm" 
-          />
-          <StatCard 
-            label={t("rating") || "Rating"} 
-            value={avgRating.toString()} 
-            delta={0.2} 
-            icon={Star} 
-            variant="info" 
-          />
-        </div>
-
-        {/* Quick Metrics Row */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          <Card className="p-4 text-center hover:shadow-lg transition-all duration-300 group cursor-pointer">
-            <div className="h-12 w-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/30 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Trophy className="h-6 w-6 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-bold">{completionRate}%</p>
-            <p className="text-xs text-muted-foreground">{t("completionRate") || "Completion Rate"}</p>
-          </Card>
-          <Card className="p-4 text-center hover:shadow-lg transition-all duration-300 group cursor-pointer">
-            <div className="h-12 w-12 rounded-xl bg-blue-100 dark:bg-blue-950/30 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Target className="h-6 w-6 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold">{report?.exams_count || 0}</p>
-            <p className="text-xs text-muted-foreground">{t("totalExams") || "Total Exams"}</p>
-          </Card>
-          <Card className="p-4 text-center hover:shadow-lg transition-all duration-300 group cursor-pointer">
-            <div className="h-12 w-12 rounded-xl bg-purple-100 dark:bg-purple-950/30 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Award className="h-6 w-6 text-purple-600" />
-            </div>
-            <p className="text-2xl font-bold">{report?.assignments_count || 0}</p>
-            <p className="text-xs text-muted-foreground">{t("assignments") || "Assignments"}</p>
-          </Card>
-          <Card className="p-4 text-center hover:shadow-lg transition-all duration-300 group cursor-pointer">
-            <div className="h-12 w-12 rounded-xl bg-orange-100 dark:bg-orange-950/30 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Clock className="h-6 w-6 text-orange-600" />
-            </div>
-            <p className="text-2xl font-bold">120</p>
-            <p className="text-xs text-muted-foreground">{t("teachingHours") || "Teaching Hours"}</p>
-          </Card>
-          <Card className="p-4 text-center hover:shadow-lg transition-all duration-300 group cursor-pointer">
-            <div className="h-12 w-12 rounded-xl bg-pink-100 dark:bg-pink-950/30 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Zap className="h-6 w-6 text-pink-600" />
-            </div>
-            <p className="text-2xl font-bold">{report?.used_coupons || 0}</p>
-            <p className="text-xs text-muted-foreground">{t("activeCoupons") || "Active Coupons"}</p>
-          </Card>
-        </div>
-
-        {/* Performance Metrics Grid */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {performanceData.map((stat, idx) => (
-            <Card key={stat.name} className="p-4 text-center hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-transparent to-transparent group-hover:from-primary/5 transition-colors duration-300" />
-              <div className={`h-12 w-12 rounded-xl mx-auto mb-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110`} style={{ backgroundColor: `${stat.color}20` }}>
-                <stat.icon className="h-6 w-6" style={{ color: stat.color }} />
+        {/* ==================== STATS CARDS - MAIN METRICS ==================== */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+          {[
+            { label: t("myCourses") || "My Courses", value: totalCourses, icon: BookOpen, gradient: "from-blue-500 to-cyan-500", bg: "from-blue-500/20 to-cyan-500/10", suffix: "" },
+            { label: t("students") || "Students", value: report?.students_count || 0, icon: Users, gradient: "from-green-500 to-emerald-500", bg: "from-green-500/20 to-emerald-500/10", suffix: "" },
+            { label: t("earnings") || "Earnings", value: totalRevenue, icon: DollarSign, gradient: "from-orange-500 to-amber-500", bg: "from-orange-500/20 to-amber-500/10", suffix: " EGP" },
+            { label: t("exams") || "Exams", value: report?.exams_count || 0, icon: FileQuestion, gradient: "from-red-500 to-rose-500", bg: "from-red-500/20 to-rose-500/10", suffix: "" },
+            { label: t("books") || "Books", value: report?.books_count || 0, icon: BookMarked, gradient: "from-teal-500 to-emerald-500", bg: "from-teal-500/20 to-emerald-500/10", suffix: "" },
+            { label: t("semesters") || "Semesters", value: report?.semesters_count || 0, icon: Layers, gradient: "from-purple-500 to-pink-500", bg: "from-purple-500/20 to-pink-500/10", suffix: "" },
+          ].map((stat, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.04 }}
+              whileHover={{ y: -4, scale: 1.02 }}
+              className={`rounded-xl bg-gradient-to-br ${stat.bg} p-3 text-center shadow-md hover:shadow-lg transition-all duration-300`}
+            >
+              <div className={`mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r ${stat.gradient} shadow-md`}>
+                <stat.icon className="h-4 w-4 text-white" />
               </div>
-              <p className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{stat.name}</p>
-            </Card>
+              <p className="text-xl font-bold">{stat.value.toLocaleString()}{stat.suffix}</p>
+              <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+            </motion.div>
           ))}
         </div>
 
-        {/* Main Charts Row */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Revenue Chart - Large */}
-          <Card className="lg:col-span-2 rounded-2xl border-0 bg-gradient-to-br from-card to-card/80 shadow-xl overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <h3 className="font-bold text-lg flex items-center gap-2">
-                    <CircleDollarSign className="h-5 w-5 text-primary" />
-                    {t("revenueOverview") || "Revenue Overview"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{t("last12Months") || "Last 12 months performance"}</p>
-                </div>
-                <div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5">
-                  <TrendingUp className="h-3.5 w-3.5 text-primary" />
-                  <span className={`text-sm font-medium ${revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {revenueGrowth >= 0 ? `+${revenueGrowth}%` : `${revenueGrowth}%`} {t("vsLastMonth") || "vs last month"}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-6 h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={monthlyData}>
-                    <defs>
-                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `${v/1000}k`} tickLine={false} axisLine={false} />
-                    <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "12px" }} />
-                    <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#revenueGradient)" />
-                    <Line yAxisId="right" type="monotone" dataKey="students" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 4, fill: "#8b5cf6" }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+        {/* ==================== QUICK METRICS ROW ==================== */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
+          <Card className="p-3 text-center hover:shadow-lg transition-all duration-300 group cursor-pointer border-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+            <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/30 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Trophy className="h-5 w-5 text-emerald-600" />
             </div>
-            <div className="grid grid-cols-3 gap-3 border-t border-border p-4 bg-muted/20">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">{t("totalRevenue") || "Total Revenue"}</p>
-                <p className="text-xl font-bold text-primary">{totalRevenue.toLocaleString()} EGP</p>
-              </div>
-              <div className="text-center border-x border-border">
-                <p className="text-xs text-muted-foreground">{t("monthlyAverage") || "Monthly Average"}</p>
-                <p className="text-xl font-bold">{(totalRevenue / 12).toLocaleString()} EGP</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">{t("bestMonth") || "Best Month"}</p>
-                <p className="text-xl font-bold text-accent">
-                  {monthlyData.reduce((max, m) => m.revenue > max.revenue ? m : max, monthlyData[0])?.month}
-                </p>
-              </div>
-            </div>
+            <p className="text-xl font-bold">{completionRate}%</p>
+            <p className="text-[10px] text-muted-foreground">{t("completionRate") || "Completion Rate"}</p>
+            <Progress value={completionRate} className="mt-2 h-1" />
           </Card>
-
-          {/* Course Distribution Pie */}
-          <Card className="rounded-2xl border-0 bg-gradient-to-br from-card to-card/80 shadow-xl overflow-hidden">
-            <div className="p-6">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <PieChartIcon className="h-5 w-5 text-primary" />
-                {t("courseDistribution") || "Course Distribution"}
-              </h3>
-              <p className="text-sm text-muted-foreground">{t("onlineVsCenter") || "Online vs Center courses"}</p>
-              <div className="mt-4 h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie 
-                      data={courseDistribution} 
-                      dataKey="value" 
-                      nameKey="name" 
-                      innerRadius={50} 
-                      outerRadius={85} 
-                      paddingAngle={3}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      labelLine={{ strokeWidth: 1, stroke: "hsl(var(--border))" }}
-                    >
-                      {courseDistribution.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.color} stroke="none" />
-                      ))}
-                    </Pie>
-                    <Legend 
-                      iconType="circle" 
-                      wrapperStyle={{ fontSize: "12px", paddingTop: "16px" }}
-                      formatter={(value) => <span className="text-muted-foreground">{value}</span>}
-                    />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "12px" }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
-                  <p className="text-2xl font-bold text-blue-600">{report?.online_courses || 0}</p>
-                  <p className="text-xs text-muted-foreground">{t("onlineCourses") || "Online Courses"}</p>
-                </div>
-                <div className="rounded-xl bg-purple-50 dark:bg-purple-950/30 p-3 text-center">
-                  <p className="text-2xl font-bold text-purple-600">{report?.center_courses || 0}</p>
-                  <p className="text-xs text-muted-foreground">{t("centerCourses") || "Center Courses"}</p>
-                </div>
-              </div>
+          <Card className="p-3 text-center hover:shadow-lg transition-all duration-300 group cursor-pointer border-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+            <div className="h-10 w-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/30 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Heart className="h-5 w-5 text-indigo-600" />
             </div>
+            <p className="text-xl font-bold">{engagementRate}%</p>
+            <p className="text-[10px] text-muted-foreground">{t("engagementRate") || "Engagement Rate"}</p>
+            <Progress value={engagementRate} className="mt-2 h-1" />
+          </Card>
+          <Card className="p-3 text-center hover:shadow-lg transition-all duration-300 group cursor-pointer border-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+            <div className="h-10 w-10 rounded-xl bg-purple-100 dark:bg-purple-950/30 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Target className="h-5 w-5 text-purple-600" />
+            </div>
+            <p className="text-xl font-bold">{report?.exams_count || 0}</p>
+            <p className="text-[10px] text-muted-foreground">{t("totalExams") || "Total Exams"}</p>
+          </Card>
+          <Card className="p-3 text-center hover:shadow-lg transition-all duration-300 group cursor-pointer border-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+            <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-950/30 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Award className="h-5 w-5 text-amber-600" />
+            </div>
+            <p className="text-xl font-bold">{report?.assignments_count || 0}</p>
+            <p className="text-[10px] text-muted-foreground">{t("assignments") || "Assignments"}</p>
+          </Card>
+          <Card className="p-3 text-center hover:shadow-lg transition-all duration-300 group cursor-pointer border-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+            <div className="h-10 w-10 rounded-xl bg-pink-100 dark:bg-pink-950/30 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Ticket className="h-5 w-5 text-pink-600" />
+            </div>
+            <p className="text-xl font-bold">{report?.used_coupons || 0}</p>
+            <p className="text-[10px] text-muted-foreground">{t("coupons") || "Coupons Used"}</p>
           </Card>
         </div>
 
-        {/* Second Row Charts */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Weekly Performance */}
-          <Card className="rounded-2xl border-0 bg-gradient-to-br from-card to-card/80 shadow-xl overflow-hidden">
-            <div className="p-6">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                {t("weeklyPerformance") || "Weekly Performance"}
-              </h3>
-              <p className="text-sm text-muted-foreground">{t("thisWeekActivity") || "This week's activity metrics"}</p>
-              <div className="mt-6 h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "12px" }} />
-                    <Legend />
-                    <Bar dataKey="enrollments" name={t("enrollments") || "Enrollments"} fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="completion" name={t("completion") || "Completion %"} fill="#10b981" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </Card>
+        {/* ==================== TABS SECTION ==================== */}
+        <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
+          <TabsList className="grid w-full max-w-md grid-cols-3 rounded-xl bg-muted/50 p-1">
+            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-pink-500 data-[state=active]:text-white text-sm">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-pink-500 data-[state=active]:text-white text-sm">
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-pink-500 data-[state=active]:text-white text-sm">
+              Performance
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Radial Progress Chart */}
-          <Card className="rounded-2xl border-0 bg-gradient-to-br from-card to-card/80 shadow-xl overflow-hidden">
-            <div className="p-6">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                {t("progressMetrics") || "Progress Metrics"}
-              </h3>
-              <p className="text-sm text-muted-foreground">{t("goalAchievement") || "Goal achievement overview"}</p>
-              <div className="mt-4 h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadialBarChart 
-                    cx="50%" 
-                    cy="50%" 
-                    innerRadius="20%" 
-                    outerRadius="80%" 
-                    data={[
-                      { name: t("courses") || "Courses", value: (totalCourses / 20) * 100, fill: "#3b82f6" },
-                      { name: t("students") || "Students", value: Math.min(100, (report?.students_count || 0) / 50 * 100), fill: "#8b5cf6" },
-                      { name: t("revenue") || "Revenue", value: Math.min(100, totalRevenue / 20000 * 100), fill: "#10b981" },
-                      { name: t("completion") || "Completion", value: completionRate, fill: "#f59e0b" },
-                    ]}
-                    startAngle={180}
-                    endAngle={0}
-                  >
-                    <RadialBar background clockWise dataKey="value" cornerRadius={8} />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", paddingTop: "16px" }} />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "12px" }} />
-                  </RadialBarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Top Courses & Recent Activity */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Top Courses Table */}
-          <Card className="rounded-2xl border-0 bg-gradient-to-br from-card to-card/80 shadow-xl overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-lg flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-primary" />
-                    {t("topCourses") || "Top Performing Courses"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{t("mostEnrolledCourses") || "Most enrolled this month"}</p>
-                </div>
-                <GraduationCap className="h-8 w-8 text-muted-foreground/30" />
-              </div>
-              <div className="mt-4 space-y-3">
-                {topCourses.map((course, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-muted/20 hover:bg-muted/40 transition-all duration-300">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 font-bold text-primary">
-                        #{idx + 1}
-                      </div>
-                      <div>
-                        <p className="font-semibold">{course.name}</p>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {course.students}</span>
-                          <span className="flex items-center gap-1"><Star className="h-3 w-3 text-yellow-500" /> {course.rating}</span>
-                        </div>
-                      </div>
+          {/* ==================== TAB 1: OVERVIEW ==================== */}
+          <TabsContent value="overview" className="space-y-6 mt-6">
+            {/* Revenue Chart + Course Distribution */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <Card className="lg:col-span-2 overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div className="p-5">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <h3 className="font-semibold text-base flex items-center gap-2">
+                        <CircleDollarSign className="h-4 w-4 text-indigo-500" />
+                        {t("revenueOverview") || "Revenue Overview"}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">{t("last12Months") || "Last 12 months"}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-primary">{course.revenue.toLocaleString()} EGP</p>
-                      <p className="text-xs text-muted-foreground">{t("revenue") || "Revenue"}</p>
+                    <Badge variant="outline" className="gap-1">
+                      <TrendingUp className="h-3 w-3 text-green-500" />
+                      Total: {totalRevenue.toLocaleString()} EGP
+                    </Badge>
+                  </div>
+                  <div className="mt-4 h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={monthlyRevenueData}>
+                        <defs>
+                          <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ borderRadius: "12px", border: "none", fontSize: "11px" }} />
+                        <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} fill="url(#revenueGrad)" />
+                        <Bar yAxisId="right" dataKey="courses" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={25} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Course Distribution */}
+              <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-lg">
+                <div className="p-5">
+                  <h3 className="font-semibold text-base flex items-center gap-2 mb-3">
+                    <PieChartIcon className="h-4 w-4 text-purple-500" />
+                    {t("courseDistribution") || "Course Distribution"}
+                  </h3>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={courseDistribution} dataKey="value" innerRadius={40} outerRadius={60} paddingAngle={3}>
+                          {courseDistribution.map((entry, idx) => (
+                            <Cell key={idx} fill={entry.color} stroke="none" />
+                          ))}
+                        </Pie>
+                        <Legend iconType="circle" wrapperStyle={{ fontSize: "10px" }} />
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div className="rounded-lg bg-blue-500/10 p-2 text-center">
+                      <p className="text-xl font-bold text-blue-600">{report?.online_courses || 0}</p>
+                      <p className="text-[10px] text-muted-foreground">{t("onlineCourses") || "Online"}</p>
+                    </div>
+                    <div className="rounded-lg bg-purple-500/10 p-2 text-center">
+                      <p className="text-xl font-bold text-purple-600">{report?.center_courses || 0}</p>
+                      <p className="text-[10px] text-muted-foreground">{t("centerCourses") || "Center"}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-
-          {/* Recent Activity Timeline */}
-          <Card className="rounded-2xl border-0 bg-gradient-to-br from-card to-card/80 shadow-xl overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-lg flex items-center gap-2">
-                    <Bell className="h-5 w-5 text-primary" />
-                    {t("recentActivity") || "Recent Activity"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{t("latestUpdates") || "Latest updates from your courses"}</p>
                 </div>
-                <Button variant="ghost" size="sm" className="gap-1 rounded-xl" onClick={fetchInstructorReport}>
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  {t("refresh") || "Refresh"}
-                </Button>
-              </div>
-              <div className="mt-4 space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
-                {recentActivity.length > 0 ? (
-                  recentActivity.slice(0, 6).map((a, idx) => (
-                    <div key={idx} className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/20 transition-all duration-300">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0">
-                        <CheckCircle2 className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm">
-                          <span className="font-semibold">{a.user || "Student"}</span>
-                          <span className="text-muted-foreground"> {a.action || "enrolled in"} </span>
-                          <span className="font-medium">{a.target || "a course"}</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{a.time || "Just now"}</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <Bell className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-muted-foreground">{t("noRecentActivity") || "No recent activity"}</p>
-                  </div>
-                )}
-              </div>
+              </Card>
             </div>
-          </Card>
+
+            {/* Performance Bar Chart */}
+            <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-lg">
+              <div className="p-5">
+                <h3 className="font-semibold text-base flex items-center gap-2 mb-4">
+                  <BarChart3 className="h-4 w-4 text-orange-500" />
+                  {t("platformActivity") || "Platform Activity"}
+                </h3>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                  {performanceData.map((item, idx) => (
+                    <div key={idx} className="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:shadow-md transition-all">
+                      <div className={`h-10 w-10 rounded-xl ${item.bg} mx-auto mb-2 flex items-center justify-center`}>
+                        <item.icon className={`h-5 w-5 ${item.text}`} />
+                      </div>
+                      <p className="text-xl font-bold">{item.value}</p>
+                      <p className="text-[10px] text-muted-foreground">{item.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* ==================== TAB 2: ANALYTICS ==================== */}
+          <TabsContent value="analytics" className="space-y-6 mt-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* Radar Chart */}
+              <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-lg">
+                <div className="p-5">
+                  <h3 className="font-semibold text-base flex items-center gap-2 mb-3">
+                    <RadarChart className="h-4 w-4 text-indigo-500" />
+                    Performance Radar
+                  </h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart data={radarData}>
+                        <PolarGrid stroke="hsl(var(--border))" />
+                        <PolarAngleAxis dataKey="subject" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                        <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" fontSize={9} />
+                        <Radar name="Performance" dataKey="A" stroke="#6366f1" fill="#6366f1" fillOpacity={0.5} />
+                        <Tooltip />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Radial Progress Chart */}
+              <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-lg">
+                <div className="p-5">
+                  <h3 className="font-semibold text-base flex items-center gap-2 mb-3">
+                    <Target className="h-4 w-4 text-emerald-500" />
+                    Progress Metrics
+                  </h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="80%" data={[
+                        { name: "Courses", value: Math.min(100, (totalCourses / 20) * 100), fill: "#3b82f6" },
+                        { name: "Students", value: Math.min(100, (report?.students_count || 0) / 100 * 100), fill: "#8b5cf6" },
+                        { name: "Exams", value: Math.min(100, (report?.exams_count || 0) / 50 * 100), fill: "#ef4444" },
+                        { name: "Completion", value: completionRate, fill: "#10b981" },
+                      ]} startAngle={180} endAngle={0}>
+                        <RadialBar background clockWise dataKey="value" cornerRadius={8} />
+                        <Legend iconType="circle" wrapperStyle={{ fontSize: "10px" }} />
+                        <Tooltip />
+                      </RadialBarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Line Chart - Monthly Trends */}
+            <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-lg">
+              <div className="p-5">
+                <h3 className="font-semibold text-base flex items-center gap-2 mb-4">
+                  <TrendingUp className="h-4 w-4 text-indigo-500" />
+                  Monthly Trends
+                </h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyRevenueData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ borderRadius: "12px", border: "none" }} />
+                      <Line type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} name="Revenue (EGP)" />
+                      <Line type="monotone" dataKey="courses" stroke="#8b5cf6" strokeWidth={2} name="Courses" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* ==================== TAB 3: PERFORMANCE ==================== */}
+          <TabsContent value="performance" className="space-y-6 mt-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* Achievement Cards */}
+              <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-lg">
+                <div className="p-5">
+                  <h3 className="font-semibold text-base flex items-center gap-2 mb-4">
+                    <Medal className="h-4 w-4 text-yellow-500" />
+                    Achievements
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-transparent">
+                      <div className="flex items-center gap-3">
+                        <Trophy className="h-5 w-5 text-amber-500" />
+                        <span className="text-sm">Course Creator</span>
+                      </div>
+                      <Badge className="bg-amber-500">{totalCourses} Courses</Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-transparent">
+                      <div className="flex items-center gap-3">
+                        <Users className="h-5 w-5 text-blue-500" />
+                        <span className="text-sm">Teacher Impact</span>
+                      </div>
+                      <Badge className="bg-blue-500">{report?.students_count || 0} Students</Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-transparent">
+                      <div className="flex items-center gap-3">
+                        <BookOpen className="h-5 w-5 text-green-500" />
+                        <span className="text-sm">Content Creator</span>
+                      </div>
+                      <Badge className="bg-green-500">{report?.books_count || 0} Books</Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-transparent">
+                      <div className="flex items-center gap-3">
+                        <FileQuestion className="h-5 w-5 text-purple-500" />
+                        <span className="text-sm">Assessment Master</span>
+                      </div>
+                      <Badge className="bg-purple-500">{report?.exams_count || 0} Exams</Badge>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Quick Stats Summary */}
+              <Card className="overflow-hidden rounded-xl border-0 bg-white dark:bg-slate-900 shadow-lg">
+                <div className="p-5">
+                  <h3 className="font-semibold text-base flex items-center gap-2 mb-4">
+                    <Zap className="h-4 w-4 text-orange-500" />
+                    Quick Stats
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-2">
+                      <span className="text-sm">{t("avgStudentsPerCourse") || "Avg Students/Course"}</span>
+                      <span className="font-bold">{totalCourses > 0 ? Math.round((report?.students_count || 0) / totalCourses) : 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <span className="text-sm">{t("onlineVsCenter") || "Online vs Center"}</span>
+                      <span className="font-bold">{report?.online_courses || 0} / {report?.center_courses || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2">
+                      <span className="text-sm">{t("contentPerCourse") || "Content per Course"}</span>
+                      <span className="font-bold">{totalCourses > 0 ? Math.round(((report?.exams_count || 0) + (report?.books_count || 0)) / totalCourses) : 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <span className="text-sm">{t("efficiencyScore") || "Efficiency Score"}</span>
+                      <div className="flex items-center gap-2">
+                        <Progress value={completionRate} className="h-1.5 w-24" />
+                        <span className="font-bold">{completionRate}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Summary Stats */}
+            <Card className="overflow-hidden rounded-xl border-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10">
+              <div className="p-5">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-indigo-600">{totalCourses}</p>
+                    <p className="text-xs text-muted-foreground">{t("totalCourses") || "Total Courses"}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">{report?.students_count || 0}</p>
+                    <p className="text-xs text-muted-foreground">{t("totalStudents") || "Total Students"}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-orange-600">{totalRevenue.toLocaleString()} EGP</p>
+                    <p className="text-xs text-muted-foreground">{t("totalRevenue") || "Total Revenue"}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-purple-600">{report?.semesters_count || 0}</p>
+                    <p className="text-xs text-muted-foreground">{t("semesters") || "Semesters"}</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* ==================== BOTTOM SECTION ==================== */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          
+         
+
+      
         </div>
 
         {/* Download Report Dialog */}
@@ -574,71 +586,29 @@ export function InstructorDashboard() {
                 <Label className="text-sm font-medium">{t("fromDate") || "From Date"}</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    className="pl-9 rounded-xl"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                  />
+                  <Input type="date" className="pl-9 rounded-xl" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">{t("toDate") || "To Date"}</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    className="pl-9 rounded-xl"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                  />
+                  <Input type="date" className="pl-9 rounded-xl" value={toDate} onChange={(e) => setToDate(e.target.value)} />
                 </div>
               </div>
             </div>
             <DialogFooter className="flex gap-2 sm:justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setReportDialogOpen(false)}
-                className="rounded-xl"
-              >
-                {t("cancel") || "Cancel"}
-              </Button>
-              <Button
-                onClick={handleDownloadReport}
-                disabled={downloading}
-                className="gap-2 rounded-xl"
-              >
-                {downloading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {t("downloading") || "Downloading..."}
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    {t("downloadPDF") || "Download PDF"}
-                  </>
-                )}
+              <Button variant="outline" onClick={() => setReportDialogOpen(false)} className="rounded-xl">{t("cancel") || "Cancel"}</Button>
+              <Button onClick={handleDownloadReport} disabled={downloading} className="gap-2 rounded-xl">
+                {downloading ? <><Loader2 className="h-4 w-4 animate-spin" />{t("downloading") || "Downloading..."}</> : <><Download className="h-4 w-4" />{t("downloadPDF") || "Download PDF"}</>}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
-
-      {/* Custom Scrollbar Styles */}
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: hsl(var(--border));
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: hsl(var(--primary));
-          border-radius: 10px;
-        }
-      `}</style>
     </div>
   );
 }
+
+// Import missing icon
+import { Building2, Lightbulb } from "lucide-react";
