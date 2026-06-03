@@ -41,6 +41,7 @@ interface NavItem {
   icon: any;
 }
 
+// Website items - show only for Admin
 const websiteItems: NavItem[] = [
   { to: "hero", labelKey: "hero", icon: Layout },
   { to: "about", labelKey: "about", icon: Info },
@@ -52,7 +53,6 @@ const adminNav: NavItem[] = [
   { to: "dashboard", labelKey: "dashboard", icon: LayoutDashboard },
   { to: "stage", labelKey: "stage", icon: GraduationCap },
   { to: "subject", labelKey: "subject", icon: Book },
-  // { to: "users", labelKey: "users", icon: Users },
   { to: "instructors", labelKey: "instructors", icon: GraduationCap },
   {
     to: "AssistantInstructors",
@@ -72,17 +72,10 @@ const instructorNav: NavItem[] = [
   { to: "students", labelKey: "students", icon: Users },
   { to: "exams", labelKey: "exams", icon: ClipboardList },
   { to: "bank-questions", labelKey: "bankQuestions", icon: ClipboardList },
-
   { to: "center-hours", labelKey: "centerhours", icon: TagIcon },
   { to: "books", labelKey: "books", icon: BookOpen },
-
   { to: "payment-codes", labelKey: "paymentCodes", icon: TagIcon },
   { to: "assignments", labelKey: "assignments", icon: FileEdit },
-  // { to: "analytics", labelKey: "analytics", icon: BarChart3 },
-  // { to: "earnings", labelKey: "earnings", icon: DollarSign },
-  // { to: "assistants", labelKey: "assistants", icon: UserCog },
-  // { to: "website", labelKey: "websiteBuilder", icon: Globe2 },
-  // { to: "settings", labelKey: "settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -96,12 +89,16 @@ export function Sidebar({
   active,
   onNavigate,
   open,
+  onClose,
 }: SidebarProps) {
   const { t, role } = useApp();
 
   const [websiteOpen, setWebsiteOpen] = useState(true);
 
   const items = role === "admin" ? adminNav : instructorNav;
+  
+  // Show website section ONLY for admin
+  const isAdmin = role === "admin";
 
   return (
     <>
@@ -113,6 +110,7 @@ export function Sidebar({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+            onClick={onClose}
           />
         )}
       </AnimatePresence>
@@ -142,7 +140,6 @@ export function Sidebar({
       >
         {/* BACKGROUND */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-
           {/* GRID */}
           <div
             className="
@@ -201,7 +198,6 @@ export function Sidebar({
           "
         >
           <div className="flex items-center gap-3">
-
             <motion.div
               whileHover={{
                 rotate: 10,
@@ -216,7 +212,6 @@ export function Sidebar({
               "
             >
               <Sparkles className="w-5 h-5 text-white" />
-
               <div
                 className="
                   absolute inset-0 rounded-2xl
@@ -229,17 +224,15 @@ export function Sidebar({
               <h2 className="font-black text-lg text-gray-900 dark:text-white">
                 {t("brand")}
               </h2>
-
               <div className="flex items-center gap-1 text-[11px] uppercase tracking-widest text-orange-500 font-semibold">
                 <Rocket className="w-3 h-3" />
-                {role === "admin"
-                  ? t("admin")
-                  : t("instructor")}
+                {role === "admin" ? t("admin") : t("instructor")}
               </div>
             </div>
           </div>
 
           <button
+            onClick={onClose}
             className="
               lg:hidden
               w-10 h-10 rounded-xl
@@ -255,9 +248,7 @@ export function Sidebar({
 
         {/* NAVIGATION */}
         <nav className="relative z-10 flex-1 overflow-y-auto px-3 py-5">
-
           <div className="space-y-1.5">
-
             {items.map((item, index) => {
               const Icon = item.icon;
               const isActive = active === item.to;
@@ -323,7 +314,6 @@ export function Sidebar({
                   )}
 
                   <div className="relative z-10 flex items-center gap-3 w-full">
-
                     <div
                       className={cn(
                         `
@@ -359,134 +349,131 @@ export function Sidebar({
             })}
           </div>
 
-          {/* WEBSITE SECTION */}
-          <div className="mt-6">
-
-            <button
-              onClick={() => setWebsiteOpen(!websiteOpen)}
-              className="
-                w-full
-                flex items-center justify-between
-                px-3 py-3
-                rounded-2xl
-
-                bg-black/[0.03]
-                dark:bg-white/[0.04]
-
-                border border-black/5
-                dark:border-white/10
-
-                text-gray-800 dark:text-white
-              "
-            >
-              <div className="flex items-center gap-2">
-                <Globe2 className="w-4 h-4 text-orange-500" />
-                <span className="font-semibold text-sm">
-                  {t("website") || "Website"}
-                </span>
-              </div>
-
-              <motion.div
-                animate={{
-                  rotate: websiteOpen ? 180 : 0,
-                }}
+          {/* WEBSITE SECTION - SHOW ONLY FOR ADMIN */}
+          {isAdmin && (
+            <div className="mt-6">
+              <button
+                onClick={() => setWebsiteOpen(!websiteOpen)}
+                className="
+                  w-full
+                  flex items-center justify-between
+                  px-3 py-3
+                  rounded-2xl
+                  bg-black/[0.03]
+                  dark:bg-white/[0.04]
+                  border border-black/5
+                  dark:border-white/10
+                  text-gray-800 dark:text-white
+                "
               >
-                <ChevronDown className="w-4 h-4" />
-              </motion.div>
-            </button>
+                <div className="flex items-center gap-2">
+                  <Globe2 className="w-4 h-4 text-orange-500" />
+                  <span className="font-semibold text-sm">
+                    {t("website") || "Website"}
+                  </span>
+                </div>
 
-            <AnimatePresence>
-              {websiteOpen && (
                 <motion.div
-                  initial={{
-                    opacity: 0,
-                    height: 0,
-                  }}
                   animate={{
-                    opacity: 1,
-                    height: "auto",
+                    rotate: websiteOpen ? 180 : 0,
                   }}
-                  exit={{
-                    opacity: 0,
-                    height: 0,
-                  }}
-                  className="overflow-hidden"
                 >
-                  <div className="mt-2 space-y-1 pl-3">
+                  <ChevronDown className="w-4 h-4" />
+                </motion.div>
+              </button>
 
-                    {websiteItems.map((item, index) => {
-                      const Icon = item.icon;
-                      const isActive = active === item.to;
+              <AnimatePresence>
+                {websiteOpen && (
+                  <motion.div
+                    initial={{
+                      opacity: 0,
+                      height: 0,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      height: "auto",
+                    }}
+                    exit={{
+                      opacity: 0,
+                      height: 0,
+                    }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-2 space-y-1 pl-3">
+                      {websiteItems.map((item, index) => {
+                        const Icon = item.icon;
+                        const isActive = active === item.to;
 
-                      return (
-                        <motion.button
-                          key={item.to}
-                          initial={{
-                            opacity: 0,
-                            x: -10,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            x: 0,
-                          }}
-                          transition={{
-                            delay: index * 0.04,
-                          }}
-                          whileHover={{
-                            x: 4,
-                          }}
-                          onClick={() => {
-                            onNavigate(item.to);
-                          }}
-                          className={cn(
-                            `
-                              w-full
-                              flex items-center gap-3
-                              px-3 py-2.5
-                              rounded-2xl
-                              transition-all duration-300
-                            `,
-                            isActive
-                              ? `
-                                bg-orange-500/10
-                                text-orange-500
-                                border border-orange-500/20
-                              `
-                              : `
-                                text-gray-700 dark:text-gray-400
-                                hover:bg-black/[0.04]
-                                dark:hover:bg-white/[0.04]
-                              `
-                          )}
-                        >
-                          <div
+                        return (
+                          <motion.button
+                            key={item.to}
+                            initial={{
+                              opacity: 0,
+                              x: -10,
+                            }}
+                            animate={{
+                              opacity: 1,
+                              x: 0,
+                            }}
+                            transition={{
+                              delay: index * 0.04,
+                            }}
+                            whileHover={{
+                              x: 4,
+                            }}
+                            onClick={() => {
+                              onNavigate(item.to);
+                            }}
                             className={cn(
                               `
-                              w-9 h-9 rounded-xl
-                              flex items-center justify-center
-                            `,
+                                w-full
+                                flex items-center gap-3
+                                px-3 py-2.5
+                                rounded-2xl
+                                transition-all duration-300
+                              `,
                               isActive
-                                ? "bg-orange-500 text-white"
+                                ? `
+                                  bg-orange-500/10
+                                  text-orange-500
+                                  border border-orange-500/20
+                                `
                                 : `
-                                  bg-black/[0.04]
-                                  dark:bg-white/[0.04]
+                                  text-gray-700 dark:text-gray-400
+                                  hover:bg-black/[0.04]
+                                  dark:hover:bg-white/[0.04]
                                 `
                             )}
                           >
-                            <Icon className="w-4 h-4" />
-                          </div>
+                            <div
+                              className={cn(
+                                `
+                                w-9 h-9 rounded-xl
+                                flex items-center justify-center
+                              `,
+                                isActive
+                                  ? "bg-orange-500 text-white"
+                                  : `
+                                    bg-black/[0.04]
+                                    dark:bg-white/[0.04]
+                                  `
+                              )}
+                            >
+                              <Icon className="w-4 h-4" />
+                            </div>
 
-                          <span className="text-sm font-medium">
-                            {t(item.labelKey)}
-                          </span>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                            <span className="text-sm font-medium">
+                              {t(item.labelKey)}
+                            </span>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </nav>
 
         {/* FOOTER */}
@@ -508,7 +495,6 @@ export function Sidebar({
             "
           >
             <div className="flex items-center gap-3">
-
               <div
                 className="
                   w-11 h-11 rounded-2xl
@@ -524,7 +510,6 @@ export function Sidebar({
                 <p className="font-bold text-sm text-gray-900 dark:text-white">
                   LMS Dashboard
                 </p>
-
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Modern Education Platform
                 </p>
