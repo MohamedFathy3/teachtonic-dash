@@ -1,7 +1,12 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/instructor/InstructorCourses.tsx
-
+import {
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { courseService } from '@/services/course.service';
@@ -25,6 +30,7 @@ import type { Course } from '@/types/course.types';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import { Label } from '@/components/ui/label';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
+import { Select } from '@/components/ui/select';
 
 // ✅ أنيميشن متقدمة
 const containerVariants = {
@@ -101,25 +107,44 @@ export const InstructorCourses: React.FC = () => {
   const [forceDeletingCourse, setForceDeletingCourse] = useState<Course | null>(null);
   const [bulkActionDialog, setBulkActionDialog] = useState<{ type: 'delete' | 'restore' | 'forceDelete' | null; open: boolean }>({ type: null, open: false });
 
-  // ✅ Fetch Courses
+
+  const [price, setPrice] = useState<number | null>(null);
+  const [courseType, setCourseType] = useState<'online' | 'center' | ''>('');
+  const [startDate, setStartDate] = useState<string | null>(null);
+  const [endDate, setEndDate] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const fetchCourses = useCallback(async (page = 1) => {
     if (!activeTab) return;
+
     setLoading(true);
     setError(null);
 
-    const filters: Record<string, any> = {};
-    filters.teacher_id = user?.id; // 🔥 مهم جدًا: نضيف teacher_id كفلتر أساسي
-    if (filterStageId) filters.stage_id = filterStageId;
-    if (filterSubjectId) filters.subject_id = filterSubjectId;
-    if (filterSemesterId) filters.semester_id = filterSemesterId;
+    const filters: Record<string, any> = {
+      teacher_id: user?.id,
+      stage_id: filterStageId,
+      subject_id: filterSubjectId,
+      semester_id: filterSemesterId,
+      price: price ?? undefined,
+      type: courseType || undefined,
+      start_date: startDate,
+      end_date: endDate,
+    };
 
     try {
-      const response = await courseService.getAllCourses(filters, 12, page, searchQuery, activeTab === 'deleted');
+      const response = await courseService.getAllCourses(
+        filters,
+        12,
+        page,
+        searchQuery,
+        activeTab === 'deleted'
+      );
+
       if (activeTab === 'active') {
         setCourses(response.data || []);
       } else {
         setDeletedCourses(response.data || []);
       }
+
       setPagination({
         currentPage: response.meta?.current_page || 1,
         lastPage: response.meta?.last_page || 1,
@@ -131,7 +156,18 @@ export const InstructorCourses: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, searchQuery, filterStageId, filterSubjectId, filterSemesterId]);
+  }, [
+    activeTab,
+    searchQuery,
+    filterStageId,
+    filterSubjectId,
+    filterSemesterId
+    ,
+    price,
+    courseType,
+    startDate,
+    endDate
+  ]);
 
   useEffect(() => {
     fetchCourses(1);
@@ -153,6 +189,7 @@ export const InstructorCourses: React.FC = () => {
 
   const applyFilters = () => {
     fetchCourses(1);
+    setPage(1);
     setSelectedIds(new Set());
   };
 
@@ -278,8 +315,8 @@ export const InstructorCourses: React.FC = () => {
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-2 px-3 rounded-lg transition-all duration-300 ${viewMode === 'grid'
-                    ? 'bg-white dark:bg-gray-800 text-primary shadow-md'
-                    : 'hover:bg-white/50 dark:hover:bg-gray-800/50'
+                  ? 'bg-white dark:bg-gray-800 text-primary shadow-md'
+                  : 'hover:bg-white/50 dark:hover:bg-gray-800/50'
                   }`}
               >
                 <Grid3x3 className="h-4 w-4" />
@@ -287,8 +324,8 @@ export const InstructorCourses: React.FC = () => {
               <button
                 onClick={() => setViewMode('table')}
                 className={`p-2 px-3 rounded-lg transition-all duration-300 ${viewMode === 'table'
-                    ? 'bg-white dark:bg-gray-800 text-primary shadow-md'
-                    : 'hover:bg-white/50 dark:hover:bg-gray-800/50'
+                  ? 'bg-white dark:bg-gray-800 text-primary shadow-md'
+                  : 'hover:bg-white/50 dark:hover:bg-gray-800/50'
                   }`}
               >
                 <List className="h-4 w-4" />
@@ -362,7 +399,7 @@ export const InstructorCourses: React.FC = () => {
                     {pagination.total}
                   </span>
                 </TabsTrigger>
-              
+
               </TabsList>
 
               <div className="flex gap-2">
@@ -372,8 +409,8 @@ export const InstructorCourses: React.FC = () => {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowFilters(!showFilters)}
                   className={`p-2.5 rounded-xl border transition-all duration-300 ${showFilters
-                      ? 'bg-primary text-white border-primary shadow-md'
-                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary'
+                    ? 'bg-primary text-white border-primary shadow-md'
+                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary'
                     }`}
                 >
                   <Filter className="h-4 w-4" />
@@ -402,7 +439,11 @@ export const InstructorCourses: React.FC = () => {
                   className="overflow-hidden"
                 >
                   <Card className="p-5 mt-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
+
+                    {/* 🔹 Filters Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+                      {/* Stage */}
                       <div className="space-y-2">
                         <Label className="flex items-center gap-1 text-sm font-medium">
                           <GraduationCap className="h-4 w-4 text-primary" />
@@ -413,10 +454,11 @@ export const InstructorCourses: React.FC = () => {
                           value={filterStageId}
                           onChange={setFilterStageId}
                           placeholder={lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
-                          label=""
                           clearable
                         />
                       </div>
+
+                      {/* Subject */}
                       <div className="space-y-2">
                         <Label className="flex items-center gap-1 text-sm font-medium">
                           <BookOpen className="h-4 w-4 text-primary" />
@@ -427,10 +469,11 @@ export const InstructorCourses: React.FC = () => {
                           value={filterSubjectId}
                           onChange={setFilterSubjectId}
                           placeholder={lang === 'ar' ? 'جميع المواد' : 'All Subjects'}
-                          label=""
                           clearable
                         />
                       </div>
+
+                      {/* Semester */}
                       <div className="space-y-2">
                         <Label className="flex items-center gap-1 text-sm font-medium">
                           <Calendar className="h-4 w-4 text-primary" />
@@ -440,28 +483,76 @@ export const InstructorCourses: React.FC = () => {
                           configKey="semesters"
                           value={filterSemesterId}
                           onChange={setFilterSemesterId}
-                          placeholder={lang === 'ar' ? 'جميع الأتربة' : 'All Semesters'}
-                          label=""
+                          placeholder={lang === 'ar' ? 'جميع الترمات' : 'All Semesters'}
                           clearable
                           extraFilters={{ teacher_id: user?.id }}
                         />
                       </div>
+
+                      {/* Price (Single) */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">
+                          {lang === 'ar' ? 'السعر' : 'Price'}
+                        </Label>
+
+                        <Input
+                          type="number"
+                          placeholder={lang === 'ar' ? 'أدخل السعر' : 'Enter price'}
+                          value={price ?? ''}
+                          onChange={(e) =>
+                            setPrice(e.target.value ? Number(e.target.value) : null)
+                          }
+                        />
+                      </div>
+
+                      {/* Course Type */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">
+                          {lang === 'ar' ? 'نوع الكورس' : 'Course Type'}
+                        </Label>
+
+                        <Select
+                          value={courseType}
+                          onValueChange={(value) =>
+                            setCourseType(value as 'all' | 'online' | 'center')
+                          }
+                        >
+                          <SelectTrigger className="w-full rounded-xl bg-white dark:bg-gray-800 border">
+                            <SelectValue placeholder={lang === 'ar' ? 'الكل' : 'All'} />
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            <SelectItem value="all">
+                              {lang === 'ar' ? 'الكل' : 'All'}
+                            </SelectItem>
+
+                            <SelectItem value="online">Online</SelectItem>
+                            <SelectItem value="center">Center</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                     </div>
+
+                    {/* 🔹 Actions */}
                     <div className="flex justify-end gap-3 mt-5 pt-3 border-t">
+
                       <Button variant="outline" size="sm" onClick={clearFilters}>
                         <X className="h-4 w-4 mr-1" />
                         {t('reset') || 'إعادة تعيين'}
                       </Button>
+
                       <Button size="sm" onClick={applyFilters} className="gap-2">
                         <Search className="h-4 w-4" />
                         {t('applyFilters') || 'تطبيق'}
                       </Button>
+
                     </div>
+
                   </Card>
                 </motion.div>
               )}
             </AnimatePresence>
-
             {/* ✅ Content */}
             <TabsContent value={activeTab} className="mt-6">
               {loading && (
@@ -648,8 +739,8 @@ export const InstructorCourses: React.FC = () => {
                             {!isDeletedTab && (
                               <td className="px-5 py-4 text-center">
                                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${course.active === 1
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                    : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                  : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                                   }`}>
                                   {course.active === 1 ? (
                                     <>

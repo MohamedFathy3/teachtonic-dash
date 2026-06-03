@@ -13,8 +13,38 @@ class BookService extends BaseService<Book> {
 
   // جلب كل الكتب
   async getAll(params?: GetAllBooksParams): Promise<any> {
-    const requestBody: any = {
-      filters: {},
+    const filters: Record<string, any> = {};
+
+    const addFilter = (key: string, value: any) => {
+      if (value !== undefined && value !== null && value !== '') {
+        filters[key] = value;
+      }
+    };
+
+    // 🔹 Basic filters
+    addFilter('teacher_id', params?.teacher_id);
+
+    if (params?.active !== undefined) {
+      filters.active = params.active ? 1 : 0;
+    }
+
+    // 🔹 Search
+    if (params?.search?.trim()) {
+      filters.title = params.search.trim();
+    }
+
+    // 🔹 Writer
+    addFilter('writer', params?.writer);
+
+    // 💰 PRICE (single value)
+    addFilter('price', params?.price);
+
+    // 🔹 Date range
+    addFilter('from_date', params?.from_date);
+    addFilter('to_date', params?.to_date);
+
+    const requestBody = {
+      filters,
       orderBy: 'id',
       orderByDirection: 'desc',
       perPage: params?.perPage || 12,
@@ -23,21 +53,12 @@ class BookService extends BaseService<Book> {
       delete: false,
     };
 
-    if (params?.teacher_id) {
-      requestBody.filters.teacher_id = params.teacher_id;
-    }
-
-    if (params?.active !== undefined) {
-      requestBody.filters.active = params.active ? 1 : 0;
-    }
-
-    if (params?.search && params.search.trim()) {
-      requestBody.filters.title = params.search.trim();
-    }
     console.log('📚 Book Request:', requestBody);
+
     const response = await api.post(`/${this.endpoint}/index`, requestBody);
+
     console.log('📚 Book Response:', response.data);
-    
+
     return response.data;
   }
 

@@ -26,6 +26,20 @@ export interface SemesterFormData {
   subject_id: number | null;
 }
 
+export interface SemesterFilters {
+  subject_id?: number | null;
+  teacher_id?: number | null;
+
+  active?: string;
+  price?: number;
+  discount?: number;
+
+  from_date?: string;
+  to_date?: string;
+
+  has_image?: boolean | '';
+}
+
 class SemesterService extends BaseService<Semester> {
   constructor() {
     super('semesters');
@@ -35,6 +49,7 @@ class SemesterService extends BaseService<Semester> {
     return user?.id;
   }
   // ✅ جلب الأتربة مع فلتر (مع إضافة teacher_id افتراضي)
+  // ✅ جلب الأتربة مع فلتر
   async getAllSemesters(
     filters: Record<string, any> = {},
     perPage: number = 10,
@@ -45,17 +60,48 @@ class SemesterService extends BaseService<Semester> {
     try {
       const baseFilters: Record<string, any> = { ...filters };
 
-      // 🔥 أهم تعديل هنا
       const finalTeacherId = teacherId ?? this.getTeacherId();
 
       if (finalTeacherId) {
         baseFilters.teacher_id = finalTeacherId;
       }
 
+      // 🔥 search
       if (search?.trim()) {
         baseFilters.name = search.trim();
       }
 
+      // 🔥 تنظيف القيم الفاضية
+      Object.keys(baseFilters).forEach((key) => {
+        const value = baseFilters[key];
+        if (
+          value === '' ||
+          value === null ||
+          value === undefined
+        ) {
+          delete baseFilters[key];
+        }
+      });
+
+      // معالجة الفلاتر الإضافية
+      if (baseFilters.active === '') {
+        delete baseFilters.active;
+      }
+      // NOTE: don't delete 0 values (0 is a valid filter value)
+      // remove only null/undefined/empty-string
+      if (baseFilters.prices === null || baseFilters.price === undefined || baseFilters.price === '') {
+        delete baseFilters.price;
+      }
+      if (baseFilters.discount === null || baseFilters.discount === undefined || baseFilters.discount === '') {
+        delete baseFilters.discount;
+      }
+
+      if (baseFilters.subject_id === null || baseFilters.subject_id === undefined || baseFilters.subject_id === '') {
+        delete baseFilters.subject_id;
+      }
+
+      // discount range comes from UI as min_discount/max_discount; keep them as-is.
+      // (If backend expects different names we'll adjust later.)
       const response = await api.post(`/${this.endpoint}/index`, {
         filters: baseFilters,
         orderBy: 'id',
@@ -68,7 +114,12 @@ class SemesterService extends BaseService<Semester> {
 
       return {
         data: response.data?.data || [],
-        meta: response.data?.meta || {},
+        meta: response.data?.meta || {
+          current_page: 1,
+          last_page: 1,
+          total: 0,
+          per_page: perPage,
+        },
       };
     } catch (error) {
       console.error('API Error:', error);
@@ -159,4 +210,4 @@ class SemesterService extends BaseService<Semester> {
   }
 }
 
-export const semesterService = new SemesterService();
+export const semesterService = new SemesterService(); 

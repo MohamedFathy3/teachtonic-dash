@@ -38,4 +38,9 @@ export interface GetAllBooksParams {
   search?: string;
   teacher_id?: number;
   active?: boolean;
+  writer?: string;
+
+  price?: number; // 👈 بس كده
+  from_date?: string;
+  to_date?: string;
 }

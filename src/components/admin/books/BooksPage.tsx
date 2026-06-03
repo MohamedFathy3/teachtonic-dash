@@ -28,13 +28,26 @@ export const BooksPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-
+  const [filters, setFilters] = useState({
+    search: '',
+    writer: '',
+    active: undefined as boolean | undefined,
+    price: '',
+    from_date: '',
+    to_date: '',
+  });
   const { useGetAll, useBulkDelete, useToggleActive } = useBooks();
   const { data, isLoading, refetch } = useGetAll({
     search: debouncedSearch,
     teacher_id: isInstructor ? user?.id : undefined,
+    writer: filters.writer || undefined,
+    active: filters.active,
+    price: filters.price ? Number(filters.price) : undefined,
+    from_date: filters.from_date || undefined,
+    to_date: filters.to_date || undefined,
     perPage: 20,
   });
+
   const bulkDelete = useBulkDelete();
   const toggleActive = useToggleActive();
 
@@ -138,6 +151,20 @@ export const BooksPage: React.FC = () => {
           </div>
           <div className="flex gap-3 flex-wrap">
 
+
+
+
+            {/* Bulk Delete Button */}
+            {selectedIds.length > 0 && (
+              <Button
+                onClick={handleDeleteSelected}
+                variant="destructive"
+                className="gap-2 rounded-xl shadow-md hover:shadow-lg transition-all"
+              >
+                <Trash2 size={18} />
+                {lang === 'ar' ? `حذف (${selectedIds.length})` : `Delete (${selectedIds.length})`}
+              </Button>
+            )}
             <ExportExcelButton
               data={books}
               fileName="books-list"
@@ -168,18 +195,160 @@ export const BooksPage: React.FC = () => {
             </Button>
 
             {/* Bulk Delete Button */}
+            {/* Search Filters */}
             <AnimatePresence>
-              {selectedIds.length > 0 && (
-                <motion.button
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  onClick={handleDeleteSelected}
-                  className="px-4 py-2 bg-red-600 text-white rounded-xl flex items-center gap-2 hover:bg-red-700 transition-all shadow-md"
+              {showFilters && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, y: -20 }}
+                  animate={{ opacity: 1, height: 'auto', y: 0 }}
+                  exit={{ opacity: 0, height: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="mb-6 overflow-hidden"
                 >
-                  <Trash2 size={18} />
-                  {lang === 'ar' ? 'حذف' : 'Delete'} ({selectedIds.length})
-                </motion.button>
+                  <Card className="p-5 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-sm">
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                      {/* Search */}
+                      <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300">
+                          {lang === 'ar' ? 'بحث' : 'Search'}
+                        </label>
+                        <Input
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Title..."
+                          className="rounded-xl"
+                        />
+                      </div>
+
+                      {/* Writer */}
+                      <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300">
+                          Writer
+                        </label>
+                        <Input
+                          value={filters.writer}
+                          onChange={(e) =>
+                            setFilters(prev => ({ ...prev, writer: e.target.value }))
+                          }
+                          placeholder="Author name"
+                          className="rounded-xl"
+                        />
+                      </div>
+
+                      {/* Active */}
+                      <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300">
+                          Status
+                        </label>
+                        <select
+                          value={
+                            filters.active === undefined
+                              ? ''
+                              : filters.active
+                                ? '1'
+                                : '0'
+                          }
+                          onChange={(e) =>
+                            setFilters(prev => ({
+                              ...prev,
+                              active:
+                                e.target.value === ''
+                                  ? undefined
+                                  : e.target.value === '1',
+                            }))
+                          }
+                          className="w-full border rounded-xl px-3 py-2 dark:bg-gray-900 dark:border-gray-700"
+                        >
+                          <option value="">All</option>
+                          <option value="1">Active</option>
+                          <option value="0">Inactive</option>
+                        </select>
+                      </div>
+
+                      {/* Price */}
+                      <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300">
+                          Price
+                        </label>
+                        <Input
+                          type="number"
+                          value={filters.price}
+                          onChange={(e) =>
+                            setFilters(prev => ({ ...prev, price: e.target.value }))
+                          }
+                          placeholder="Price"
+                          className="rounded-xl"
+                        />
+                      </div>
+
+                      {/* From Date */}
+                      <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300">
+                          From Date
+                        </label>
+                        <Input
+                          type="date"
+                          value={filters.from_date}
+                          onChange={(e) =>
+                            setFilters(prev => ({
+                              ...prev,
+                              from_date: e.target.value,
+                            }))
+                          }
+                          className="rounded-xl"
+                        />
+                      </div>
+
+                      {/* To Date */}
+                      <div>
+                        <label className="text-sm text-gray-600 dark:text-gray-300">
+                          To Date
+                        </label>
+                        <Input
+                          type="date"
+                          value={filters.to_date}
+                          onChange={(e) =>
+                            setFilters(prev => ({
+                              ...prev,
+                              to_date: e.target.value,
+                            }))
+                          }
+                          className="rounded-xl"
+                        />
+                      </div>
+
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-2 mt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          setFilters({
+                            search: '',
+                            writer: '',
+                            active: undefined,
+                            price: '',
+                            from_date: '',
+                            to_date: '',
+                          })
+                        }
+                      >
+                        Reset
+                      </Button>
+
+                      <Button
+                        onClick={() => setShowFilters(false)}
+                        className="bg-blue-600 text-white"
+                      >
+                        Apply
+                      </Button>
+                    </div>
+
+                  </Card>
+                </motion.div>
               )}
             </AnimatePresence>
 
@@ -197,39 +366,6 @@ export const BooksPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Search Filters */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, y: -20 }}
-              animate={{ opacity: 1, height: 'auto', y: 0 }}
-              exit={{ opacity: 0, height: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="mb-6 overflow-hidden"
-            >
-              <Card className="p-4 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="relative">
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                  <Input
-                    type="text"
-                    placeholder={lang === 'ar' ? 'بحث بالعنوان أو المؤلف...' : 'Search by title or author...'}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pr-10 rounded-xl dark:bg-gray-900 dark:border-gray-700"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={clearSearch}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">

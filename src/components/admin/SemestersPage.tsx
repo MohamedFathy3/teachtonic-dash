@@ -3,7 +3,7 @@
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { semesterService, Semester, SemesterFormData } from '@/services/semester.service';
+import { semesterService, Semester, SemesterFormData, SemesterFilters } from '@/services/semester.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,6 +36,7 @@ import {
   CheckCircle,
   XCircle,
   Save,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AsyncSelect } from '../ui/AsyncSelect';
@@ -45,7 +46,7 @@ export const SemestersPage: React.FC = () => {
   const isRTL = lang === 'ar';
 
   // ✅ State
-  
+
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +54,25 @@ export const SemestersPage: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // ✅ Filters State
+  const [filters, setFilters] = useState<SemesterFilters>({
+    subject_id: null,
+    teacher_id: user?.id || null,
+
+    active: '',
+
+    // discount range (API uses `discount` field)
+    price: null,
+    discount: null,
+    from_date: '',
+    to_date: '',
+
+    has_image: '',
+
+  });
+
+
 
   // ✅ Modal State
   const [showModal, setShowModal] = useState(false);
@@ -76,33 +96,34 @@ export const SemestersPage: React.FC = () => {
   });
 
   // ✅ Debounce search
+  // ✅ Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   const handleExport = async () => {
-  try {
-    const response = await semesterService.getAllSemesters(
-      {},
-      10000,
-      1,
-      ''
-    );
+    try {
+      const response = await semesterService.getAllSemesters(
+        {},
+        10000,
+        1,
+        ''
+      );
 
-    return response.data;
-  } catch (e) {
-    console.error(e);
-    return [];
-  }
-};
-  // ✅ Fetch semesters
+      return response.data;
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  };
+
   const fetchSemesters = useCallback(async (page = 1) => {
     setLoading(true);
     setError(null);
     try {
       const response = await semesterService.getAllSemesters(
-        {},
+        filters as Record<string, any>,
         pagination.perPage,
         page,
         debouncedSearch
@@ -119,11 +140,16 @@ export const SemestersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.perPage]);
+  }, [debouncedSearch, pagination.perPage, filters]);
+
+  // ✅ Filters should only trigger requests after user clicks Apply/Reset
 
   useEffect(() => {
+    // Only fetch when search changes (no state changes inside this effect other than the fetch itself).
     fetchSemesters(1);
-  }, [fetchSemesters]);
+  }, [debouncedSearch, fetchSemesters]);
+
+
 
   // ✅ Handlers
   const handleCreate = async () => {
@@ -348,6 +374,151 @@ export const SemestersPage: React.FC = () => {
             )}
           </div>
         </div>
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <Card className="p-5 rounded-2xl border shadow-md bg-white/80 dark:bg-gray-900/60 backdrop-blur-md space-y-6">
+
+                {/* ================= HEADER ================= */}
+                <div className="flex items-center justify-between border-b pb-3">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <SlidersHorizontal className="h-5 w-5 text-purple-500" />
+                    {lang === 'ar' ? 'الفلاتر' : 'Filters'}
+                  </h2>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setFilters({
+                        subject_id: null,
+                        active: '',
+                        price: null,
+                        discount: null,
+                      })
+                    }
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Reset
+                  </Button>
+                </div>
+
+                {/* ================= GRID FILTERS ================= */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                  {/* 📚 Subject */}
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'المادة' : 'Subject'}
+                    </Label>
+
+                    <AsyncSelect
+                      configKey="subjects"
+                      value={filters.subject_id}
+                      onChange={(id) =>
+                        setFilters(prev => ({ ...prev, subject_id: id }))
+                      }
+                      placeholder={lang === 'ar' ? 'اختر المادة' : 'Select Subject'}
+                    />
+                  </div>
+
+                  {/* ⚡ Status */}
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'الحالة' : 'Status'}
+                    </Label>
+
+                    <select
+                      className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3 focus:ring-2 focus:ring-purple-500"
+                      value={filters.active}
+                      onChange={(e) =>
+                        setFilters(prev => ({
+                          ...prev,
+                          active: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">
+                        {lang === 'ar' ? 'الكل' : 'All'}
+                      </option>
+                      <option value="1">   {lang === 'ar' ? 'نشظ' : 'Active'}</option>
+                      <option value="0">   {lang === 'ar' ? 'غير نشظ' : 'Inactive'}</option>
+                    </select>
+                  </div>
+
+                  {/* 💰 Price */}
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'السعر' : 'Price'}
+                    </Label>
+
+                    <Input
+                      type="number"
+                      value={filters.price ?? ''}
+                      onChange={(e) =>
+                        setFilters(prev => ({
+                          ...prev,
+                          price: e.target.value === '' ? null : Number(e.target.value),
+                        }))
+                      }
+                      className="rounded-xl"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  {/* 💸 Discount */}
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'الخصم' : 'Discount'}
+                    </Label>
+
+                    <Input
+                      type="number"
+                      value={filters.discount ?? ''}
+                      onChange={(e) =>
+                        setFilters(prev => ({
+                          ...prev,
+                          discount: e.target.value === '' ? null : Number(e.target.value),
+                        }))
+                      }
+                      className="rounded-xl"
+                      placeholder="0"
+                    />
+                  </div>
+
+                </div>
+
+                {/* ================= ACTION BUTTONS ================= */}
+                <div className="flex items-center justify-end gap-3 pt-2 border-t">
+
+                  <Button
+                    variant="outline"
+                    onClick={() => fetchSemesters(1)}
+                    className="rounded-xl"
+                  >
+                    {lang === 'ar' ? 'تطبيق' : 'Apply'}
+                  </Button>
+
+                  <Button
+                    onClick={() => fetchSemesters(1)}
+                    className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                  >
+                    <SlidersHorizontal className="h-4 w-4 mr-2" />
+                    {lang === 'ar' ? 'فلترة' : 'Filter'}
+                  </Button>
+
+                </div>
+
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ✅ Select All */}
         {semesters.length > 0 && (
@@ -433,8 +604,13 @@ export const SemestersPage: React.FC = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-center">
-                          <span className="text-sm">{semester.discount}%</span>
+                          <span className="text-sm">
+                            {typeof semester.discount === 'string'
+                              ? parseFloat(semester.discount).toFixed(2)
+                              : Number(semester.discount).toFixed(2)}
+                          </span>
                         </TableCell>
+
                         <TableCell className="text-center">
                           {semester.active ? (
                             <Badge className="bg-green-500 gap-1">
@@ -517,13 +693,13 @@ export const SemestersPage: React.FC = () => {
 
             <div className="space-y-4 mt-4">
               <div>
-                   <AsyncSelect
-                                      configKey="subjects"
-                                      value={formData.subject_id}
-                                      onChange={(id) => setFormData({ ...formData, subject_id: id })}
-                                      placeholder={lang === 'ar' ? 'اختر الماده' : 'Select subject'}
-                                      required
-                                    />
+                <AsyncSelect
+                  configKey="subjects"
+                  value={formData.subject_id}
+                  onChange={(id) => setFormData({ ...formData, subject_id: id })}
+                  placeholder={lang === 'ar' ? 'اختر الماده' : 'Select subject'}
+                  required
+                />
               </div>
               <div>
                 <Label>{lang === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'}</Label>

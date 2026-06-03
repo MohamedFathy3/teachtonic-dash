@@ -13,14 +13,6 @@ class CourseService extends BaseService<Course> {
 
 
 
-
-
-  // async getCourses(params?: any): Promise<PaginatedResponse<Course>> {
-  //   const response = await this.getAll(params);
-  //   return response;
-  // }
-
-
   // ✅ الدالة الأساسية لجلب الكورسات مع فلتر متقدم
   async getAllCourses(
     filters?: Record<string, any>,
@@ -37,7 +29,24 @@ class CourseService extends BaseService<Course> {
 
         // الطريقة الثانية: إضافة فلتر title (لو الـ API بيدعم filters.title)
         baseFilters.title = search.trim();
+        baseFilters.title_ar = search.trim();
+        baseFilters.search = search.trim(); // لو الـ API بيدعم فلتر بحث عام (search) بيبحث في كل الحقول القابلة للبحث
+        baseFilters.title_ar = search.trim();
       }
+      if (filters.price !== undefined && filters.price !== null) {
+        baseFilters.price = filters.price;
+      }
+      if (filters.type) {
+        baseFilters.type = filters.type;
+      }
+      if (filters.start_date) {
+        baseFilters.start_date = filters.start_date;
+      }
+
+      if (filters.end_date) {
+        baseFilters.end_date = filters.end_date;
+      }
+
       const requestBody: Record<string, any> = {
         filters: baseFilters,
         orderBy: 'id',
