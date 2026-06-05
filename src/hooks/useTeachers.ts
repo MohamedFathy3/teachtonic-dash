@@ -13,6 +13,11 @@ export function useTeachers() {
   const [showDeleted, setShowDeleted] = useState(false);
   const [selectedTeachers, setSelectedTeachers] = useState<Set<number>>(new Set());
 
+
+
+
+
+  
   const fetchTeachers = useCallback(async (
     page = 1,
     search?: string,
@@ -38,6 +43,12 @@ export function useTeachers() {
     }
   }, [showDeleted]);
 
+
+
+
+
+
+  
   const createTeacher = async (data: TeacherFormData) => {
     const newTeacher = await teacherService.createTeacher(data);
     await fetchTeachers(currentPage);

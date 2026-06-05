@@ -112,7 +112,7 @@ export const CenterHoursPage: React.FC = () => {
               disabled={isLoading || hours.length === 0}
             />
             {/* Dark Mode Toggle Button */}
-            <motion.button
+            {/* <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={toggleTheme}
@@ -123,7 +123,7 @@ export const CenterHoursPage: React.FC = () => {
               ) : (
                 <Moon size={20} className="text-gray-700" />
               )}
-            </motion.button>
+            </motion.button> */}
 
             <AnimatePresence>
               {selectedIds.length > 0 && (
@@ -172,13 +172,7 @@ export const CenterHoursPage: React.FC = () => {
               />
             </div>
 
-            <AsyncSelect
-              configKey="teachers"
-              value={filters.teacher_id}
-              onChange={(id) => setFilters({ ...filters, teacher_id: id || undefined })}
-              placeholder={lang === 'ar' ? 'فلتر حسب المعلم' : 'Filter by teacher'}
-              clearable
-            />
+
           </div>
         </motion.div>
 

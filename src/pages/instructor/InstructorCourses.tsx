@@ -7,6 +7,8 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import api from '@/lib/api';
+import { useTeacherMeta } from "@/hooks/useTeacherMeta";
 import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { courseService } from '@/services/course.service';
@@ -31,6 +33,8 @@ import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import { Label } from '@/components/ui/label';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { Select } from '@/components/ui/select';
+
+
 
 // ✅ أنيميشن متقدمة
 const containerVariants = {
@@ -67,6 +71,7 @@ const statsCardVariants = {
 
 export const InstructorCourses: React.FC = () => {
   const { t, lang, user } = useApp();
+  const { stages, subjects } = useTeacherMeta(user?.id);
   const isRTL = lang === 'ar';
 
   // ✅ State
@@ -113,6 +118,10 @@ export const InstructorCourses: React.FC = () => {
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+
+
+
+
   const fetchCourses = useCallback(async (page = 1) => {
     if (!activeTab) return;
 
@@ -169,10 +178,12 @@ export const InstructorCourses: React.FC = () => {
     endDate
   ]);
 
+
+
+
   useEffect(() => {
     fetchCourses(1);
   }, [fetchCourses]);
-
   const goToPage = (page: number) => {
     if (page >= 1 && page <= pagination.lastPage) {
       fetchCourses(page);
@@ -187,40 +198,49 @@ export const InstructorCourses: React.FC = () => {
     setShowFilters(false);
   };
 
+
+
   const applyFilters = () => {
     fetchCourses(1);
     setPage(1);
     setSelectedIds(new Set());
   };
-
+  const refreshCourses = async () => {
+    await fetchCourses(pagination.currentPage);
+  };
   // ✅ Handlers
   const handleToggleActive = async (course: Course) => {
     await courseService.toggleCourseActive(course.id);
     await fetchCourses(pagination.currentPage);
+    await refreshCourses();
   };
 
   const handleDelete = async (course: Course) => {
     await courseService.deleteCourse(course.id);
     await fetchCourses(pagination.currentPage);
     setDeletingCourse(null);
+    await refreshCourses();
   };
 
   const handleRestore = async (course: Course) => {
     await courseService.restoreCourse(course.id);
     await fetchCourses(pagination.currentPage);
     setRestoringCourse(null);
+    await refreshCourses();
   };
 
   const handleForceDelete = async (course: Course) => {
     await courseService.forceDeleteCourse(course.id);
     await fetchCourses(pagination.currentPage);
     setForceDeletingCourse(null);
+    await refreshCourses();
   };
 
   const handleViewCourse = (course: Course) => {
     setSelectedCourse(course);
     setSelectedCourseId(course.id);
     setShowDetails(true);
+
   };
 
   const handleEditCourse = (course: Course) => {
@@ -331,6 +351,26 @@ export const InstructorCourses: React.FC = () => {
                 <List className="h-4 w-4" />
               </button>
             </div>
+            <Button
+              onClick={() => refreshCourses()}
+              disabled={loading}
+              className="
+    gap-2
+    rounded-xl
+    bg-gradient-to-r
+    from-cyan-500
+    to-blue-600
+    hover:from-cyan-600
+    hover:to-blue-700
+    text-white
+    shadow-lg
+  "
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+              {lang === "ar" ? "تحديث البيانات" : "Refresh Data"}
+            </Button>
             {/* ✅ زرار التصدير */}
             <ExportExcelButton
               data={currentList}
@@ -449,13 +489,23 @@ export const InstructorCourses: React.FC = () => {
                           <GraduationCap className="h-4 w-4 text-primary" />
                           {t('stage') || 'المرحلة'}
                         </Label>
-                        <AsyncSelect
-                          configKey="stages"
-                          value={filterStageId}
-                          onChange={setFilterStageId}
-                          placeholder={lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
-                          clearable
-                        />
+
+
+                        <Select value={filterStageId?.toString()} onValueChange={(val) => setFilterStageId(Number(val))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Stages" />
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+
+                            {stages.map((stage) => (
+                              <SelectItem key={stage.id} value={stage.id.toString()}>
+                                {isRTL ? stage.name_ar : stage.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       {/* Subject */}
@@ -464,13 +514,22 @@ export const InstructorCourses: React.FC = () => {
                           <BookOpen className="h-4 w-4 text-primary" />
                           {t('subject') || 'المادة'}
                         </Label>
-                        <AsyncSelect
-                          configKey="subjects"
-                          value={filterSubjectId}
-                          onChange={setFilterSubjectId}
-                          placeholder={lang === 'ar' ? 'جميع المواد' : 'All Subjects'}
-                          clearable
-                        />
+
+                        <Select value={filterSubjectId?.toString()} onValueChange={(val) => setFilterSubjectId(Number(val))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Subjects" />
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+
+                            {subjects.map((subject) => (
+                              <SelectItem key={subject.id} value={subject.id.toString()}>
+                                {isRTL ? subject.name_ar : subject.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       {/* Semester */}
@@ -673,138 +732,198 @@ export const InstructorCourses: React.FC = () => {
 
               {/* ✅ Table View - Simplified with better design */}
               {!loading && !error && currentList.length > 0 && viewMode === 'table' && (
-                <Card className="rounded-2xl overflow-hidden shadow-xl border-0">
+                <Card className="rounded-3xl overflow-hidden border bg-background/80 backdrop-blur-md shadow-2xl">
                   <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800/50">
+                      <thead className="bg-gradient-to-r from-primary/5 via-secondary/5 to-primary/5 border-b">
                         <tr>
-                          <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          <th className="px-6 py-5 text-right text-sm font-bold">
                             {t('course')}
                           </th>
-                          <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300 hidden md:table-cell">
+
+                          <th className="px-6 py-5 text-right text-sm font-bold hidden md:table-cell">
                             {t('students')}
                           </th>
-                          <th className="px-5 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+
+                          <th className="px-6 py-5 text-center text-sm font-bold">
                             {t('price')}
                           </th>
+
                           {!isDeletedTab && (
-                            <th className="px-5 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            <th className="px-6 py-5 text-center text-sm font-bold">
                               {t('status')}
                             </th>
                           )}
-                          <th className="px-5 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+
+                          <th className="px-6 py-5 text-center text-sm font-bold">
                             {t('actions')}
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+
+                      <tbody className="divide-y divide-border">
                         {currentList.map((course, idx) => (
                           <motion.tr
                             key={course.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.03 }}
-                            className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
+                            className="
+              group
+              transition-all
+              duration-300
+              hover:bg-primary/5
+            "
                           >
-                            <td className="px-5 py-4">
+                            {/* Course */}
+                            <td className="px-6 py-5">
                               <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 overflow-hidden shrink-0">
+                                <div
+                                  className="
+                  w-14 h-14
+                  rounded-2xl
+                  overflow-hidden
+                  ring-2 ring-primary/10
+                  shadow-md
+                  shrink-0
+                "
+                                >
                                   {course.image?.fullUrl ? (
-                                    <img src={course.image.fullUrl} alt="" className="w-full h-full object-cover" />
+                                    <img
+                                      src={course.image.fullUrl}
+                                      alt=""
+                                      className="w-full h-full object-cover"
+                                    />
                                   ) : (
-                                    <BookOpen className="h-6 w-6 p-1.5 text-primary" />
+                                    <div className="w-full h-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center">
+                                      <BookOpen className="h-6 w-6 text-primary" />
+                                    </div>
                                   )}
                                 </div>
+
                                 <div>
-                                  <p className="font-semibold line-clamp-1">
+                                  <p className="font-semibold text-base">
                                     {isRTL ? course.title_ar : course.title}
                                   </p>
-                                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                                    {isRTL ? course.subject?.name_ar : course.subject?.name}
+
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {isRTL
+                                      ? course.subject?.name_ar
+                                      : course.subject?.name}
                                   </p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-5 py-4 hidden md:table-cell">
-                              <div className="flex items-center gap-1">
-                                <Users className="h-4 w-4 text-primary" />
-                                <span className="font-medium">{course.count_student}</span>
+
+                            {/* Students */}
+                            <td className="px-6 py-5 hidden md:table-cell">
+                              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/20">
+                                <Users className="h-4 w-4 text-blue-500" />
+                                <span className="font-semibold">
+                                  {course.count_student}
+                                </span>
                               </div>
                             </td>
-                            <td className="px-5 py-4 text-center">
-                              <span className="font-bold text-primary bg-primary/10 px-3 py-1 rounded-full text-sm">
-                                ${course.price}
-                              </span>
+
+                            {/* Price */}
+                            <td className="px-6 py-5 text-center">
+                              <div
+                                className="
+                inline-flex
+                items-center
+                gap-2
+                px-4
+                py-2
+                rounded-xl
+                bg-gradient-to-r
+                from-emerald-500/10
+                to-green-500/10
+                border
+                border-emerald-500/20
+              "
+                              >
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                                  EGP
+                                </span>
+
+                                <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                                  {Number(course.price).toLocaleString()}
+                                </span>
+                              </div>
                             </td>
+
+                            {/* Status */}
                             {!isDeletedTab && (
-                              <td className="px-5 py-4 text-center">
-                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${course.active === 1
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                  : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                                  }`}>
-                                  {course.active === 1 ? (
+                              <td className="px-6 py-5 text-center">
+                                {course.active === 1 ? (
+                                  <span className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                                    <Zap className="h-4 w-4" />
+                                    {t('active')}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                    <PowerOff className="h-4 w-4" />
+                                    {t('inactive')}
+                                  </span>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Actions */}
+                            <td className="px-6 py-5 text-center">
+                              <div className="flex justify-center">
+                                <div className="flex gap-2 p-1 rounded-xl bg-muted/40">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="rounded-xl hover:bg-primary/10"
+                                    onClick={() => handleViewCourse(course)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+
+                                  {!isDeletedTab ? (
                                     <>
-                                      <Zap className="h-3 w-3" />
-                                      {t('active')}
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="rounded-xl hover:bg-yellow-100 dark:hover:bg-yellow-900/20"
+                                        onClick={() => handleEditCourse(course)}
+                                      >
+                                        <Edit2 className="h-4 w-4 text-yellow-500" />
+                                      </Button>
+
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="rounded-xl hover:bg-red-100 dark:hover:bg-red-900/20"
+                                        onClick={() => setDeletingCourse(course)}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                      </Button>
                                     </>
                                   ) : (
                                     <>
-                                      <PowerOff className="h-3 w-3" />
-                                      {t('inactive')}
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="rounded-xl hover:bg-green-100 dark:hover:bg-green-900/20"
+                                        onClick={() => setRestoringCourse(course)}
+                                      >
+                                        <RefreshCw className="h-4 w-4 text-green-500" />
+                                      </Button>
+
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="rounded-xl hover:bg-red-100 dark:hover:bg-red-900/20"
+                                        onClick={() => setForceDeletingCourse(course)}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                      </Button>
                                     </>
                                   )}
-                                </span>
-                              </td>
-                            )}
-                            <td className="px-5 py-4 text-center">
-                              <div className="flex justify-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 rounded-full hover:bg-primary/10"
-                                  onClick={() => handleViewCourse(course)}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                {!isDeletedTab ? (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-full hover:bg-yellow-100 dark:hover:bg-yellow-900/20"
-                                      onClick={() => handleEditCourse(course)}
-                                    >
-                                      <Edit2 className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-full hover:bg-red-100 dark:hover:bg-red-900/20"
-                                      onClick={() => setDeletingCourse(course)}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-red-500" />
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-full hover:bg-green-100 dark:hover:bg-green-900/20"
-                                      onClick={() => setRestoringCourse(course)}
-                                    >
-                                      <RefreshCw className="h-4 w-4 text-green-500" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-full hover:bg-red-100 dark:hover:bg-red-900/20"
-                                      onClick={() => setForceDeletingCourse(course)}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-red-500" />
-                                    </Button>
-                                  </>
-                                )}
+                                </div>
                               </div>
                             </td>
                           </motion.tr>
@@ -812,32 +931,6 @@ export const InstructorCourses: React.FC = () => {
                       </tbody>
                     </table>
                   </div>
-                  {/* Pagination for Table */}
-                  {pagination.total > pagination.perPage && (
-                    <div className="flex items-center justify-center gap-3 py-4 border-t">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="rounded-full"
-                        onClick={() => goToPage(pagination.currentPage - 1)}
-                        disabled={pagination.currentPage === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm">
-                        {pagination.currentPage} / {pagination.lastPage}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="rounded-full"
-                        onClick={() => goToPage(pagination.currentPage + 1)}
-                        disabled={pagination.currentPage === pagination.lastPage}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
                 </Card>
               )}
             </TabsContent>

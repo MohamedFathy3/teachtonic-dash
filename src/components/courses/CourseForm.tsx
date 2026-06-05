@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/courses/CourseForm.tsx
+import api from '@/lib/api';
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -16,6 +17,7 @@ import { Loader2, ChevronLeft, Save } from 'lucide-react';
 import type { Course, CourseFormData } from '@/types/course.types';
 import { AsyncSelect } from '@/components/ui/AsyncSelect'; // 🔥 أضف هذا الاستيراد
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
+import { useTeacherMeta } from '@/hooks/useTeacherMeta'; // عدّل المسار حسب مشروعك
 
 interface CourseFormProps {
   course?: Course;
@@ -25,8 +27,9 @@ interface CourseFormProps {
 
 export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCancel }) => {
   const { t, lang, user } = useApp();
+  const teacherId = user?.id;
+  const { stages, subjects } = useTeacherMeta(teacherId);
   const { createCourse, updateCourse, loading, error } = useCourses({ autoFetch: false });
-  
   const [formData, setFormData] = useState<Partial<CourseFormData>>({
     teacher_id: user?.id || 1,
     stage_id: 1,
@@ -86,13 +89,13 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // ✅ التحقق من وجود صورة
     if (!formData.image || formData.image === 0) {
       alert(t('pleaseUploadImage') || 'Please upload a course image');
       return;
     }
-    
+
     try {
       if (course) {
         await updateCourse(course.id, formData);
@@ -161,7 +164,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
             {/* Basic Information */}
             <div className="space-y-4 pt-4 border-t">
               <h3 className="text-lg font-semibold">{t('basicInfo')}</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t('title')} (EN) *</Label>
@@ -173,7 +176,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
                     className="rounded-xl"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label>{t('title')} (AR)</Label>
                   <Input
@@ -189,48 +192,48 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t('description')} (EN)</Label>
-                    <RichTextEditor
-    value={formData.description || ''}
-    onChange={(value) => handleChange('description', value)}
-    placeholder="Brief description of the course..."
-    label=""
-    minHeight="150px"
-  />
+                  <RichTextEditor
+                    value={formData.description || ''}
+                    onChange={(value) => handleChange('description', value)}
+                    placeholder="Brief description of the course..."
+                    label=""
+                    minHeight="150px"
+                  />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label>{t('description')} (AR)</Label>
-                   <RichTextEditor
-    value={formData.description_ar || ''}
-    onChange={(value) => handleChange('description_ar', value)}
-    placeholder="وصف مختصر للدورة..."
-    label=""
-    minHeight="150px"
-  />
+                  <RichTextEditor
+                    value={formData.description_ar || ''}
+                    onChange={(value) => handleChange('description_ar', value)}
+                    placeholder="وصف مختصر للدورة..."
+                    label=""
+                    minHeight="150px"
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t('about')} (EN)</Label>
-                 <RichTextEditor
-    value={formData.about || ''}
-    onChange={(value) => handleChange('about', value)}
-    placeholder="Detailed information about the course..."
-    label=""
-    minHeight="250px"
-  />
+                  <RichTextEditor
+                    value={formData.about || ''}
+                    onChange={(value) => handleChange('about', value)}
+                    placeholder="Detailed information about the course..."
+                    label=""
+                    minHeight="250px"
+                  />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label>{t('about')} (AR)</Label>
-                <RichTextEditor
-    value={formData.about_ar || ''}
-    onChange={(value) => handleChange('about_ar', value)}
-    placeholder="معلومات تفصيلية عن الدورة..."
-    label=""
-    minHeight="250px"
-  />
+                  <RichTextEditor
+                    value={formData.about_ar || ''}
+                    onChange={(value) => handleChange('about_ar', value)}
+                    placeholder="معلومات تفصيلية عن الدورة..."
+                    label=""
+                    minHeight="250px"
+                  />
                 </div>
               </div>
             </div>
@@ -238,7 +241,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
             {/* Course Details */}
             <div className="space-y-4 pt-4 border-t">
               <h3 className="text-lg font-semibold">{t('courseDetails')}</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>{t('type')} *</Label>
@@ -318,62 +321,74 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
             {/* Stage, Subject, Semester - يمكن إضافتها من API منفصل */}
             <div className="space-y-4 pt-4 border-t">
               <h3 className="text-lg font-semibold">{t('academicInfo')}</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>{t('stage')} *</Label>
-                   <AsyncSelect
-            configKey="stages"
-            value={formData.stage_id}
-            onChange={(id, stage) => {
-              handleChange('stage_id', id || 1);
-              console.log('Selected stage:', id, stage);
-            }}
-            label=""
-            placeholder={lang === 'ar' ? 'اختر المرحلة' : 'Select Stage'}
-            required
-            // extraFilters={{ teacher_id: user?.id }}
-          />
+
+                  <Select
+                    value={formData.stage_id?.toString()}
+                    onValueChange={(value) => handleChange('stage_id', Number(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Stage" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {stages.map((stage: any) => (
+                        <SelectItem key={stage.id} value={stage.id.toString()}>
+                          {lang === 'ar' ? stage.name_ar : stage.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label>{t('subject')} *</Label>
-                    <AsyncSelect
-            configKey="subjects"
-            value={formData.subject_id}
-            onChange={(id, subject) => {
-              handleChange('subject_id', id || 1);
-              console.log('Selected subject:', id, subject);
-            }}
-            label=""
-            placeholder={lang === 'ar' ? 'اختر المادة' : 'Select Subject'}
-            required
-            // extraFilters={{ teacher_id: user?.id }}
-          />
+
+                  <Select
+                    value={formData.subject_id?.toString()}
+                    onValueChange={(value) => handleChange('subject_id', Number(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Subject" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {subjects
+                        .filter((s: any) => s.stage_id === formData.stage_id)
+                        .map((subject: any) => (
+                          <SelectItem key={subject.id} value={subject.id.toString()}>
+                            {lang === 'ar' ? subject.name_ar : subject.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-              <div className="space-y-2">
-          <Label>{t('semester')} *</Label>
-          <AsyncSelect
-            configKey="semesters"
-            value={formData.semester_id}
-            onChange={(id, semester) => {
-              handleChange('semester_id', id || 1);
-              console.log('Selected semester:', id, semester);
-            }}
-            label=""
-            placeholder={lang === 'ar' ? 'اختر الترم' : 'Select Semester'}
-            required
-            extraFilters={{ teacher_id: user?.id }}
-          />
-        </div>
+                <div className="space-y-2">
+                  <Label>{t('semester')} *</Label>
+                  <AsyncSelect
+                    configKey="semesters"
+                    value={formData.semester_id}
+                    onChange={(id, semester) => {
+                      handleChange('semester_id', id || 1);
+                      console.log('Selected semester:', id, semester);
+                    }}
+                    label=""
+                    placeholder={lang === 'ar' ? 'اختر الترم' : 'Select Semester'}
+                    required
+                    extraFilters={{ teacher_id: user?.id }}
+                  />
+                </div>
               </div>
             </div>
 
 
-             <div className="space-y-4 pt-4 border-t">
+            <div className="space-y-4 pt-4 border-t">
               <h3 className="text-lg font-semibold">{t('academicInfo')}</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t('startDate')} *</Label>
@@ -397,7 +412,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
                   />
                 </div>
 
-             
+
               </div>
             </div>
 

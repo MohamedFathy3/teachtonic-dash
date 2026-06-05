@@ -32,6 +32,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     searchField: 'name',
     labelField: 'name',
     labelFieldAr: 'name_ar',
+   
   },
   subjects: {
     endpoint: '/subject/index',
@@ -57,7 +58,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     labelField: 'name',
     labelFieldAr: 'name',
   },
-  
+
   courses: {
     endpoint: '/course/index',
     orderBy: 'id',
@@ -71,7 +72,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
         params.page,
         params.search || ''
       );
-      
+
       const data = response.data.map((course: any) => ({
         id: course.id,
         name: course.title,
@@ -80,14 +81,14 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
         price: course.price,
         type: course.type,
       }));
-      
+
       return {
         data,
         meta: response.meta,
       };
     },
   },
-  
+
   lessons: {
     endpoint: '/course-detail/index',
     orderBy: 'id',
@@ -97,12 +98,12 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     customFetcher: async (params) => {
       // 🔥 نبني الـ filters مع course_id من extraFilters
       const filters: Record<string, any> = {};
-      
+
       // 🔥 المهم: نضيف course_id من extraFilters
       if (params.extraFilters?.course_id) {
         filters.course_id = params.extraFilters.course_id;
       }
-      
+
       const requestBody: any = {
         filters,  // 🔥 هنا هنبعت course_id
         orderBy: 'id',
@@ -111,16 +112,16 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
         page: params.page,
         paginate: true,
       };
-      
+
       if (params.search) {
         requestBody.search = params.search;
         requestBody.searchFields = ['title', 'title_ar'];
       }
-      
+
       console.log('🔍 Lessons Request:', requestBody);
-      
+
       const response = await api.post('/course-detail/index', requestBody);
-      
+
       const data = response.data.data.map((lesson: any) => ({
         id: lesson.id,
         name: lesson.title,
@@ -131,62 +132,62 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
         lession_date: lesson.lession_date,
         lession_time: lesson.lession_time,
       }));
-      
+
       return {
         data,
         meta: response.data.meta,
       };
     },
   },
-semesters: {
-  endpoint: '/semesters/index',
-  orderBy: 'id',
-  orderByDirection: 'desc',
-  labelField: 'name',
-  labelFieldAr: 'name_ar',
-  customFetcher: async (params) => {
-    const { page, perPage, search, extraFilters } = params;
-    
-    console.log('🔍 Semesters extraFilters received:', extraFilters); 
-    
-    const requestBody: any = {
-      filters: {},
-      orderBy: 'id',
-      orderByDirection: 'desc',
-      perPage,
-      page,
-      paginate: true,
-    };
-    
-    if (search) {
-      requestBody.search = search;
-      requestBody.searchFields = ['name', 'name_ar'];
-    }
-    
-    // 🔥 إضافة teacher_id من extraFilters
-    if (extraFilters?.teacher_id) {
-      requestBody.filters.teacher_id = extraFilters.teacher_id;
-    }
-    
-    console.log('🔍 Semesters requestBody:', requestBody); // للتأكد
-    
-    const response = await api.post('/semesters/index', requestBody);
-    
-    const data = response.data.data.map((semester: any) => ({
-      id: semester.id,
-      name: semester.name,
-      name_ar: semester.name_ar,
-      original: semester,
-      price: semester.price,
-      active: semester.active,
-      teacher_id: semester.teacher_id,
-    }));
-    
-    return {
-      data,
-      meta: response.data.meta,
-    };
+  semesters: {
+    endpoint: '/semesters/index',
+    orderBy: 'id',
+    orderByDirection: 'desc',
+    labelField: 'name',
+    labelFieldAr: 'name_ar',
+    customFetcher: async (params) => {
+      const { page, perPage, search, extraFilters } = params;
+
+      console.log('🔍 Semesters extraFilters received:', extraFilters);
+
+      const requestBody: any = {
+        filters: {},
+        orderBy: 'id',
+        orderByDirection: 'desc',
+        perPage,
+        page,
+        paginate: true,
+      };
+
+      if (search) {
+        requestBody.search = search;
+        requestBody.searchFields = ['name', 'name_ar'];
+      }
+
+      // 🔥 إضافة teacher_id من extraFilters
+      if (extraFilters?.teacher_id) {
+        requestBody.filters.teacher_id = extraFilters.teacher_id;
+      }
+
+      console.log('🔍 Semesters requestBody:', requestBody); // للتأكد
+
+      const response = await api.post('/semesters/index', requestBody);
+
+      const data = response.data.data.map((semester: any) => ({
+        id: semester.id,
+        name: semester.name,
+        name_ar: semester.name_ar,
+        original: semester,
+        price: semester.price,
+        active: semester.active,
+        teacher_id: semester.teacher_id,
+      }));
+
+      return {
+        data,
+        meta: response.data.meta,
+      };
+    },
   },
-},
 
 };

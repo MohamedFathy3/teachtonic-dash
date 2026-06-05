@@ -53,7 +53,7 @@ export const InstructorRedeemRequests: React.FC = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6);
-
+  const [searchId, setSearchId] = useState('');
   // Fetch data
   const fetchRequests = async () => {
     setLoading(true);
@@ -80,7 +80,12 @@ export const InstructorRedeemRequests: React.FC = () => {
   // Filter and search logic
   const filteredRequests = useMemo(() => {
     let result = [...requests];
-
+    if (searchId.trim()) {
+      const idNum = Number(searchId);
+      if (!Number.isNaN(idNum)) {
+        result = result.filter(r => r.id === idNum);
+      }
+    }
     if (filterStatus !== 'all') {
       result = result.filter(r => r.status === filterStatus);
     }
@@ -91,13 +96,18 @@ export const InstructorRedeemRequests: React.FC = () => {
       const lowerSearch = debouncedSearch.toLowerCase();
       result = result.filter(r =>
         r.student.name.toLowerCase().includes(lowerSearch) ||
-        r.student.phone.includes(lowerSearch)
+        r.student.phone.includes(lowerSearch) ||
+        r.id.toString().includes(lowerSearch) ||
+        r.student_id.toString().includes(lowerSearch) ||
+        (r.course_id?.toString() || '').includes(lowerSearch) ||
+        (r.semester_id?.toString() || '').includes(lowerSearch) ||
+        (r.course_detail_id?.toString() || '').includes(lowerSearch)
       );
     }
     // sort by newest first
     result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return result;
-  }, [requests, filterStatus, filterType, debouncedSearch]);
+  }, [requests, filterStatus, filterType, debouncedSearch, searchId]);
 
   // Pagination
   const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
@@ -185,12 +195,25 @@ export const InstructorRedeemRequests: React.FC = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder={lang === 'ar' ? 'بحث باسم الطالب...' : 'Search by student...'}
-              value={searchTerm}
+              placeholder={lang === 'ar'
+                ? ' بحث الاسم  .'
+                : 'Search name ..'
+              } value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 w-64 rounded-xl"
             />
+
           </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder={lang === 'ar' ? 'بحث بالـ ID' : 'Search by ID'}
+              value={searchId}
+              onChange={(e) => setSearchId(e.target.value)}
+              className="w-32 rounded-xl"
+            />
+          </div>
+
           {/* Type filter */}
           <Select value={filterType} onValueChange={setFilterType}>
             <SelectTrigger className="w-36 rounded-xl">
@@ -261,8 +284,8 @@ export const InstructorRedeemRequests: React.FC = () => {
                           {req.status === 'pending'
                             ? (lang === 'ar' ? 'قيد الانتظار' : 'Pending')
                             : req.status === 'approved'
-                            ? (lang === 'ar' ? 'مقبول' : 'Approved')
-                            : (lang === 'ar' ? 'مرفوض' : 'Rejected')}
+                              ? (lang === 'ar' ? 'مقبول' : 'Approved')
+                              : (lang === 'ar' ? 'مرفوض' : 'Rejected')}
                         </Badge>
                       </div>
                     </div>

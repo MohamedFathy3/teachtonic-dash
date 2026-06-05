@@ -30,6 +30,8 @@ export interface CreateBookRequest {
   price: number;
   pages_count: number;
   image?: number;
+  discount?: number;   // ✅ NEW
+  stage_id?: number;   // ✅ NEW
 }
 
 export interface GetAllBooksParams {

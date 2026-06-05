@@ -16,7 +16,7 @@ interface CenterHourModalProps {
   onClose: () => void;
   onSuccess: () => void;
   editingItem?: any;
-    isDarkMode?: boolean;
+  isDarkMode?: boolean;
 
 }
 
@@ -27,7 +27,7 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
   editingItem,
   isDarkMode = false,
 }) => {
-  const { lang } = useApp();
+  const { lang, user } = useApp();
   const { useCreate, useUpdate } = useCenterHours();
   const createMutation = useCreate();
   const updateMutation = useUpdate();
@@ -57,14 +57,14 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
         date: now.toISOString().split('T')[0],
         hours: `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`,
         note: '',
-        teacher_id: null,
+        teacher_id: user?.id || null, // ✅ هنا الحل الحقيقي
       });
     }
-  }, [editingItem]);
+  }, [editingItem, user?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title || !formData.date || !formData.hours || !formData.teacher_id) {
       toast.error(lang === 'ar' ? 'يرجى ملء جميع الحقول المطلوبة' : 'Please fill all required fields');
       return;
@@ -134,12 +134,12 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                   >
                     <X size={20} />
                   </button>
-                  
+
                   <div className="flex items-center gap-3">
                     <Calendar size={28} />
                     <div>
                       <Dialog.Title className="text-xl font-bold">
-                        {editingItem 
+                        {editingItem
                           ? (lang === 'ar' ? 'تعديل موعد' : 'Edit Appointment')
                           : (lang === 'ar' ? 'إضافة موعد جديد' : 'Add New Appointment')}
                       </Dialog.Title>
@@ -162,7 +162,7 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         className="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder={lang === 'ar' ? 'مثال: محاضرة باك إند' : 'e.g., Backend Lecture'}
+                        placeholder={lang === 'ar' ? 'مثال: محاضر ' : 'e.g., Lecture'}
                         required
                       />
                     </div>
@@ -202,18 +202,7 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {lang === 'ar' ? 'المعلم' : 'Teacher'} *
-                    </label>
-                    <AsyncSelect
-                      configKey="teachers"
-                      value={formData.teacher_id}
-                      onChange={(id) => setFormData({ ...formData, teacher_id: id })}
-                      placeholder={lang === 'ar' ? 'اختر المعلم' : 'Select teacher'}
-                      required
-                    />
-                  </div>
+                
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -254,7 +243,7 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                       ) : (
                         <>
                           <Save size={18} />
-                          {editingItem 
+                          {editingItem
                             ? (lang === 'ar' ? 'تحديث' : 'Update')
                             : (lang === 'ar' ? 'إضافة' : 'Add')}
                         </>

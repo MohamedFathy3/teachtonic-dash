@@ -6,13 +6,22 @@ import type { Course, CourseFormData, PaginatedResponse } from '@/types/course.t
 
 import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
+export interface TeacherResponse {
+  id: number;
+  stages: any[];
+  subjects: any[];
+  courses: any[];
+}
 class CourseService extends BaseService<Course> {
   constructor() {
     super('course');
   }
 
 
-
+  async getTeacherById(id: number): Promise<TeacherResponse> {
+    const res = await api.get(`/teacher/${id}`);
+    return res.data.data;
+  }
   // ✅ الدالة الأساسية لجلب الكورسات مع فلتر متقدم
   async getAllCourses(
     filters?: Record<string, any>,

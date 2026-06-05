@@ -58,10 +58,14 @@ export interface StudentLearningData {
 }
 
 export interface StudentFilters {
+  id?: number;
   stage_id?: number;
   type_of_attendance?: string;
   active?: boolean;
   gender?: string;
+  phone?: string;
+  code_parent?: string;
+  center_hour_id?: number;
 }
 
 class StudentService extends BaseService<Student> {
@@ -69,7 +73,6 @@ class StudentService extends BaseService<Student> {
     super('student');
   }
 
-  // جلب طلاب المعلم الحالي
   async getTeacherStudents(
     teacherId: number,
     filters?: StudentFilters,
@@ -78,17 +81,76 @@ class StudentService extends BaseService<Student> {
     search?: string
   ): Promise<{ data: Student[]; meta: any }> {
     try {
-      const baseFilters: Record<string, any> = {
+
+      // 🎯 فلتر واحد فقط (أولوية)
+      let singleFilter: Record<string, any> = {
         teacher_id: teacherId,
-        ...(filters || {}),
+        ...filters
       };
 
+
       if (search && search.trim()) {
-        baseFilters.name = search.trim();
+        const value = search.trim();
+
+        const isNumber = /^\d+$/.test(value);
+
+        if (isNumber) {
+          singleFilter = {
+            teacher_id: teacherId,
+            id: Number(value),
+            phone: value,
+          };
+        } else {
+          singleFilter = {
+            teacher_id: teacherId,
+            name: value,   // 👈 أهم واحد
+          };
+        }
+      }
+      else if (filters?.stage_id) {
+        singleFilter = {
+          teacher_id: teacherId,
+          stage_id: filters.stage_id,
+        };
+      }
+      else if (filters?.type_of_attendance) {
+        singleFilter = {
+          teacher_id: teacherId,
+          type_of_attendance: filters.type_of_attendance,
+        };
+      }
+      else if (filters?.active !== undefined) {
+        singleFilter = {
+          teacher_id: teacherId,
+          active: filters.active,
+        };
+      } else if (filters?.id) {
+        singleFilter = {
+          teacher_id: teacherId,
+          id: filters.id,
+        };
+      }
+      else if (filters?.phone) {
+        singleFilter = {
+          teacher_id: teacherId,
+          phone: filters.phone,
+        };
+      }
+      else if (filters?.code_parent) {
+        singleFilter = {
+          teacher_id: teacherId,
+          code_parent: filters.code_parent,
+        };
+      }
+      else if (filters?.center_hour_id) {
+        singleFilter = {
+          teacher_id: teacherId,
+          center_hour_id: filters.center_hour_id,
+        };
       }
 
       const requestBody = {
-        filters: baseFilters,
+        filters: singleFilter, // ✅ فلتر واحد فقط
         orderBy: 'id',
         orderByDirection: 'desc',
         perPage,
@@ -97,8 +159,11 @@ class StudentService extends BaseService<Student> {
         delete: false,
       };
 
-      const response = await api.post(`/${this.endpoint}/index`, requestBody);
-      
+      const response = await api.post(
+        `/${this.endpoint}/index`,
+        requestBody
+      );
+
       return {
         data: response.data?.data || [],
         meta: response.data?.meta || {
@@ -108,20 +173,30 @@ class StudentService extends BaseService<Student> {
           total: 0,
         },
       };
+
     } catch (error: any) {
       console.error('API Error in getTeacherStudents:', error);
       throw error;
     }
   }
 
+
+
+
+
+
+
+
+
+
   // جلب تفاصيل طالب واحد مع محتواه التعليمي (الكورسات والترم والدروس والامتحانات والواجبات)
   async getStudentLearning(studentId: number): Promise<StudentLearningData> {
     try {
       const response = await api.get(`/my-student/learn/${studentId}`);
-      
+
       // التأكد من وجود البيانات بالشكل الصحيح
       const responseData = response.data?.data;
-      
+
       if (!responseData) {
         throw new Error('No data received from server');
       }
@@ -168,12 +243,12 @@ class StudentService extends BaseService<Student> {
         answer_id: answerId,
         mark: mark
       });
-      
+
       toast({
         title: "Success",
         description: "Essay question graded successfully",
       });
-      
+
       return response.data;
     } catch (error: any) {
       console.error('API Error in gradeEssayQuestion:', error);
@@ -199,12 +274,12 @@ class StudentService extends BaseService<Student> {
   }> {
     try {
       const learningData = await this.getStudentLearning(studentId);
-      
+
       const totalCourses = learningData.courses?.length || 0;
       const totalLessons = learningData.lessons?.length || 0;
       const totalExams = learningData.exams?.length || 0;
       const totalAssignments = learningData.assignments?.length || 0;
-      
+
       // حساب متوسط درجات الامتحانات
       let examTotalScore = 0;
       let examTotalMax = 0;
@@ -215,7 +290,7 @@ class StudentService extends BaseService<Student> {
         }
       });
       const averageExamScore = examTotalMax > 0 ? (examTotalScore / examTotalMax) * 100 : 0;
-      
+
       // حساب متوسط درجات الواجبات
       let assignmentTotalScore = 0;
       let assignmentTotalMax = 0;
@@ -226,13 +301,13 @@ class StudentService extends BaseService<Student> {
         }
       });
       const averageAssignmentScore = assignmentTotalMax > 0 ? (assignmentTotalScore / assignmentTotalMax) * 100 : 0;
-      
+
       // حساب عدد الدروس المكتملة
       const completedLessons = learningData.lessons?.filter((lesson: any) => lesson.attended === true).length || 0;
-      
+
       // نسبة الحضور (افتراضية، يمكن تعديلها حسب احتياجك)
       const attendanceRate = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
-      
+
       return {
         totalCourses,
         totalLessons,
@@ -262,15 +337,15 @@ class StudentService extends BaseService<Student> {
   async getStudentExamDetails(studentId: number, examId: number): Promise<StudentExam | null> {
     try {
       const learningData = await this.getStudentLearning(studentId);
-      
+
       // البحث في الامتحانات
       let exam = learningData.exams?.find((e: StudentExam) => e.exam.id === examId);
-      
+
       // إذا لم يوجد في الامتحانات، ابحث في الواجبات
       if (!exam) {
         exam = learningData.assignments?.find((a: StudentExam) => a.exam.id === examId);
       }
-      
+
       return exam || null;
     } catch (error) {
       console.error('Error getting student exam details:', error);
@@ -283,13 +358,13 @@ class StudentService extends BaseService<Student> {
     try {
       const learningData = await this.getStudentLearning(studentId);
       const pendingQuestions: ExamQuestion[] = [];
-      
+
       // جمع الأسئلة المقالية التي لم يتم تصحيحها من الامتحانات
       learningData.exams?.forEach((exam: StudentExam) => {
         exam.questions?.forEach((question: ExamQuestion) => {
-          if (question.question_type === 'essay' && 
-              question.student_answer && 
-              question.mark_obtained === null) {
+          if (question.question_type === 'essay' &&
+            question.student_answer &&
+            question.mark_obtained === null) {
             pendingQuestions.push({
               ...question,
               exam_title: exam.exam.title,
@@ -298,13 +373,13 @@ class StudentService extends BaseService<Student> {
           }
         });
       });
-      
+
       // جمع الأسئلة المقالية التي لم يتم تصحيحها من الواجبات
       learningData.assignments?.forEach((assignment: StudentExam) => {
         assignment.questions?.forEach((question: ExamQuestion) => {
-          if (question.question_type === 'essay' && 
-              question.student_answer && 
-              question.mark_obtained === null) {
+          if (question.question_type === 'essay' &&
+            question.student_answer &&
+            question.mark_obtained === null) {
             pendingQuestions.push({
               ...question,
               exam_title: assignment.exam.title,
@@ -313,7 +388,7 @@ class StudentService extends BaseService<Student> {
           }
         });
       });
-      
+
       return pendingQuestions;
     } catch (error) {
       console.error('Error getting pending essay questions:', error);

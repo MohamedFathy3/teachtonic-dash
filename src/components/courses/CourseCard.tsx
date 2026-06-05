@@ -4,9 +4,9 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  BookOpen, Star, Users, DollarSign, Eye, Edit, Trash2, 
-  RefreshCw, Archive, Power, PowerOff, CheckCircle, XCircle 
+import {
+  BookOpen, Star, Users, DollarSign, Eye, Edit, Trash2,
+  RefreshCw, Archive, Power, PowerOff, CheckCircle, XCircle
 } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import type { Course } from '@/types/course.types';
@@ -53,9 +53,8 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
     >
-      <Card className={`overflow-hidden rounded-xl border transition-all duration-200 ${
-        isDeleted ? 'bg-muted/30 border-red-200/50' : 'hover:shadow-md'
-      }`}>
+      <Card className={`overflow-hidden rounded-xl border transition-all duration-200 ${isDeleted ? 'bg-muted/30 border-red-200/50' : 'hover:shadow-md'
+        }`}>
         {/* Course Image */}
         <div className="relative aspect-video bg-muted">
           {course.image?.fullUrl || course.imageUrl ? (
@@ -69,7 +68,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <BookOpen className="h-10 w-10 text-muted-foreground/50" />
             </div>
           )}
-          
+
           {/* Status Badge */}
           <div className="absolute top-2 end-2">
             {isDeleted ? (
@@ -88,7 +87,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               </Badge>
             )}
           </div>
-          
+
           {/* Actions Menu - يظهر عند hover */}
           {showActions && isHovered && (
             <div className={`absolute top-2 ${isRTL ? 'right-2' : 'left-2'} flex gap-1`}>
@@ -159,7 +158,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </div>
           )}
         </div>
-        
+
         {/* Course Info */}
         <div className="p-4">
           <div className="flex items-center justify-between mb-1">
@@ -170,27 +169,26 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               {stageName}
             </span>
           </div>
-          
+
           <h3 className="font-semibold text-sm line-clamp-1">{title}</h3>
-          
+
           {description && (
             <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{description}</p>
           )}
-          
+
           <div className="mt-3 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-0.5">
+              {/* <span className="flex items-center gap-0.5">
                 <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
                 <span className="font-semibold">4.5</span>
-              </span>
+              </span> */}
               <span className="flex items-center gap-0.5">
                 <Users className="h-3 w-3" />
                 {course.count_student}
               </span>
             </div>
             <span className="flex items-center gap-0.5 font-bold text-primary">
-              <DollarSign className="h-3 w-3" />
-              {course.price}
+              EGP {course.price}
             </span>
           </div>
         </div>

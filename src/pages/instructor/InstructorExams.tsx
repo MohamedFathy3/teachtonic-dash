@@ -1,4 +1,5 @@
 // src/pages/instructor/InstructorExams.tsx
+import { useTeacherMeta } from '@/hooks/useTeacherMeta'; // عدّل المسار حسب مشروعك
 
 import { Variants } from "framer-motion";
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
@@ -237,7 +238,7 @@ export const InstructorExams: React.FC = () => {
   const [showResult, setShowResult] = useState(false);
   const [showingExam, setShowingExam] = useState(false);
   const [editingExamId, setEditingExamId] = useState<number | null>(null);
-
+  const { stages } = useTeacherMeta(user?.id);
   // ✅ Pagination
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -289,7 +290,7 @@ export const InstructorExams: React.FC = () => {
       marksMin: searchParams.get('marksMin') ? Number(searchParams.get('marksMin')) : null,
       marksMax: searchParams.get('marksMax') ? Number(searchParams.get('marksMax')) : null,
     };
-    
+
     if (urlFilters.stageId || urlFilters.subjectId || urlFilters.semesterId || urlFilters.active !== null) {
       setFilters(urlFilters);
     }
@@ -314,7 +315,7 @@ export const InstructorExams: React.FC = () => {
   const fetchExams = useCallback(async (page = 1) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const apiFilters = buildApiFilters();
       const response = await examService.getAllExams(
@@ -349,7 +350,7 @@ export const InstructorExams: React.FC = () => {
     // Save to localStorage
     localStorage.setItem('examFilters', JSON.stringify(filters));
     setSavedFilters(filters);
-    
+
     // Update URL
     const newParams = new URLSearchParams();
     if (filters.stageId) newParams.set('stage', String(filters.stageId));
@@ -359,7 +360,7 @@ export const InstructorExams: React.FC = () => {
     if (filters.marksMin) newParams.set('marksMin', String(filters.marksMin));
     if (filters.marksMax) newParams.set('marksMax', String(filters.marksMax));
     setSearchParams(newParams);
-    
+
     setShowFilters(false);
     fetchExams(1);
   };
@@ -644,7 +645,7 @@ export const InstructorExams: React.FC = () => {
             <div className="relative h-2 bg-gradient-to-r from-primary via-secondary to-primary" />
             <motion.div className="absolute top-0 right-0 w-72 h-72 bg-primary/10 rounded-full blur-3xl" animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }} transition={{ duration: 10, repeat: Infinity }} />
             <motion.div className="absolute bottom-0 left-0 w-72 h-72 bg-secondary/10 rounded-full blur-3xl" animate={{ scale: [1.2, 1, 1.2], rotate: [0, -90, 0] }} transition={{ duration: 12, repeat: Infinity }} />
-            
+
             <CardHeader className="relative z-10 pb-2">
               <div className="flex items-center gap-4">
                 <motion.div initial={{ rotate: -180, scale: 0 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 200 }} className="w-16 h-16 rounded-2xl bg-gradient-to-r from-primary to-secondary flex items-center justify-center shadow-lg">
@@ -706,7 +707,27 @@ export const InstructorExams: React.FC = () => {
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>{t('stage')}</Label>
-                  <AsyncSelect configKey="stages" value={examFormData.stage_id} onChange={(id) => setExamFormData({ ...examFormData, stage_id: id })} placeholder={lang === 'ar' ? 'اختر المرحلة' : 'Select Stage'} required />
+
+                  <select
+                    value={examFormData.stage_id || ''}
+                    onChange={(e) =>
+                      setExamFormData({
+                        ...examFormData,
+                        stage_id: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border bg-background"
+                  >
+                    <option value="">
+                      {lang === 'ar' ? 'اختر المرحلة' : 'Select Stage'}
+                    </option>
+
+                    {stages?.map((stage) => (
+                      <option key={stage.id} value={stage.id}>
+                        {stage.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label>{t('lesson')}</Label>
@@ -936,7 +957,7 @@ export const InstructorExams: React.FC = () => {
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       <div className="max-w-[1600px] mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
-        
+
         {/* ✅ Header Section */}
         <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -1047,20 +1068,32 @@ export const InstructorExams: React.FC = () => {
                         <GraduationCap className="h-4 w-4 text-primary" />
                         {t('stage') || 'المرحلة'}
                       </Label>
-                      <AsyncSelect
-                        configKey="stages"
-                        value={filters.stageId}
-                        onChange={(val) => setFilters(prev => ({ ...prev, stageId: val }))}
-                        placeholder={lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
-                        label=""
-                        clearable
-                      />
+                      <select
+                        value={filters.stageId || ''}
+                        onChange={(e) =>
+                          setFilters((prev) => ({
+                            ...prev,
+                            stageId: e.target.value ? Number(e.target.value) : null,
+                          }))
+                        }
+                        className="w-full px-3 py-2 rounded-xl border bg-background"
+                      >
+                        <option value="">
+                          {lang === 'ar' ? 'كل المراحل' : 'All Stages'}
+                        </option>
+
+                        {stages?.map((stage) => (
+                          <option key={stage.id} value={stage.id}>
+                            {stage.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                  
 
 
-                  
+
+
 
                     {/* Marks Range - Min */}
                     <div className="space-y-2">
@@ -1077,7 +1110,7 @@ export const InstructorExams: React.FC = () => {
                       />
                     </div>
 
-                   
+
                   </div>
 
                   {/* Filter Actions */}
@@ -1145,7 +1178,7 @@ export const InstructorExams: React.FC = () => {
                 <motion.div key={exam.id} variants={itemVariants} custom={idx}>
                   <Card className="group relative overflow-hidden border border-border/50 bg-card/80 backdrop-blur-sm hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 rounded-2xl">
                     <motion.div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0" initial={{ x: "-100%" }} whileHover={{ x: "100%" }} transition={{ duration: 0.6 }} />
-                    
+
                     <div className="h-32 bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center relative overflow-hidden">
                       {exam.image?.fullUrl ? (
                         <img src={exam.image.fullUrl} alt={exam.title} className="w-full h-full object-cover" />

@@ -139,6 +139,50 @@ export const BooksPage: React.FC = () => {
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       <div className="p-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Card className="p-4 text-center bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-0 shadow-sm hover:shadow-md transition-all">
+              <BookOpen className="h-8 w-8 mx-auto text-blue-500 mb-2" />
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{meta?.total || 0}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجمالي الكتب' : 'Total Books'}</p>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="p-4 text-center bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-0 shadow-sm hover:shadow-md transition-all">
+              <User className="h-8 w-8 mx-auto text-green-500 mb-2" />
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {books.filter((b: any) => b.active === 1).length}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'كتب نشطة' : 'Active Books'}</p>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="p-4 text-center bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-0 shadow-sm hover:shadow-md transition-all">
+              <DollarSign className="h-8 w-8 mx-auto text-orange-500 mb-2" />
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                ${books.reduce((sum: number, b: any) => sum + parseFloat(b.price), 0).toFixed(2)}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجمالي القيمة' : 'Total Value'}</p>
+            </Card>
+          </motion.div>
+        </div>
         {/* Header */}
         <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
           <div>
@@ -184,15 +228,7 @@ export const BooksPage: React.FC = () => {
             </Button>
 
             {/* Theme Toggle Button */}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={toggleTheme}
-              className="rounded-xl"
-              title={lang === 'ar' ? 'تغيير الوضع' : 'Toggle theme'}
-            >
-              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </Button>
+
 
             {/* Bulk Delete Button */}
             {/* Search Filters */}
@@ -364,50 +400,6 @@ export const BooksPage: React.FC = () => {
               {lang === 'ar' ? 'إضافة كتاب' : 'Add Book'}
             </Button>
           </div>
-        </div>
-
-
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="p-4 text-center bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-0 shadow-sm hover:shadow-md transition-all">
-              <BookOpen className="h-8 w-8 mx-auto text-blue-500 mb-2" />
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{meta?.total || 0}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجمالي الكتب' : 'Total Books'}</p>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="p-4 text-center bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-0 shadow-sm hover:shadow-md transition-all">
-              <User className="h-8 w-8 mx-auto text-green-500 mb-2" />
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {books.filter((b: any) => b.active === 1).length}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'كتب نشطة' : 'Active Books'}</p>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="p-4 text-center bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-0 shadow-sm hover:shadow-md transition-all">
-              <DollarSign className="h-8 w-8 mx-auto text-orange-500 mb-2" />
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                ${books.reduce((sum: number, b: any) => sum + parseFloat(b.price), 0).toFixed(2)}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجمالي القيمة' : 'Total Value'}</p>
-            </Card>
-          </motion.div>
         </div>
 
         {/* Select All Checkbox */}

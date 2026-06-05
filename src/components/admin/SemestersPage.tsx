@@ -1,5 +1,6 @@
 // src/pages/admin/SemestersPage.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useTeacherMeta } from '@/hooks/useTeacherMeta'; // عدّل المسار حسب مشروعك
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -43,6 +44,9 @@ import { AsyncSelect } from '../ui/AsyncSelect';
 
 export const SemestersPage: React.FC = () => {
   const { t, lang, user } = useApp();
+  const teacherId = user?.id;
+
+  const { stages, subjects } = useTeacherMeta(teacherId);
   const isRTL = lang === 'ar';
 
   // ✅ State
@@ -418,14 +422,34 @@ export const SemestersPage: React.FC = () => {
                       {lang === 'ar' ? 'المادة' : 'Subject'}
                     </Label>
 
-                    <AsyncSelect
+                    {/* <AsyncSelect
                       configKey="subjects"
                       value={filters.subject_id}
                       onChange={(id) =>
                         setFilters(prev => ({ ...prev, subject_id: id }))
                       }
                       placeholder={lang === 'ar' ? 'اختر المادة' : 'Select Subject'}
-                    />
+                    /> */}
+                    <select
+                      className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3"
+                      value={filters.subject_id ?? ''}
+                      onChange={(e) =>
+                        setFilters(prev => ({
+                          ...prev,
+                          subject_id: e.target.value ? Number(e.target.value) : null,
+                        }))
+                      }
+                    >
+                      <option value="">
+                        {lang === 'ar' ? 'كل المواد' : 'All Subjects'}
+                      </option>
+
+                      {subjects.map((sub: any) => (
+                        <option key={sub.id} value={sub.id}>
+                          {lang === 'ar' ? sub.name_ar : sub.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* ⚡ Status */}
@@ -612,17 +636,47 @@ export const SemestersPage: React.FC = () => {
                         </TableCell>
 
                         <TableCell className="text-center">
-                          {semester.active ? (
-                            <Badge className="bg-green-500 gap-1">
-                              <CheckCircle className="h-3 w-3" />
-                              {lang === 'ar' ? 'نشط' : 'Active'}
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive" className="gap-1">
-                              <XCircle className="h-3 w-3" />
-                              {lang === 'ar' ? 'غير نشط' : 'Inactive'}
-                            </Badge>
-                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              const ok = confirm(
+                                lang === 'ar'
+                                  ? semester.active
+                                    ? 'تأكيد إيقاف الترم؟'
+                                    : 'تأكيد تفعيل الترم؟'
+                                  : semester.active
+                                    ? 'Confirm deactivate this semester?'
+                                    : 'Confirm activate this semester?'
+                              );
+                              if (!ok) return;
+
+                              try {
+                                await semesterService.toggleActive(semester.id);
+                                fetchSemesters(pagination.currentPage);
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }}
+                            className={
+                              semester.active
+                                ? 'text-green-600 hover:bg-green-600/10'
+                                : 'text-red-500 hover:bg-red-500/10'
+                            }
+                          >
+                            {semester.active ? (
+                              <>
+                                <CheckCircle className="h-3.5 w-3.5" />
+                                {lang === 'ar' ? 'نشط' : 'Active'}
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="h-3.5 w-3.5" />
+                                {lang === 'ar' ? 'غير نشط' : 'Inactive'}
+                              </>
+                            )}
+                          </Button>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex justify-center gap-1">
@@ -693,13 +747,26 @@ export const SemestersPage: React.FC = () => {
 
             <div className="space-y-4 mt-4">
               <div>
-                <AsyncSelect
-                  configKey="subjects"
-                  value={formData.subject_id}
-                  onChange={(id) => setFormData({ ...formData, subject_id: id })}
-                  placeholder={lang === 'ar' ? 'اختر الماده' : 'Select subject'}
-                  required
-                />
+                <select
+                  className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3"
+                  value={formData.subject_id ?? ''}
+                  onChange={(e) =>
+                    setFormData(prev => ({
+                      ...prev,
+                      subject_id: e.target.value ? Number(e.target.value) : null,
+                    }))
+                  }
+                >
+                  <option value="">
+                    {lang === 'ar' ? 'كل المواد' : 'All Subjects'}
+                  </option>
+
+                  {subjects.map((sub: any) => (
+                    <option key={sub.id} value={sub.id}>
+                      {lang === 'ar' ? sub.name_ar : sub.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <Label>{lang === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'}</Label>

@@ -57,6 +57,7 @@ class SemesterService extends BaseService<Semester> {
     search?: string,
     teacherId?: number
   ) {
+
     try {
       const baseFilters: Record<string, any> = { ...filters };
 
@@ -70,6 +71,7 @@ class SemesterService extends BaseService<Semester> {
       if (search?.trim()) {
         baseFilters.name = search.trim();
       }
+
 
       // 🔥 تنظيف القيم الفاضية
       Object.keys(baseFilters).forEach((key) => {

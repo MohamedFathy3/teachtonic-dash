@@ -1,7 +1,8 @@
 // src/pages/instructor/InstructorStudents.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useMemo } from 'react';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
-
+import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { studentService, Student } from '@/services/student.service';
@@ -34,12 +35,13 @@ const itemVariants = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { type: "spring", stiffness: 300, damping: 24 },
+    transition: { type: 'spring', stiffness: 300, damping: 24 } as any,
   },
-};
+} as any;
 
 export const InstructorStudents: React.FC = () => {
   const { t, lang, user } = useApp();
+  const { stages } = useTeacherMeta(user?.id);
   const isRTL = lang === 'ar';
 
   // ✅ State
@@ -52,6 +54,12 @@ export const InstructorStudents: React.FC = () => {
   const [filterStageId, setFilterStageId] = useState<number | null>(null);
   const [filterAttendance, setFilterAttendance] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterId, setFilterId] = useState<string>('');
+  const [filterPhone, setFilterPhone] = useState('');
+  const [filterCodeParent, setFilterCodeParent] = useState('');
+  const [filterCenterHourId, setFilterCenterHourId] = useState('');
+
+
 
   // ✅ Selected student for learning page
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
@@ -71,6 +79,62 @@ export const InstructorStudents: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  const filteredStudents = useMemo(() => {
+    let result = [...students];
+
+    const q = debouncedSearch.trim().toLowerCase();
+
+    if (q) {
+      result = result.filter(s =>
+        s.name?.toLowerCase().includes(q) ||
+        s.phone?.includes(q) ||
+        String(s.id).includes(q)
+      );
+    }
+
+    if (filterStageId) {
+      result = result.filter(s => s.stage_id === filterStageId);
+    }
+
+    if (filterAttendance) {
+      result = result.filter(s => s.type_of_attendance === filterAttendance);
+    }
+
+    if (filterStatus !== '') {
+      result = result.filter(s => s.active === (filterStatus === 'active'));
+    }
+
+    if (filterId.trim()) {
+      const idNum = Number(filterId);
+      if (!Number.isNaN(idNum)) {
+        result = result.filter(s => s.id === idNum);
+      }
+    }
+
+    if (filterPhone) {
+      result = result.filter(s => s.phone?.includes(filterPhone));
+    }
+
+    if (filterCodeParent) {
+      result = result.filter(s => s.code_parent?.includes(filterCodeParent));
+    }
+
+
+
+
+    return result;
+  }, [
+    students,
+    debouncedSearch,
+    filterStageId,
+    filterAttendance,
+    filterStatus,
+    filterId,
+    filterPhone,
+    filterCodeParent,
+  ]);
+
+
   // ✅ Fetch students
   const fetchStudents = useCallback(async (page = 1) => {
     setLoading(true);
@@ -80,9 +144,16 @@ export const InstructorStudents: React.FC = () => {
       if (filterStageId) filters.stage_id = filterStageId;
       if (filterAttendance) filters.type_of_attendance = filterAttendance;
       if (filterStatus !== '') filters.active = filterStatus === 'active';
+      if (filterId.trim()) {
+        const idNum = Number(filterId);
+        if (!Number.isNaN(idNum)) filters.id = idNum;
+      }
+      if (filterPhone) filters.phone = filterPhone;
+      if (filterCodeParent) filters.code_parent = filterCodeParent;
+      if (filterCenterHourId) filters.center_hour_id = Number(filterCenterHourId);
 
       const response = await studentService.getTeacherStudents(
-        user?.id || 1,
+        user?.id || undefined,
         filters,
         pagination.perPage,
         page,
@@ -100,12 +171,25 @@ export const InstructorStudents: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, filterStageId, filterAttendance, filterStatus, pagination.perPage, user?.id]);
+  }, [
+    debouncedSearch,
+    filterStageId,
+    filterAttendance,
+    filterStatus,
+    filterId,
+    filterPhone,
+    filterCodeParent,
+    filterCenterHourId,
+    pagination.perPage,
+    user?.id
+  ]);
+
 
   useEffect(() => {
+    if (!user?.id) return;
     fetchStudents(1);
-  }, [fetchStudents]);
-
+  }, [fetchStudents, user?.id]);
+  
   const goToPage = (page: number) => {
     if (page >= 1 && page <= pagination.lastPage) {
       fetchStudents(page);
@@ -116,10 +200,16 @@ export const InstructorStudents: React.FC = () => {
     setFilterStageId(null);
     setFilterAttendance('');
     setFilterStatus('');
+    setFilterId('');
+    setFilterPhone('');
+    setFilterCodeParent('');
+    setFilterCenterHourId('');
     setSearchQuery('');
     setDebouncedSearch('');
     setShowFilters(false);
   };
+
+
 
   const applyFilters = () => {
     fetchStudents(1);
@@ -260,10 +350,13 @@ export const InstructorStudents: React.FC = () => {
           <div className="relative">
 
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
             <Input
-              placeholder={t('searchStudents') || 'بحث بالاسم...'}
+              placeholder={lang === 'ar' ? 'بحث بالاسم ' : 'Search by name / '}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+              }}
               className="pl-9 w-64 rounded-xl"
             />
           </div>
@@ -279,17 +372,58 @@ export const InstructorStudents: React.FC = () => {
               className="overflow-hidden"
             >
               <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-5">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{lang === 'ar' ? 'الرقم (ID)' : 'ID'}</Label>
+                    <Input
+                      value={filterId}
+                      onChange={(e) => setFilterId(e.target.value)}
+                      placeholder={lang === 'ar' ? 'اكتب ID' : 'Enter ID'}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{lang === 'ar' ? 'الهاتف' : 'Phone'}</Label>
+                    <Input
+                      value={filterPhone}
+                      onChange={(e) => setFilterPhone(e.target.value)}
+                      placeholder={lang === 'ar' ? 'اكتب رقم الهاتف' : 'Enter phone'}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{lang === 'ar' ? 'كود ولي الأمر' : 'code_parent'}</Label>
+                    <Input
+                      value={filterCodeParent}
+                      onChange={(e) => setFilterCodeParent(e.target.value)}
+                      placeholder={lang === 'ar' ? 'اكتب كود ولي الأمر' : 'Enter code_parent'}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{t('stage') || 'المرحلة'}</Label>
-                    <AsyncSelect
-                      configKey="stages"
-                      value={filterStageId}
-                      onChange={setFilterStageId}
-                      placeholder={lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
-                      label=""
-                      clearable
-                    />
+
+                    <select
+                      value={filterStageId || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFilterStageId(value ? Number(value) : null);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                    >
+                      <option value="">
+                        {lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
+                      </option>
+
+                      {stages.map((stage: any) => (
+                        <option key={stage.id} value={stage.id}>
+                          {stage.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{t('attendanceType') || 'نوع الحضور'}</Label>
@@ -315,6 +449,7 @@ export const InstructorStudents: React.FC = () => {
                       <option value="inactive">❌ {lang === 'ar' ? 'غير نشط' : 'Inactive'}</option>
                     </select>
                   </div>
+
                 </div>
                 <div className="flex justify-end gap-3 mt-5 pt-3 border-t">
                   <Button variant="outline" size="sm" onClick={clearFilters}>
@@ -351,7 +486,7 @@ export const InstructorStudents: React.FC = () => {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {students.map((student, idx) => (
+              {filteredStudents.map((student, idx) => (
                 <motion.div
                   key={student.id}
                   variants={itemVariants}

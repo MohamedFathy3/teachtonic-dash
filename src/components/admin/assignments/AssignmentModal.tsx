@@ -267,7 +267,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                             ? 'bg-gray-800 border-gray-700 text-gray-100 focus:border-orange-500' 
                             : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
                         }`}
-                        placeholder={lang === 'ar' ? 'مثال: Backend Assignment' : 'e.g., Backend Assignment'}
+                        placeholder={lang === 'ar' ? 'مثال:  Assignment' : 'e.g.,  Assignment'}
                         required
                       />
                     </div>
@@ -288,7 +288,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                             ? 'bg-gray-800 border-gray-700 text-gray-100 focus:border-orange-500' 
                             : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
                         }`}
-                        placeholder={lang === 'ar' ? 'مثال: واجب الباك إند' : 'e.g., واجب الباك إند'}
+                        placeholder={lang === 'ar' ? 'مثال: واجب ' : 'e.g., واجب  '}
                         dir="rtl"
                       />
                     </div>
