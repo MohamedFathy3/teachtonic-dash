@@ -1,11 +1,14 @@
 // src/pages/instructor/InstructorBankQuestions.tsx
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
+import type { Variants } from "framer-motion";
+import { toast } from '@/hooks/use-toast';
+import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 import React, {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
     startTransition,
 } from 'react';
@@ -21,9 +24,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Search, ChevronLeft, ChevronRight, Filter, X, GraduationCap, BookOpen, HelpCircle, Sparkles, FileText, Grid3x3, List, Eye, Power, Zap, PowerOff, Trash2, RefreshCw, CheckCircle, XCircle, Clock, Award, TrendingUp, Users, Calendar, Settings2, ChevronDown, ChevronUp, Plus, Save, Edit2 } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { ExportExcelButton } from '@/components/common/ExportExcelButton';
-import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import { useSearchParams } from 'react-router-dom';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 // ✅ Types
 interface QuestionFilters {
@@ -88,7 +90,7 @@ const getQuestionTypeIcon = (type: string) => {
 
 const BankQuestionCard: React.FC<{ question: BankQuestion; lang: string }> = ({ question, lang }) => {
     const isRTL = lang === 'ar';
-    
+
     return (
         <motion.div
             layout
@@ -196,6 +198,8 @@ const BankQuestionCard: React.FC<{ question: BankQuestion; lang: string }> = ({ 
 
 export const InstructorBankQuestions: React.FC = () => {
     const { t, lang, user } = useApp();
+    const { stages, subjects } = useTeacherMeta(user?.id);
+
     const isRTL = lang === 'ar';
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -248,17 +252,19 @@ export const InstructorBankQuestions: React.FC = () => {
     // ✅ Load saved filters from localStorage
     useEffect(() => {
         const saved = localStorage.getItem('bankQuestionFilters');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
+        if (!saved) return;
+
+        try {
+            const parsed = JSON.parse(saved);
+
+            if (JSON.stringify(parsed) !== JSON.stringify(filters)) {
                 setFilters(parsed);
                 setSavedFilters(parsed);
-            } catch (e) {
-                console.error('Error loading saved filters', e);
             }
+        } catch (e) {
+            console.error(e);
         }
     }, []);
-
     // ✅ Sync filters with URL
     useEffect(() => {
         const urlFilters: QuestionFilters = {
@@ -268,92 +274,120 @@ export const InstructorBankQuestions: React.FC = () => {
             minMarks: searchParams.get('minMarks') ? Number(searchParams.get('minMarks')) : null,
             maxMarks: searchParams.get('maxMarks') ? Number(searchParams.get('maxMarks')) : null,
         };
-        
-        if (urlFilters.stageId || urlFilters.subjectId || urlFilters.questionType || urlFilters.minMarks || urlFilters.maxMarks) {
-            setFilters(urlFilters);
+
+        const hasAny =
+            urlFilters.stageId ||
+            urlFilters.subjectId ||
+            urlFilters.questionType ||
+            urlFilters.minMarks ||
+            urlFilters.maxMarks;
+
+        if (hasAny) {
+            setFilters(prev => ({
+                ...prev,
+                ...urlFilters
+            }));
         }
     }, [searchParams]);
-
     // ✅ Build API filters
-    const buildApiFilters = useCallback(() => {
-        const apiFilters: Record<string, any> = {};
 
-        if (user?.id) apiFilters.teacher_id = user.id;
-        if (filters.stageId) apiFilters.stage_id = filters.stageId;
-        if (filters.subjectId) apiFilters.subject_id = filters.subjectId;
-        if (filters.questionType) apiFilters.question_type = filters.questionType;
-        if (filters.minMarks) apiFilters.min_mark = filters.minMarks;
-        if (filters.maxMarks) apiFilters.max_mark = filters.maxMarks;
 
-        return apiFilters;
-    }, [filters, user?.id]);
+
 
     // ✅ Fetch Questions
     const fetchQuestions = useCallback(async (page = 1) => {
+        if (!user?.id) return;
         setLoading(true);
         setError(null);
-        
+
         try {
-            const apiFilters = buildApiFilters();
             const response = await bankQuestionsService.getAllBankQuestions({
                 page,
                 perPage: pagination.perPage,
-                ...apiFilters,
+                teacher_id: user.id,
+                stage_id: filters.stageId || undefined,
+                subject_id: filters.subjectId || undefined,
+                question_type: filters.questionType || undefined,
+                min_mark: filters.minMarks || undefined,
+                max_mark: filters.maxMarks || undefined,
                 search: debouncedSearch || undefined,
             });
 
             setQuestions(response.data || []);
-            setPagination({
+            setPagination(prev => ({
+                ...prev,
                 currentPage: response.meta?.current_page ?? page,
                 lastPage: response.meta?.last_page ?? 1,
                 total: response.meta?.total ?? 0,
-                perPage: response.meta?.per_page ?? pagination.perPage,
-            });
-        } catch (e: any) {
-            setError(e?.message || 'Failed to fetch bank questions');
+                perPage: response.meta?.per_page ?? prev.perPage,
+            }));
+        } catch (err: any) {
+            setError(err?.message || 'Error loading questions');
             setQuestions([]);
         } finally {
             setLoading(false);
         }
-    }, [buildApiFilters, debouncedSearch, pagination.perPage]);
+    }, [user?.id, filters, debouncedSearch]);
 
     useEffect(() => {
-        if (!user) return;
-        startTransition(() => { void fetchQuestions(1); });
-    }, [fetchQuestions, user]);
+        fetchQuestions(1);
+    }, [fetchQuestions]);
 
-    // ✅ Apply filters and reset to page 1
+
+
+    // ✅ أضف flag عشان تتجنب الـ circular update
+    const isApplyingFilters = useRef(false);
+
     const applyFilters = () => {
+        isApplyingFilters.current = true; // 🔒 lock
         localStorage.setItem('bankQuestionFilters', JSON.stringify(filters));
         setSavedFilters(filters);
-        
+
         const newParams = new URLSearchParams();
         if (filters.stageId) newParams.set('stage', String(filters.stageId));
         if (filters.subjectId) newParams.set('subject', String(filters.subjectId));
         if (filters.questionType) newParams.set('type', filters.questionType);
         if (filters.minMarks) newParams.set('minMarks', String(filters.minMarks));
         if (filters.maxMarks) newParams.set('maxMarks', String(filters.maxMarks));
+
         setSearchParams(newParams);
-        
         setShowFilters(false);
-        fetchQuestions(1);
+
+        setTimeout(() => { isApplyingFilters.current = false; }, 100); // 🔓 unlock
     };
 
-    // ✅ Clear all filters
+    // ✅ الـ URL sync effect مع الـ lock
+    useEffect(() => {
+        if (isApplyingFilters.current) return; // ← تجاهل لو إحنا اللي غيرنا الـ URL
+
+        const urlFilters: QuestionFilters = {
+            stageId: searchParams.get('stage') ? Number(searchParams.get('stage')) : null,
+            subjectId: searchParams.get('subject') ? Number(searchParams.get('subject')) : null,
+            questionType: searchParams.get('type') || null,
+            minMarks: searchParams.get('minMarks') ? Number(searchParams.get('minMarks')) : null,
+            maxMarks: searchParams.get('maxMarks') ? Number(searchParams.get('maxMarks')) : null,
+        };
+
+        const hasAny = urlFilters.stageId || urlFilters.subjectId ||
+            urlFilters.questionType || urlFilters.minMarks || urlFilters.maxMarks;
+
+        if (hasAny) {
+            setFilters(prev => ({ ...prev, ...urlFilters }));
+        }
+    }, [searchParams]);
     const clearFilters = () => {
-        setFilters({
+        const reset = {
             stageId: null,
             subjectId: null,
             questionType: null,
             minMarks: null,
             maxMarks: null,
-        });
+        };
+        setFilters(reset);
         setSavedFilters(null);
         localStorage.removeItem('bankQuestionFilters');
         setSearchParams({});
-        fetchQuestions(1);
     };
-
     // ✅ Load saved filters
     const loadSavedFilters = () => {
         if (savedFilters) {
@@ -383,7 +417,7 @@ export const InstructorBankQuestions: React.FC = () => {
             className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950"
         >
             <div className="max-w-[1600px] mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
-                
+
                 {/* ✅ Header Section */}
                 <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
@@ -414,7 +448,7 @@ export const InstructorBankQuestions: React.FC = () => {
                                 className={`p-2 px-3 rounded-lg transition-all duration-300 ${viewMode === 'grid'
                                     ? 'bg-white dark:bg-gray-800 text-primary shadow-md'
                                     : 'hover:bg-white/50 dark:hover:bg-gray-800/50'
-                                }`}
+                                    }`}
                             >
                                 <Grid3x3 className="h-4 w-4" />
                             </button>
@@ -423,7 +457,7 @@ export const InstructorBankQuestions: React.FC = () => {
                                 className={`p-2 px-3 rounded-lg transition-all duration-300 ${viewMode === 'table'
                                     ? 'bg-white dark:bg-gray-800 text-primary shadow-md'
                                     : 'hover:bg-white/50 dark:hover:bg-gray-800/50'
-                                }`}
+                                    }`}
                             >
                                 <List className="h-4 w-4" />
                             </button>
@@ -499,7 +533,7 @@ export const InstructorBankQuestions: React.FC = () => {
                                 className={`p-2.5 rounded-xl border transition-all duration-300 ${showFilters
                                     ? 'bg-primary text-white border-primary shadow-md'
                                     : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary'
-                                }`}
+                                    }`}
                             >
                                 <Filter className="h-4 w-4" />
                             </motion.button>
@@ -535,14 +569,26 @@ export const InstructorBankQuestions: React.FC = () => {
                                                 <GraduationCap className="h-4 w-4 text-primary" />
                                                 {lang === 'ar' ? 'المرحلة' : 'Stage'}
                                             </Label>
-                                            <AsyncSelect
-                                                configKey="stages"
-                                                value={filters.stageId}
-                                                onChange={(val) => setFilters(prev => ({ ...prev, stageId: val }))}
-                                                placeholder={lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
-                                                label=""
-                                                clearable
-                                            />
+                                            <select
+                                                value={filters.stageId || ''}
+                                                onChange={(e) =>
+                                                    setFilters(prev => ({
+                                                        ...prev,
+                                                        stageId: e.target.value ? Number(e.target.value) : null
+                                                    }))
+                                                }
+                                                className="w-full rounded-xl border px-3 py-2 text-sm bg-background"
+                                            >
+                                                <option value="">
+                                                    {lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
+                                                </option>
+
+                                                {stages.map((stage: any) => (
+                                                    <option key={stage.id} value={stage.id}>
+                                                        {stage.name}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
 
                                         {/* Subject Filter */}
@@ -551,15 +597,28 @@ export const InstructorBankQuestions: React.FC = () => {
                                                 <BookOpen className="h-4 w-4 text-primary" />
                                                 {lang === 'ar' ? 'المادة' : 'Subject'}
                                             </Label>
-                                            <AsyncSelect
-                                                configKey="subjects"
-                                                value={filters.subjectId}
-                                                onChange={(val) => setFilters(prev => ({ ...prev, subjectId: val }))}
-                                                placeholder={lang === 'ar' ? 'جميع المواد' : 'All Subjects'}
-                                                label=""
-                                                clearable
-                                                extraFilters={{ stage_id: filters.stageId || undefined }}
-                                            />
+                                            <select
+                                                value={filters.subjectId || ''}
+                                                onChange={(e) =>
+                                                    setFilters(prev => ({
+                                                        ...prev,
+                                                        subjectId: e.target.value ? Number(e.target.value) : null
+                                                    }))
+                                                }
+                                                className="w-full rounded-xl border px-3 py-2 text-sm bg-background"
+                                            >
+                                                <option value="">
+                                                    {lang === 'ar' ? 'جميع المواد' : 'All Subjects'}
+                                                </option>
+
+                                                {subjects
+                                                    .filter((s: any) => !filters.stageId || s.stage_id === filters.stageId)
+                                                    .map((subject: any) => (
+                                                        <option key={subject.id} value={subject.id}>
+                                                            {subject.name}
+                                                        </option>
+                                                    ))}
+                                            </select>
                                         </div>
 
                                         {/* Question Type Filter */}

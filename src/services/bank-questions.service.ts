@@ -5,28 +5,21 @@ import type { PaginatedBankQuestionsResponse } from '@/types/bank-questions.type
 
 class BankQuestionsService {
     async getAllBankQuestions(params: { page?: number; perPage?: number;[key: string]: any } = {}): Promise<PaginatedBankQuestionsResponse> {
-        const page = params.page ?? 1;
-        const perPage = params.perPage ?? 10;
+        const { page = 1, perPage = 10, ...rest } = params;
 
-        // Backend looks like Laravel paginator response.
-        // Existing services in this project often use POST /{endpoint}/index with a request body.
+        // ✅ امسح القيم الـ undefined عشان متتبعتش للـ API
+        const cleanedRest = Object.fromEntries(
+            Object.entries(rest).filter(([_, v]) => v !== undefined && v !== null)
+        );
+
         const body: Record<string, any> = {
-            perPage,
             page,
+            perPage,
             paginate: true,
-            ...params,
+            ...cleanedRest, // ✅ بس الـ rest من غير page و perPage
         };
 
-        // Remove duplicate keys just in case
-        delete body.perPage;
-        delete body.page;
-
-        // keep consistent with body
-        body.perPage = perPage;
-        body.page = page;
-
         const response = await api.post('/bank-questions/index', body);
-        // Response sample in task: { status, message, data, links, meta }
         return response.data as PaginatedBankQuestionsResponse;
     }
 }

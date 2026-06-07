@@ -60,7 +60,7 @@ export interface CreateQuestionDTO {
   question_type: 'true_false' | 'multiple_choice' | 'essay';
   question: string;
   mark: number;
- 
+
   image?: number;
   correct_answer?: string;
   options?: Omit<Option, 'id'>[];
@@ -92,6 +92,7 @@ export interface CreateExamDTO {
   total_marks_pass_marks?: number;
   duration_minutes: number;
   image?: number;
+  type_exam?: 'center' | 'online';
 }
 
 export type UpdateExamDTO = Partial<CreateExamDTO>

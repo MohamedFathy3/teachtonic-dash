@@ -15,7 +15,10 @@ export interface CenterHour {
 export interface CreateCenterHourRequest {
   title: string;
   date: string;
-  hours: string;
+  hours_start: string;
+  hours_end: string;
+  phone?: string;
+  address?: string;
   note?: string;
   teacher_id: number;
 }

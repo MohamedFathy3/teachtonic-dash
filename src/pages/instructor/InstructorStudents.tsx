@@ -189,7 +189,7 @@ export const InstructorStudents: React.FC = () => {
     if (!user?.id) return;
     fetchStudents(1);
   }, [fetchStudents, user?.id]);
-  
+
   const goToPage = (page: number) => {
     if (page >= 1 && page <= pagination.lastPage) {
       fetchStudents(page);
@@ -352,7 +352,7 @@ export const InstructorStudents: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
             <Input
-              placeholder={lang === 'ar' ? 'بحث بالاسم ' : 'Search by name / '}
+              placeholder={lang === 'ar' ? 'بحث بالاسم ' : 'Search by name  '}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -373,15 +373,7 @@ export const InstructorStudents: React.FC = () => {
             >
               <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-5">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">{lang === 'ar' ? 'الرقم (ID)' : 'ID'}</Label>
-                    <Input
-                      value={filterId}
-                      onChange={(e) => setFilterId(e.target.value)}
-                      placeholder={lang === 'ar' ? 'اكتب ID' : 'Enter ID'}
-                      className="w-full px-3 py-2 rounded-xl border bg-background"
-                    />
-                  </div>
+
 
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{lang === 'ar' ? 'الهاتف' : 'Phone'}</Label>

@@ -32,6 +32,7 @@ export interface CreateAssignmentRequest {
   image?: number;
   total_marks: number;
   duration_minutes: number;
+  type_exam?: 'center' | 'online';
 }
 
 export interface GetAllAssignmentsParams {

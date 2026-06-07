@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/assignments/AssignmentModal.tsx
+import { useTeacherMeta } from '@/hooks/useTeacherMeta'; // عدّل المسار حسب مشروعك
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
@@ -8,8 +9,8 @@ import { useAssignments } from '@/hooks/useAssignments';
 import { useApp } from '@/contexts/AppContext';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import FileUploader from '@/components/FileUploader';
-import { 
-  X, FileText, Clock, Star, Save, BookOpen, 
+import {
+  X, FileText, Clock, Star, Save, BookOpen,
   Layers3, Award, Image as ImageIcon, Sparkles,
   ChevronRight, ChevronLeft, GraduationCap
 } from 'lucide-react';
@@ -38,16 +39,14 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
   const [formData, setFormData] = useState({
     title: '',
-    title_ar: '',
     description: '',
-    description_ar: '',
     teacher_id: null as number | null,
     stage_id: null as number | null,
     course_detail_id: null as number | null,
     total_marks: 0,
-    total_marks_pass_marks: 0,
     duration_minutes: 0,
     type: 'assignment' as const,
+    type_exam: '' as 'center' | 'online' | '', // ✅
   });
 
   const [imageId, setImageId] = useState<number | null>(null);
@@ -57,31 +56,27 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     if (editingItem) {
       setFormData({
         title: editingItem.title || '',
-        title_ar: editingItem.title_ar || '',
         description: editingItem.description || '',
-        description_ar: editingItem.description_ar || '',
         teacher_id: isInstructor ? (user?.id ?? null) : (editingItem.teacher_id?.id || editingItem.teacher_id || null),
         stage_id: editingItem.stage_id?.id || editingItem.stage_id || null,
         course_detail_id: editingItem.course_detail_id?.id || editingItem.course_detail_id || null,
         total_marks: editingItem.total_marks || 0,
-        total_marks_pass_marks: editingItem.total_marks_pass_marks || 0,
         duration_minutes: editingItem.duration_minutes || 0,
         type: 'assignment',
+        type_exam: editingItem.type_exam || '', // ✅ 
       });
       setImageId(editingItem.image?.id || editingItem.image || null);
     } else {
       setFormData({
         title: '',
-        title_ar: '',
         description: '',
-        description_ar: '',
         teacher_id: isInstructor ? (user?.id ?? null) : null,
         stage_id: null,
         course_detail_id: null,
         total_marks: 0,
-        total_marks_pass_marks: 0,
         duration_minutes: 0,
         type: 'assignment',
+        type_exam: '', // ✅  
       });
       setImageId(null);
     }
@@ -100,7 +95,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   // ✅ إرسال البيانات
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title || !formData.stage_id) {
       toast.error(lang === 'ar' ? 'يرجى ملء جميع الحقول المطلوبة' : 'Please fill all required fields');
       return;
@@ -111,24 +106,18 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       return;
     }
 
-    // ✅ التحقق من درجة النجاح
-    if (formData.total_marks_pass_marks > formData.total_marks) {
-      toast.error(lang === 'ar' ? 'درجة النجاح لا يمكن أن تتجاوز الدرجة الكلية' : 'Pass marks cannot exceed total marks');
-      return;
-    }
+
 
     const payload = {
       title: formData.title,
-      title_ar: formData.title_ar,
       description: formData.description,
-      description_ar: formData.description_ar,
       type: 'assignment',
       teacher_id: formData.teacher_id,
       stage_id: formData.stage_id,
       course_detail_id: formData.course_detail_id,
       total_marks: formData.total_marks,
-      total_marks_pass_marks: formData.total_marks_pass_marks,
       duration_minutes: formData.duration_minutes,
+      type_exam: formData.type_exam || undefined, // ✅ 
       ...(imageId && { image: imageId }),
     };
 
@@ -150,24 +139,46 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   const resetForm = () => {
     setFormData({
       title: '',
-      title_ar: '',
       description: '',
-      description_ar: '',
       teacher_id: isInstructor ? (user?.id ?? null) : null,
       stage_id: null,
       course_detail_id: null,
       total_marks: 0,
-      total_marks_pass_marks: 0,
       duration_minutes: 0,
       type: 'assignment',
+      type_exam: '', // ✅  
     });
     setImageId(null);
   };
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
   const teacherName = isInstructor && user ? user.name : (editingItem?.teacher?.name || '');
+  const { stages } = useTeacherMeta(formData.teacher_id ?? undefined);
 
+  const inputClass = `
+w-full
+h-12
+px-4
+border
+rounded-xl
+transition-all
+focus:outline-none
+focus:ring-2
+focus:ring-orange-500
+focus:border-orange-500
+`;
+
+  const labelClass = `
+block
+text-sm
+font-semibold
+mb-2
+flex
+items-center
+gap-2
+`;
   return (
+
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <Transition.Child
@@ -193,9 +204,8 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full max-w-2xl transform overflow-hidden rounded-2xl shadow-xl transition-all ${
-                isDarkMode ? 'bg-gray-900' : 'bg-white'
-              }`}>
+              <Dialog.Panel className={`w-full max-w-2xl transform overflow-hidden rounded-2xl shadow-xl transition-all ${isDarkMode ? 'bg-gray-900' : 'bg-white'
+                }`}>
                 {/* Header */}
                 <div className={`relative bg-gradient-to-r from-orange-500 to-pink-500 p-6 text-white`}>
                   <button
@@ -204,7 +214,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   >
                     <X size={20} />
                   </button>
-                  
+
                   <div className="flex items-center gap-3">
                     <motion.div
                       initial={{ rotate: -180, scale: 0 }}
@@ -216,7 +226,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                     </motion.div>
                     <div>
                       <Dialog.Title className="text-2xl font-bold">
-                        {editingItem 
+                        {editingItem
                           ? (lang === 'ar' ? 'تعديل الواجب' : 'Edit Assignment')
                           : (lang === 'ar' ? 'إضافة واجب جديد' : 'Create New Assignment')}
                       </Dialog.Title>
@@ -230,9 +240,8 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                 <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
                   {/* ✅ Image Upload */}
                   <div>
-                    <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
+                    <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                      }`}>
                       <ImageIcon size={16} className="text-orange-500" />
                       {lang === 'ar' ? 'صورة الواجب' : 'Assignment Image'}
                     </label>
@@ -250,98 +259,110 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   </div>
 
                   {/* Title & Arabic Title */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="w-full">
                     <div>
-                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <label
+                        className={`${labelClass} ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                          }`}
+                      >
                         <BookOpen size={14} className="text-orange-500" />
-                        {lang === 'ar' ? 'العنوان (إنجليزي)' : 'Title (English)'} *
+                        {lang === 'ar' ? 'العنوان' : 'Title'} *
                       </label>
+
                       <input
                         type="text"
                         value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all ${
-                          isDarkMode 
-                            ? 'bg-gray-800 border-gray-700 text-gray-100 focus:border-orange-500' 
-                            : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
-                        }`}
-                        placeholder={lang === 'ar' ? 'مثال:  Assignment' : 'e.g.,  Assignment'}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            title: e.target.value,
+                          })
+                        }
+                        className={`${inputClass} ${isDarkMode
+                          ? 'bg-gray-800 border-gray-700 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                          }`}
+                        placeholder={
+                          lang === 'ar'
+                            ? 'ادخل عنوان الواجب'
+                            : 'Enter assignment title'
+                        }
                         required
                       />
                     </div>
 
-                    <div>
-                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        <BookOpen size={14} className="text-orange-500" />
-                        {lang === 'ar' ? 'العنوان (عربي)' : 'Title (Arabic)'}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.title_ar}
-                        onChange={(e) => setFormData({ ...formData, title_ar: e.target.value })}
-                        className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all ${
-                          isDarkMode 
-                            ? 'bg-gray-800 border-gray-700 text-gray-100 focus:border-orange-500' 
-                            : 'bg-white border-gray-300 text-gray-900 focus:border-orange-500'
-                        }`}
-                        placeholder={lang === 'ar' ? 'مثال: واجب ' : 'e.g., واجب  '}
-                        dir="rtl"
-                      />
-                    </div>
+
                   </div>
 
                   {/* Description & Arabic Description */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="w-full">
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        {lang === 'ar' ? 'الوصف (إنجليزي)' : 'Description (English)'}
+                      <label
+                        className={`${labelClass} ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                          }`}
+                      >
+                        <FileText size={14} className="text-blue-500" />
+                        {lang === 'ar' ? 'الوصف' : 'Description'}
                       </label>
+
                       <textarea
                         value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        rows={3}
-                        className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all resize-none ${
-                          isDarkMode 
-                            ? 'bg-gray-800 border-gray-700 text-gray-100' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        placeholder={lang === 'ar' ? 'وصف الواجب...' : 'Assignment description...'}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            description: e.target.value,
+                          })
+                        }
+                        rows={5}
+                        className={`w-full min-h-[120px] px-4 py-3 border rounded-xl resize-none focus:ring-2 focus:ring-orange-500 ${isDarkMode
+                          ? 'bg-gray-800 border-gray-800 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'
+                          }`}
+                        placeholder={
+                          lang === 'ar'
+                            ? 'اكتب وصف الواجب'
+                            : 'Write assignment description'
+                        }
                       />
                     </div>
 
-                    <div>
-                      <label className={`block text-sm font-medium mb-2 ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        {lang === 'ar' ? 'الوصف (عربي)' : 'Description (Arabic)'}
-                      </label>
-                      <textarea
-                        value={formData.description_ar}
-                        onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })}
-                        rows={3}
-                        className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all resize-none ${
-                          isDarkMode 
-                            ? 'bg-gray-800 border-gray-700 text-gray-100' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        placeholder={lang === 'ar' ? 'وصف الواجب بالعربية...' : 'Assignment description in Arabic...'}
-                        dir="rtl"
-                      />
-                    </div>
                   </div>
-
+                  {/* Exam Type */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                      }`}>
+                      <Layers3 size={14} className="text-teal-500" />
+                      {lang === 'ar' ? 'نوع الامتحان' : 'Exam Type'}
+                    </label>
+                    <select
+                      value={formData.type_exam}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          type_exam: e.target.value as 'center' | 'online' | '',
+                        })
+                      }
+                      className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all ${isDarkMode
+                        ? 'bg-gray-800 border-gray-700 text-gray-100'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                    >
+                      <option value="">
+                        {lang === 'ar' ? 'اختر نوع الامتحان' : 'Select Exam Type'}
+                      </option>
+                      <option value="center">
+                        {lang === 'ar' ? '🏫 امتحان في المركز' : '🏫 Center'}
+                      </option>
+                      <option value="online">
+                        {lang === 'ar' ? '💻 امتحان أونلاين' : '💻 Online'}
+                      </option>
+                    </select>
+                  </div>
                   {/* Marks, Pass Marks & Duration */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         <Star size={14} className="text-yellow-500" />
                         {lang === 'ar' ? 'الدرجة الكلية' : 'Total Marks'} *
                       </label>
@@ -349,44 +370,19 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                         type="number"
                         value={formData.total_marks}
                         onChange={(e) => setFormData({ ...formData, total_marks: parseInt(e.target.value) || 0 })}
-                        className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all ${
-                          isDarkMode 
-                            ? 'bg-gray-800 border-gray-700 text-gray-100' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
+                        className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all ${isDarkMode
+                          ? 'bg-gray-800 border-gray-700 text-gray-100'
+                          : 'bg-white border-gray-300 text-gray-900'
+                          }`}
                         min="0"
                         required
                       />
                     </div>
 
-                    <div>
-                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        <Award size={14} className="text-green-500" />
-                        {lang === 'ar' ? 'درجة النجاح' : 'Pass Marks'}
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.total_marks_pass_marks}
-                        onChange={(e) => setFormData({ ...formData, total_marks_pass_marks: parseInt(e.target.value) || 0 })}
-                        className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all ${
-                          isDarkMode 
-                            ? 'bg-gray-800 border-gray-700 text-gray-100' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        min="0"
-                        placeholder={lang === 'ar' ? 'اختياري' : 'Optional'}
-                      />
-                      <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                        {lang === 'ar' ? 'الدرجة المطلوبة للنجاح' : 'Minimum marks required to pass'}
-                      </p>
-                    </div>
 
                     <div>
-                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         <Clock size={14} className="text-blue-500" />
                         {lang === 'ar' ? 'المدة (دقائق)' : 'Duration (minutes)'} *
                       </label>
@@ -394,11 +390,10 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                         type="number"
                         value={formData.duration_minutes}
                         onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 0 })}
-                        className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all ${
-                          isDarkMode 
-                            ? 'bg-gray-800 border-gray-700 text-gray-100' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
+                        className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all ${isDarkMode
+                          ? 'bg-gray-800 border-gray-700 text-gray-100'
+                          : 'bg-white border-gray-300 text-gray-900'
+                          }`}
                         min="1"
                         required
                       />
@@ -408,25 +403,33 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   {/* Stage & Lesson */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         <Layers3 size={14} className="text-purple-500" />
                         {lang === 'ar' ? 'المرحلة الدراسية' : 'Stage'} *
                       </label>
-                      <AsyncSelect
-                        configKey="stages"
-                        value={formData.stage_id}
-                        onChange={(id) => setFormData({ ...formData, stage_id: id })}
-                        placeholder={lang === 'ar' ? 'اختر المرحلة' : 'Select stage'}
+                      <select
+                        value={formData.stage_id || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          stage_id: e.target.value ? Number(e.target.value) : null,
+                          course_detail_id: null, // ✅ صفّر الدرس لما المرحلة تتغير
+                        })}
+                        className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 transition-all ${isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
                         required
-                      />
+                      >
+                        <option value="">{lang === 'ar' ? 'اختر المرحلة' : 'Select stage'}</option>
+                        {stages.map((stage) => (
+                          <option key={stage.id} value={stage.id}>
+                            {stage.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
-                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         <GraduationCap size={14} className="text-indigo-500" />
                         {lang === 'ar' ? 'الدرس' : 'Lesson'}
                       </label>
@@ -441,17 +444,15 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
                   {/* Teacher Info (readonly) */}
                   <div>
-                    <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
+                    <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                      }`}>
                       <GraduationCap size={14} className="text-orange-500" />
                       {lang === 'ar' ? 'المعلم' : 'Teacher'} *
                     </label>
-                    <div className={`p-3 rounded-xl border ${
-                      isDarkMode 
-                        ? 'bg-gray-800 border-gray-700 text-gray-300' 
-                        : 'bg-gray-50 border-gray-200 text-gray-700'
-                    }`}>
+                    <div className={`p-3 rounded-xl border ${isDarkMode
+                      ? 'bg-gray-800 border-gray-700 text-gray-300'
+                      : 'bg-gray-50 border-gray-200 text-gray-700'
+                      }`}>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 flex items-center justify-center text-white font-bold">
                           {teacherName ? teacherName.charAt(0).toUpperCase() : 'T'}
@@ -471,11 +472,10 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                     <button
                       type="button"
                       onClick={onClose}
-                      className={`flex-1 px-4 py-2.5 border rounded-xl transition-all ${
-                        isDarkMode 
-                          ? 'border-gray-700 text-gray-300 hover:bg-gray-800' 
-                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                      className={`flex-1 px-4 py-2.5 border rounded-xl transition-all ${isDarkMode
+                        ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
                     >
                       {lang === 'ar' ? 'إلغاء' : 'Cancel'}
                     </button>
@@ -494,7 +494,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                       ) : (
                         <>
                           <Sparkles size={18} />
-                          {editingItem 
+                          {editingItem
                             ? (lang === 'ar' ? 'تحديث الواجب' : 'Update Assignment')
                             : (lang === 'ar' ? 'إضافة الواجب' : 'Create Assignment')}
                         </>

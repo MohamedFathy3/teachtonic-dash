@@ -204,15 +204,7 @@ export const InstructorRedeemRequests: React.FC = () => {
             />
 
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder={lang === 'ar' ? 'بحث بالـ ID' : 'Search by ID'}
-              value={searchId}
-              onChange={(e) => setSearchId(e.target.value)}
-              className="w-32 rounded-xl"
-            />
-          </div>
+
 
           {/* Type filter */}
           <Select value={filterType} onValueChange={setFilterType}>

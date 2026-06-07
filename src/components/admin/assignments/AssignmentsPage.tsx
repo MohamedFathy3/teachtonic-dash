@@ -9,6 +9,7 @@ import { useAssignments } from "@/hooks/useAssignments";
 import { AssignmentModal } from "./AssignmentModal";
 import { AssignmentShow } from "./AssignmentShow";
 import { useApp } from "@/contexts/AppContext";
+import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 import {
   Plus,
   Trash2,
@@ -39,6 +40,8 @@ export const AssignmentsPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const { stages } = useTeacherMeta(isInstructor ? user?.id : undefined);
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === "undefined") return true;
     const saved = localStorage.getItem("theme");
@@ -51,6 +54,8 @@ export const AssignmentsPage: React.FC = () => {
   const [filters, setFilters] = useState({
     search: "",
     stage_id: undefined as number | undefined,
+    lessonId: null, // ✅
+
   });
 
   const { useGetAll, useBulkDelete, useToggleActive, useDelete } = useAssignments();
@@ -132,10 +137,9 @@ export const AssignmentsPage: React.FC = () => {
       className={`
         min-h-screen relative overflow-hidden
         transition-all duration-500
-        ${
-          isDarkMode
-            ? "bg-[#050816]"
-            : "bg-gradient-to-b from-[#f8fafc] to-[#eef2ff]"
+        ${isDarkMode
+          ? "bg-[#050816]"
+          : "bg-gradient-to-b from-[#f8fafc] to-[#eef2ff]"
         }
       `}
     >
@@ -165,10 +169,9 @@ export const AssignmentsPage: React.FC = () => {
             absolute top-[-250px] left-[-250px]
             w-[600px] h-[600px]
             rounded-full blur-[160px]
-            ${
-              isDarkMode
-                ? "bg-orange-500/20"
-                : "bg-orange-300/40"
+            ${isDarkMode
+              ? "bg-orange-500/20"
+              : "bg-orange-300/40"
             }
           `}
         />
@@ -186,10 +189,9 @@ export const AssignmentsPage: React.FC = () => {
             absolute bottom-[-250px] right-[-250px]
             w-[650px] h-[650px]
             rounded-full blur-[170px]
-            ${
-              isDarkMode
-                ? "bg-purple-500/20"
-                : "bg-indigo-300/40"
+            ${isDarkMode
+              ? "bg-purple-500/20"
+              : "bg-indigo-300/40"
             }
           `}
         />
@@ -208,10 +210,9 @@ export const AssignmentsPage: React.FC = () => {
             }}
             className={`
               absolute rounded-xl border
-              ${
-                isDarkMode
-                  ? "bg-white/5 border-white/10"
-                  : "bg-black/[0.03] border-black/[0.05]"
+              ${isDarkMode
+                ? "bg-white/5 border-white/10"
+                : "bg-black/[0.03] border-black/[0.05]"
               }
             `}
             style={{
@@ -235,10 +236,9 @@ export const AssignmentsPage: React.FC = () => {
             <div
               className={`
                 inline-flex items-center gap-2 px-4 py-2 rounded-full mb-5
-                ${
-                  isDarkMode
-                    ? "bg-white/5 text-orange-300 border border-white/10"
-                    : "bg-orange-100 text-orange-700 border border-orange-200"
+                ${isDarkMode
+                  ? "bg-white/5 text-orange-300 border border-white/10"
+                  : "bg-orange-100 text-orange-700 border border-orange-200"
                 }
               `}
             >
@@ -251,10 +251,9 @@ export const AssignmentsPage: React.FC = () => {
             <h1
               className={`
                 text-4xl font-black
-                ${
-                  isDarkMode
-                    ? "text-white"
-                    : "text-gray-900"
+                ${isDarkMode
+                  ? "text-white"
+                  : "text-gray-900"
                 }
               `}
             >
@@ -264,11 +263,10 @@ export const AssignmentsPage: React.FC = () => {
             </h1>
 
             <p
-              className={`mt-2 ${
-                isDarkMode
-                  ? "text-gray-400"
-                  : "text-gray-600"
-              }`}
+              className={`mt-2 ${isDarkMode
+                ? "text-gray-400"
+                : "text-gray-600"
+                }`}
             >
               {lang === "ar"
                 ? "تحكم كامل في الواجبات والاختبارات"
@@ -278,7 +276,7 @@ export const AssignmentsPage: React.FC = () => {
 
           {/* ACTIONS */}
           <div className="flex flex-wrap gap-3">
-  {/* ✅ زرار التصدير */}
+            {/* ✅ زرار التصدير */}
             <ExportExcelButton
               data={assignments}
               fileName="assignments-list"
@@ -294,10 +292,9 @@ export const AssignmentsPage: React.FC = () => {
                 h-12 px-4 rounded-2xl
                 flex items-center gap-2
                 transition-all
-                ${
-                  showFilters
-                    ? "bg-orange-500 text-white"
-                    : isDarkMode
+                ${showFilters
+                  ? "bg-orange-500 text-white"
+                  : isDarkMode
                     ? "bg-white/5 text-white border border-white/10"
                     : "bg-white text-gray-700 border border-gray-200"
                 }
@@ -314,10 +311,9 @@ export const AssignmentsPage: React.FC = () => {
               className={`
                 h-12 w-12 rounded-2xl
                 flex items-center justify-center
-                ${
-                  isDarkMode
-                    ? "bg-white/5 text-yellow-400 border border-white/10"
-                    : "bg-white text-gray-800 border border-gray-200"
+                ${isDarkMode
+                  ? "bg-white/5 text-yellow-400 border border-white/10"
+                  : "bg-white text-gray-800 border border-gray-200"
                 }
               `}
             >
@@ -373,10 +369,9 @@ export const AssignmentsPage: React.FC = () => {
                 mb-8 p-5 rounded-3xl
                 backdrop-blur-2xl
                 border
-                ${
-                  isDarkMode
-                    ? "bg-white/5 border-white/10"
-                    : "bg-white/70 border-gray-200"
+                ${isDarkMode
+                  ? "bg-white/5 border-white/10"
+                  : "bg-white/70 border-gray-200"
                 }
               `}
             >
@@ -397,33 +392,66 @@ export const AssignmentsPage: React.FC = () => {
                   }
                   className={`
                     h-12 rounded-2xl px-4 outline-none
-                    ${
-                      isDarkMode
-                        ? "bg-black/20 border border-white/10 text-white"
-                        : "bg-white border border-gray-200 text-gray-900"
+                    ${isDarkMode
+                      ? "bg-black/20 border border-white/10 text-white"
+                      : "bg-white border border-gray-200 text-gray-900"
                     }
                   `}
                 />
 
-                <AsyncSelect
-                  configKey="stages"
-                  value={filters.stage_id}
-                  onChange={(id) =>
+                {/* ✅ select عادي من useTeacherMeta */}
+                <select
+                  value={filters.stage_id || ''}
+                  onChange={(e) =>
                     setFilters({
                       ...filters,
-                      stage_id: id || undefined,
+                      stage_id: e.target.value ? Number(e.target.value) : undefined,
                     })
                   }
-                  placeholder={
-                    lang === "ar"
-                      ? "اختر المرحلة"
-                      : "Select Stage"
-                  }
-                  clearable
-                />
+                  className={`h-12 rounded-2xl px-4 outline-none ${isDarkMode
+                    ? 'bg-black/20 border border-white/10 text-white'
+                    : 'bg-white border border-gray-200 text-gray-900'
+                    }`}
+                >
+                  <option value="">
+                    {lang === 'ar' ? 'كل المراحل' : 'All Stages'}
+                  </option>
+                  {stages.map((stage) => (
+                    <option key={stage.id} value={stage.id}>
+                      {stage.name}
+                    </option>
+                  ))}
+                </select>
+
+
+
+
+                {/* Lesson Filter */}
+                {/* <div className="space-y-2">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                    {lang === 'ar' ? 'الدرس' : 'Lesson'}
+                  </Label>
+                  <AsyncSelect
+                    key={`filter-lesson-${filters.stageId}`}
+                    configKey="lessons"
+                    value={filters.lessonId}
+                    onChange={(id) => setFilters(prev => ({ ...prev, lessonId: id }))}
+                    placeholder={lang === 'ar' ? 'كل الدروس' : 'All Lessons'}
+                    clearable
+                    extraFilters={filters.stageId ? { stage_id: filters.stageId } : {}}
+                  />
+                </div> */}
+
               </div>
             </motion.div>
           )}
+
+
+
+
+
+
         </AnimatePresence>
 
         {/* ================= SHOW DETAILS OR CARDS ================= */}
@@ -460,10 +488,9 @@ export const AssignmentsPage: React.FC = () => {
                       border backdrop-blur-2xl
                       transition-all duration-500
                       cursor-pointer
-                      ${
-                        isDarkMode
-                          ? "bg-white/5 border-white/10 hover:border-orange-500/30"
-                          : "bg-white/80 border-gray-200 hover:border-orange-300"
+                      ${isDarkMode
+                        ? "bg-white/5 border-white/10 hover:border-orange-500/30"
+                        : "bg-white/80 border-gray-200 hover:border-orange-300"
                       }
                     `}
                     onClick={() => handleViewDetails(assignment)}
@@ -495,10 +522,9 @@ export const AssignmentsPage: React.FC = () => {
                             }}
                             className={`
                               w-10 h-10 rounded-xl flex items-center justify-center
-                              ${
-                                isDarkMode
-                                  ? "bg-white/10 text-white hover:bg-white/20"
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              ${isDarkMode
+                                ? "bg-white/10 text-white hover:bg-white/20"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                               }
                             `}
                           >
@@ -513,10 +539,9 @@ export const AssignmentsPage: React.FC = () => {
                             }}
                             className={`
                               w-10 h-10 rounded-xl flex items-center justify-center
-                              ${
-                                assignment.active
-                                  ? "bg-green-500 text-white"
-                                  : "bg-gray-500 text-white"
+                              ${assignment.active
+                                ? "bg-green-500 text-white"
+                                : "bg-gray-500 text-white"
                               }
                             `}
                           >
@@ -531,10 +556,9 @@ export const AssignmentsPage: React.FC = () => {
                             }}
                             className={`
                               w-10 h-10 rounded-xl flex items-center justify-center
-                              ${
-                                isDarkMode
-                                  ? "bg-white/10 text-white hover:bg-white/20"
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              ${isDarkMode
+                                ? "bg-white/10 text-white hover:bg-white/20"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                               }
                             `}
                           >
@@ -587,8 +611,8 @@ export const AssignmentsPage: React.FC = () => {
                               ? "نشط"
                               : "Active"
                             : lang === "ar"
-                            ? "غير نشط"
-                            : "Inactive"
+                              ? "غير نشط"
+                              : "Inactive"
                         }
                         isDarkMode={isDarkMode}
                       />
@@ -687,10 +711,9 @@ const InfoRow = ({ icon, label, value, isDarkMode }: any) => {
           className={`
             w-9 h-9 rounded-xl
             flex items-center justify-center
-            ${
-              isDarkMode
-                ? "bg-white/10 text-orange-300"
-                : "bg-orange-100 text-orange-600"
+            ${isDarkMode
+              ? "bg-white/10 text-orange-300"
+              : "bg-orange-100 text-orange-600"
             }
           `}
         >

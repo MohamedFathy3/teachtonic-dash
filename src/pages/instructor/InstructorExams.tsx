@@ -53,6 +53,7 @@ interface ExamFilters {
   active: boolean | null;
   marksMin: number | null;
   marksMax: number | null;
+  lessonId: number | null; // ✅
 }
 
 // ✅ Animations
@@ -207,6 +208,7 @@ export const InstructorExams: React.FC = () => {
     active: null,
     marksMin: null,
     marksMax: null,
+    lessonId: null, // ✅
   });
 
   // ✅ Form State
@@ -220,6 +222,7 @@ export const InstructorExams: React.FC = () => {
     duration_minutes: 0,
     course_detail_id: null as number | null,
     stage_id: null as number | null,
+    type_exam: '' as 'center' | 'online' | '', // ✅ أضف ده
   });
 
   // ✅ Questions Builder State
@@ -307,7 +310,7 @@ export const InstructorExams: React.FC = () => {
     if (filters.semesterId) apiFilters.semester_id = filters.semesterId;
     if (filters.active !== null) apiFilters.active = filters.active ? 1 : 0;
     if (filters.marksMin) apiFilters.total_marks = filters.marksMin;
-
+    if (filters.lessonId) apiFilters.course_detail_id = filters.lessonId;
     return apiFilters;
   }, [filters, user?.id]);
 
@@ -374,6 +377,7 @@ export const InstructorExams: React.FC = () => {
       active: null,
       marksMin: null,
       marksMax: null,
+      lessonId: null, // ✅
     });
     setSavedFilters(null);
     localStorage.removeItem('examFilters');
@@ -533,6 +537,7 @@ export const InstructorExams: React.FC = () => {
         ...examFormData,
         teacher_id: user?.id || 1,
         image: imageId || undefined,
+        type_exam: examFormData.type_exam || undefined, // ✅
       };
 
       if (editingExamId) {
@@ -577,6 +582,7 @@ export const InstructorExams: React.FC = () => {
       duration_minutes: Number(exam.duration_minutes) || 0,
       course_detail_id: courseDetailId,
       stage_id: stageId,
+      type_exam: (exam.type_exam || '') as 'center' | 'online' | '', // ✅ من الـ exam
     });
     setImageId(imageIdResolved ? Number(imageIdResolved) : null);
     setShowExamForm(true);
@@ -591,6 +597,7 @@ export const InstructorExams: React.FC = () => {
       duration_minutes: 0,
       course_detail_id: null,
       stage_id: null,
+      type_exam: '', // ✅ reset type_exam
     });
     setImageId(null);
     setEditingExamId(null);
@@ -731,10 +738,41 @@ export const InstructorExams: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>{t('lesson')}</Label>
-                  <AsyncSelect configKey="lessons" value={examFormData.course_detail_id} onChange={(id) => setExamFormData({ ...examFormData, course_detail_id: id })} placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select Lesson'} required extraFilters={{ course_id: 1 }} />
+                  <AsyncSelect
+                    key={`lesson-${examFormData.stage_id}`}
+                    configKey="lessons"
+                    value={examFormData.course_detail_id}
+                    onChange={(id) => setExamFormData({ ...examFormData, course_detail_id: id })}
+                    extraFilters={examFormData.stage_id ? { stage_id: examFormData.stage_id } : {}}
+                  />
                 </div>
               </motion.div>
-
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <Settings2 className="h-4 w-4 text-primary" />
+                  {lang === 'ar' ? 'نوع الامتحان' : 'Exam Type'}
+                </Label>
+                <select
+                  value={examFormData.type_exam}
+                  onChange={(e) =>
+                    setExamFormData({
+                      ...examFormData,
+                      type_exam: e.target.value as 'center' | 'online' | '',
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl border bg-background"
+                >
+                  <option value="">
+                    {lang === 'ar' ? 'اختر نوع الامتحان' : 'Select Exam Type'}
+                  </option>
+                  <option value="center">
+                    {lang === 'ar' ? '🏫 امتحان في المركز' : '🏫 Center'}
+                  </option>
+                  <option value="online">
+                    {lang === 'ar' ? '💻 امتحان أونلاين' : '💻 Online'}
+                  </option>
+                </select>
+              </div>
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="pt-4">
                 <Button className="w-full h-14 rounded-2xl text-lg font-semibold bg-gradient-to-r from-primary to-secondary hover:scale-[1.01] transition-all shadow-xl" onClick={createExamHandler} disabled={isCreating}>
                   {isCreating ? (
@@ -755,20 +793,65 @@ export const InstructorExams: React.FC = () => {
 
   if (activeTab === 'questions') {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <motion.div whileHover={{ x: -5 }}>
-            <Button variant="ghost" onClick={() => setActiveTab('exams')} className="gap-2">
-              <motion.span animate={{ x: [-3, 0, -3] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span>
+      <motion.div
+        key="questions-view"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="space-y-6"
+      >
+        <div className="flex w-full items-start justify-between gap-4 flex-nowrap min-w-0">
+          <motion.div className="flex-shrink-0">
+            <Button
+              onClick={() => setActiveTab('exams')}
+              className="
+      flex items-center gap-2
+      px-4 py-2
+      rounded-lg
+      bg-gray-100 dark:bg-gray-800
+      text-gray-900 dark:text-white
+      hover:bg-gray-200 dark:hover:bg-gray-700
+      transition-all
+      shadow-sm
+    "
+            >
+              <motion.span
+                animate={{ x: [-3, 0, -3] }}
+                transition={{ repeat: Infinity, duration: 1.5 }}
+              >
+                ←
+              </motion.span>
+
               {t('backToExams')}
             </Button>
           </motion.div>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button onClick={saveQuestions} disabled={savingQuestions} className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-lg">
-              {savingQuestions ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {t('saveQuestions')}
-            </Button>
-          </motion.div>
+          <div className="flex items-center justify-end flex-1">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="shrink-0">
+              <motion.button
+                onClick={saveQuestions}
+                disabled={savingQuestions}
+                type="button"
+                className="
+    flex items-center gap-2
+    px-4 py-2 rounded-lg
+    text-white
+    bg-gradient-to-r from-green-500 to-emerald-600
+    hover:from-green-600 hover:to-emerald-700
+    shadow-md hover:shadow-lg
+    transition-all duration-200
+    shrink-0
+    disabled:opacity-50
+  "
+              >
+                {savingQuestions ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                {t('saveQuestions')}
+              </motion.button>
+            </motion.div>
+          </div>
         </div>
 
         <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex justify-between items-center">
@@ -1090,7 +1173,22 @@ export const InstructorExams: React.FC = () => {
                       </select>
                     </div>
 
-
+                    {/* Lesson Filter */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1 text-sm font-medium">
+                        <BookOpen className="h-4 w-4 text-primary" />
+                        {lang === 'ar' ? 'الدرس' : 'Lesson'}
+                      </Label>
+                      <AsyncSelect
+                        key={`filter-lesson-${filters.stageId}`}
+                        configKey="lessons"
+                        value={filters.lessonId}
+                        onChange={(id) => setFilters(prev => ({ ...prev, lessonId: id }))}
+                        placeholder={lang === 'ar' ? 'كل الدروس' : 'All Lessons'}
+                        clearable
+                        extraFilters={filters.stageId ? { stage_id: filters.stageId } : {}}
+                      />
+                    </div>
 
 
 

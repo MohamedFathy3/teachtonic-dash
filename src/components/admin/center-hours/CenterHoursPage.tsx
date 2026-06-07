@@ -8,9 +8,6 @@ import { useCenterHours } from '@/hooks/useCenterHours';
 import { CenterHourModal } from './CenterHourModal';
 import { useApp } from '@/contexts/AppContext';
 import { Plus, Trash2, Edit, Calendar, Clock, User, FileText, Search, BookOpen, Moon, Sun } from 'lucide-react';
-import { format } from 'date-fns';
-import { arSA, enUS } from 'date-fns/locale';
-import { AsyncSelect } from '@/components/ui/AsyncSelect';
 
 export const CenterHoursPage: React.FC = () => {
   const { lang } = useApp();
@@ -34,16 +31,6 @@ export const CenterHoursPage: React.FC = () => {
   });
   const bulkDelete = useBulkDelete();
 
-  // 🔥 تأثير dark mode على الـ body
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
 
   // 🔥 تصحيح: معرفة شكل البيانات
   useEffect(() => {
@@ -111,19 +98,7 @@ export const CenterHoursPage: React.FC = () => {
               label={lang === 'ar' ? 'تصدير' : 'Export'}
               disabled={isLoading || hours.length === 0}
             />
-            {/* Dark Mode Toggle Button */}
-            {/* <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-all"
-            >
-              {isDarkMode ? (
-                <Sun size={20} className="text-yellow-500" />
-              ) : (
-                <Moon size={20} className="text-gray-700" />
-              )}
-            </motion.button> */}
+
 
             <AnimatePresence>
               {selectedIds.length > 0 && (
@@ -205,14 +180,14 @@ export const CenterHoursPage: React.FC = () => {
                         {lang === 'ar' ? 'العنوان' : 'Title'}
                       </th>
                       <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300">
-                        {lang === 'ar' ? 'التاريخ' : 'Date'}
+                        {lang === 'ar' ? 'اليوم' : 'Day'}
                       </th>
                       <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300">
                         {lang === 'ar' ? 'الوقت' : 'Time'}
                       </th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300">
+                      {/* <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300">
                         {lang === 'ar' ? 'المعلم' : 'Teacher'}
-                      </th>
+                      </th> */}
                       <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300">
                         {lang === 'ar' ? 'ملاحظات' : 'Notes'}
                       </th>
@@ -240,48 +215,73 @@ export const CenterHoursPage: React.FC = () => {
                                 if (e.target.checked) {
                                   setSelectedIds([...selectedIds, hour.id]);
                                 } else {
-                                  setSelectedIds(selectedIds.filter(id => id !== hour.id));
+                                  setSelectedIds(
+                                    selectedIds.filter((id) => id !== hour.id)
+                                  );
                                 }
                               }}
                               className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
                             />
                           </td>
+
+                          {/* Center */}
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <BookOpen size={16} className="text-purple-500 dark:text-purple-400" />
-                              <span className="font-medium text-gray-900 dark:text-gray-100">{hour.title}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                              <Calendar size={14} />
-                              <span>
-                                {format(new Date(hour.date), 'dd/MM/yyyy', {
-                                  locale: lang === 'ar' ? arSA : enUS,
-                                })}
+                              <BookOpen
+                                size={16}
+                                className="text-purple-500 dark:text-purple-400"
+                              />
+                              <span className="font-medium text-gray-900 dark:text-gray-100">
+                                {hour.title}
                               </span>
                             </div>
                           </td>
+
+                          {/* Day */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                              <Calendar size={14} />
+                              <span>{hour.date}</span>
+                            </div>
+                          </td>
+
+                          {/* Time */}
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                               <Clock size={14} />
-                              <span>{hour.hours}</span>
+                              <span>
+                                {hour.hours_start} - {hour.hours_end}
+                              </span>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
+
+                          {/* Teacher */}
+                          {/* <td className="px-4 py-3">
                             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                               <User size={14} />
-                              <span>{hour.teacher?.name || hour.teacher_name || `معلم ID: ${hour.teacher_id}`}</span>
+                              <span>
+                                {hour.teacher?.name ||
+                                  hour.teacher_name ||
+                                  `ID: ${hour.teacher_id}`}
+                              </span>
                             </div>
-                          </td>
+                          </td> */}
+
+                          {/* Notes */}
                           <td className="px-4 py-3">
-                            {hour.note && (
+                            {hour.note ? (
                               <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
                                 <FileText size={14} />
-                                <span className="truncate max-w-[200px]">{hour.note}</span>
+                                <span className="truncate max-w-[200px]">
+                                  {hour.note}
+                                </span>
                               </div>
+                            ) : (
+                              "-"
                             )}
                           </td>
+
+                          {/* Actions */}
                           <td className="px-4 py-3">
                             <div className="flex gap-2">
                               <motion.button

@@ -222,6 +222,7 @@ class ExamService extends BaseService<Exam> {
         total_marks: data.total_marks,
         total_marks_pass_marks: data.total_marks_pass_marks,
         duration_minutes: data.duration_minutes,
+        type_exam: (data as any).type_exam || undefined,
       };
 
       if (data.image) {
