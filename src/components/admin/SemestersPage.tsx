@@ -1,8 +1,9 @@
-// src/pages/admin/SemestersPage.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useTeacherMeta } from '@/hooks/useTeacherMeta'; // عدّل المسار حسب مشروعك
+// src/pages/admin/SemestersPage.tsx
+
+import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { semesterService, Semester, SemesterFormData, SemesterFilters } from '@/services/semester.service';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import FileUploader from '@/components/FileUploader';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Table,
@@ -38,9 +40,10 @@ import {
   XCircle,
   Save,
   SlidersHorizontal,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AsyncSelect } from '../ui/AsyncSelect';
+import { toast } from 'sonner';
 
 export const SemestersPage: React.FC = () => {
   const { t, lang, user } = useApp();
@@ -49,8 +52,7 @@ export const SemestersPage: React.FC = () => {
   const { stages, subjects } = useTeacherMeta(teacherId);
   const isRTL = lang === 'ar';
 
-  // ✅ State
-
+  // State
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,28 +61,23 @@ export const SemestersPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
-  // ✅ Filters State
+  // Filters State
   const [filters, setFilters] = useState<SemesterFilters>({
     subject_id: null,
     teacher_id: user?.id || null,
-
     active: '',
-
-    // discount range (API uses `discount` field)
     price: null,
     discount: null,
     from_date: '',
     to_date: '',
-
     has_image: '',
-
   });
 
-
-
-  // ✅ Modal State
+  // Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingSemester, setEditingSemester] = useState<Semester | null>(null);
+  const [currentSemester, setCurrentSemester] = useState<Semester | null>(null);
+  const [fetchingSemester, setFetchingSemester] = useState(false);
   const [formData, setFormData] = useState<SemesterFormData>({
     name: '',
     name_ar: '',
@@ -88,10 +85,11 @@ export const SemestersPage: React.FC = () => {
     discount: 0,
     teacher_id: user?.id || 1,
     subject_id: null,
+    image: null,
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // ✅ Pagination
+  // Pagination
   const [pagination, setPagination] = useState({
     currentPage: 1,
     lastPage: 1,
@@ -99,29 +97,16 @@ export const SemestersPage: React.FC = () => {
     perPage: 10,
   });
 
-  // ✅ Debounce search
-  // ✅ Debounce search
+  // Ref to prevent multiple API calls
+  const fetchedRef = useRef(false);
+
+  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleExport = async () => {
-    try {
-      const response = await semesterService.getAllSemesters(
-        {},
-        10000,
-        1,
-        ''
-      );
-
-      return response.data;
-    } catch (e) {
-      console.error(e);
-      return [];
-    }
-  };
-
+  // Fetch semesters
   const fetchSemesters = useCallback(async (page = 1) => {
     setLoading(true);
     setError(null);
@@ -141,28 +126,41 @@ export const SemestersPage: React.FC = () => {
       });
     } catch (err: any) {
       setError(err.message || 'Failed to fetch semesters');
+      toast.error(err.message || 'Failed to fetch semesters');
     } finally {
       setLoading(false);
     }
   }, [debouncedSearch, pagination.perPage, filters]);
 
-  // ✅ Filters should only trigger requests after user clicks Apply/Reset
-
+  // Initial fetch
   useEffect(() => {
-    // Only fetch when search changes (no state changes inside this effect other than the fetch itself).
+    if (!fetchedRef.current) {
+      fetchedRef.current = true;
+      fetchSemesters(1);
+    }
+  }, [fetchSemesters]);
+
+  // Handle search change
+  useEffect(() => {
     fetchSemesters(1);
   }, [debouncedSearch, fetchSemesters]);
 
-
-
-  // ✅ Handlers
+  // Handlers
   const handleCreate = async () => {
+    if (!formData.name || !formData.name_ar) {
+      toast.error(isRTL ? 'الاسم مطلوب' : 'Name is required');
+      return;
+    }
+    
     setSubmitting(true);
     try {
       await semesterService.createSemester(formData);
+      toast.success(isRTL ? 'تم إضافة الترم بنجاح' : 'Semester created successfully');
       setShowModal(false);
       resetForm();
       fetchSemesters(1);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || (isRTL ? 'فشل في إضافة الترم' : 'Failed to create semester'));
     } finally {
       setSubmitting(false);
     }
@@ -170,30 +168,48 @@ export const SemestersPage: React.FC = () => {
 
   const handleUpdate = async () => {
     if (!editingSemester) return;
+    if (!formData.name || !formData.name_ar) {
+      toast.error(isRTL ? 'الاسم مطلوب' : 'Name is required');
+      return;
+    }
+    
     setSubmitting(true);
     try {
       await semesterService.updateSemester(editingSemester.id, formData);
+      toast.success(isRTL ? 'تم تحديث الترم بنجاح' : 'Semester updated successfully');
       setShowModal(false);
       resetForm();
       fetchSemesters(pagination.currentPage);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || (isRTL ? 'فشل في تحديث الترم' : 'Failed to update semester'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا الترم؟' : 'Are you sure you want to delete this semester?')) {
-      await semesterService.deleteSemester(id);
-      fetchSemesters(pagination.currentPage);
+    if (confirm(isRTL ? 'هل أنت متأكد من حذف هذا الترم؟' : 'Are you sure you want to delete this semester?')) {
+      try {
+        await semesterService.deleteSemester(id);
+        toast.success(isRTL ? 'تم حذف الترم بنجاح' : 'Semester deleted successfully');
+        fetchSemesters(pagination.currentPage);
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || (isRTL ? 'فشل في حذف الترم' : 'Failed to delete semester'));
+      }
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (confirm(lang === 'ar' ? `حذف ${selectedIds.size} ترم؟` : `Delete ${selectedIds.size} semesters?`)) {
-      await semesterService.bulkDeleteSemesters(Array.from(selectedIds));
-      setSelectedIds(new Set());
-      fetchSemesters(1);
+    if (confirm(isRTL ? `حذف ${selectedIds.size} ترم؟` : `Delete ${selectedIds.size} semesters?`)) {
+      try {
+        await semesterService.bulkDeleteSemesters(Array.from(selectedIds));
+        toast.success(isRTL ? `تم حذف ${selectedIds.size} ترم بنجاح` : `${selectedIds.size} semesters deleted successfully`);
+        setSelectedIds(new Set());
+        fetchSemesters(1);
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || (isRTL ? 'فشل في حذف الترمات' : 'Failed to delete semesters'));
+      }
     }
   };
 
@@ -214,20 +230,33 @@ export const SemestersPage: React.FC = () => {
     });
   };
 
-  const openEditModal = (semester: Semester) => {
-    setEditingSemester(semester);
-    setFormData({
-      name: semester.name,
-      name_ar: semester.name_ar || '',
-      price: parseFloat(semester.price),
-      discount: parseFloat(semester.discount),
-      teacher_id: semester.teacher_id,
-      subject_id: semester.subject_id,
-    });
-    setShowModal(true);
-  };
+  const openEditModal = useCallback(async (semester: Semester) => {
+    setFetchingSemester(true);
+    try {
+      const fullSemester = await semesterService.getSemester(semester.id);
+      setCurrentSemester(fullSemester);
+      
+      setFormData({
+        name: fullSemester.name,
+        name_ar: fullSemester.name_ar || '',
+        price: parseFloat(fullSemester.price),
+        discount: parseFloat(fullSemester.discount),
+        teacher_id: fullSemester.teacher_id,
+        subject_id: fullSemester.subject_id,
+        image: fullSemester.image,
+      });
+      setEditingSemester(semester);
+      setShowModal(true);
+    } catch (error) {
+      console.error('Failed to fetch semester:', error);
+      toast.error(isRTL ? 'فشل في جلب بيانات الترم' : 'Failed to fetch semester data');
+    } finally {
+      setFetchingSemester(false);
+    }
+  }, [isRTL]);
 
-  const resetForm = () => {
+  const openCreateModal = useCallback(() => {
+    setCurrentSemester(null);
     setEditingSemester(null);
     setFormData({
       name: '',
@@ -236,8 +265,28 @@ export const SemestersPage: React.FC = () => {
       discount: 0,
       teacher_id: user?.id || 1,
       subject_id: null,
+      image: null,
+    });
+    setShowModal(true);
+  }, [user?.id]);
+
+  const resetForm = () => {
+    setEditingSemester(null);
+    setCurrentSemester(null);
+    setFormData({
+      name: '',
+      name_ar: '',
+      price: 0,
+      discount: 0,
+      teacher_id: user?.id || 1,
+      subject_id: null,
+      image: null,
     });
   };
+
+  const handleRemoveImage = useCallback(() => {
+    setFormData(prev => ({ ...prev, image: null }));
+  }, []);
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= pagination.lastPage) {
@@ -251,7 +300,26 @@ export const SemestersPage: React.FC = () => {
     setDebouncedSearch('');
   };
 
-  // ✅ Stats
+  const applyFilters = () => {
+    fetchSemesters(1);
+    setShowFilters(false);
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      subject_id: null,
+      teacher_id: user?.id || null,
+      active: '',
+      price: null,
+      discount: null,
+      from_date: '',
+      to_date: '',
+      has_image: '',
+    });
+    fetchSemesters(1);
+  };
+
+  // Stats
   const stats = {
     total: pagination.total,
     active: semesters.filter(s => s.active).length,
@@ -262,7 +330,7 @@ export const SemestersPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
-        {/* ✅ Header */}
+        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -273,11 +341,11 @@ export const SemestersPage: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-                {lang === 'ar' ? 'الترم الدراسي' : 'Semesters'}
+                {isRTL ? 'الترم الدراسي' : 'Semesters'}
               </h1>
               <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                 <Tag className="h-3 w-3" />
-                {stats.total} {lang === 'ar' ? 'ترم' : 'semesters'} • {stats.totalPrice.toFixed(2)} EGP
+                {stats.total} {isRTL ? 'ترم' : 'semesters'} • {stats.totalPrice.toFixed(2)} EGP
               </p>
             </div>
           </div>
@@ -286,7 +354,7 @@ export const SemestersPage: React.FC = () => {
             <ExportExcelButton
               data={semesters}
               fileName="semesters-list"
-              label={lang === 'ar' ? 'تصدير' : 'Export'}
+              label={isRTL ? 'تصدير' : 'Export'}
               disabled={loading || semesters.length === 0}
             />
             {selectedIds.size > 0 && (
@@ -298,31 +366,28 @@ export const SemestersPage: React.FC = () => {
                 className="px-4 py-2 bg-red-600 text-white rounded-xl flex items-center gap-2 hover:bg-red-700 transition-all"
               >
                 <Trash2 className="h-4 w-4" />
-                {lang === 'ar' ? 'حذف' : 'Delete'} ({selectedIds.size})
+                {isRTL ? 'حذف' : 'Delete'} ({selectedIds.size})
               </motion.button>
             )}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                resetForm();
-                setShowModal(true);
-              }}
+              onClick={openCreateModal}
               className="px-5 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
             >
               <Plus className="h-4 w-4" />
-              {lang === 'ar' ? 'إضافة ترم' : 'Add Semester'}
+              {isRTL ? 'إضافة ترم' : 'Add Semester'}
             </motion.button>
           </div>
         </div>
 
-        {/* ✅ Stats Cards */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: lang === 'ar' ? 'إجمالي الأتربة' : 'Total Semesters', value: stats.total, icon: Calendar, color: 'from-purple-500 to-pink-500' },
-            { label: lang === 'ar' ? 'الأتربة النشطة' : 'Active Semesters', value: stats.active, icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
-            { label: lang === 'ar' ? 'إجمالي السعر' : 'Total Price', value: `${stats.totalPrice.toFixed(2)} EGP`, icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
-            { label: lang === 'ar' ? 'متوسط السعر' : 'Average Price', value: `${(stats.totalPrice / (stats.total || 1)).toFixed(2)} EGP`, icon: Tag, color: 'from-blue-500 to-cyan-500' },
+            { label: isRTL ? 'إجمالي الترمات' : 'Total Semesters', value: stats.total, icon: Calendar, color: 'from-purple-500 to-pink-500' },
+            { label: isRTL ? 'الترمات النشطة' : 'Active Semesters', value: stats.active, icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
+            { label: isRTL ? 'إجمالي السعر' : 'Total Price', value: `${stats.totalPrice.toFixed(2)} EGP`, icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
+            { label: isRTL ? 'متوسط السعر' : 'Average Price', value: `${(stats.totalPrice / (stats.total || 1)).toFixed(2)} EGP`, icon: Tag, color: 'from-blue-500 to-cyan-500' },
           ].map((stat, idx) => (
             <motion.div
               key={idx}
@@ -346,24 +411,24 @@ export const SemestersPage: React.FC = () => {
           ))}
         </div>
 
-        {/* ✅ Search & Filters */}
+        {/* Search & Filters */}
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              className="gap-2"
+              className="gap-2 rounded-xl"
             >
               <Filter className="h-4 w-4" />
-              {lang === 'ar' ? 'فلاتر' : 'Filters'}
+              {isRTL ? 'فلاتر' : 'Filters'}
             </Button>
           </div>
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={lang === 'ar' ? 'بحث بالاسم...' : 'Search by name...'}
+              placeholder={isRTL ? 'بحث بالاسم...' : 'Search by name...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 w-64 rounded-xl"
@@ -378,6 +443,8 @@ export const SemestersPage: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Filters Panel */}
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -387,49 +454,28 @@ export const SemestersPage: React.FC = () => {
               className="overflow-hidden"
             >
               <Card className="p-5 rounded-2xl border shadow-md bg-white/80 dark:bg-gray-900/60 backdrop-blur-md space-y-6">
-
-                {/* ================= HEADER ================= */}
                 <div className="flex items-center justify-between border-b pb-3">
                   <h2 className="text-lg font-semibold flex items-center gap-2">
                     <SlidersHorizontal className="h-5 w-5 text-purple-500" />
-                    {lang === 'ar' ? 'الفلاتر' : 'Filters'}
+                    {isRTL ? 'الفلاتر' : 'Filters'}
                   </h2>
-
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() =>
-                      setFilters({
-                        subject_id: null,
-                        active: '',
-                        price: null,
-                        discount: null,
-                      })
-                    }
+                    onClick={resetFilters}
                     className="text-red-500 hover:text-red-600"
                   >
                     <RefreshCw className="h-4 w-4 mr-1" />
-                    Reset
+                    {isRTL ? 'إعادة تعيين' : 'Reset'}
                   </Button>
                 </div>
 
-                {/* ================= GRID FILTERS ================= */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                  {/* 📚 Subject */}
+                  {/* Subject */}
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">
-                      {lang === 'ar' ? 'المادة' : 'Subject'}
+                      {isRTL ? 'المادة' : 'Subject'}
                     </Label>
-
-                    {/* <AsyncSelect
-                      configKey="subjects"
-                      value={filters.subject_id}
-                      onChange={(id) =>
-                        setFilters(prev => ({ ...prev, subject_id: id }))
-                      }
-                      placeholder={lang === 'ar' ? 'اختر المادة' : 'Select Subject'}
-                    /> */}
                     <select
                       className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3"
                       value={filters.subject_id ?? ''}
@@ -441,25 +487,23 @@ export const SemestersPage: React.FC = () => {
                       }
                     >
                       <option value="">
-                        {lang === 'ar' ? 'كل المواد' : 'All Subjects'}
+                        {isRTL ? 'كل المواد' : 'All Subjects'}
                       </option>
-
                       {subjects.map((sub: any) => (
                         <option key={sub.id} value={sub.id}>
-                          {lang === 'ar' ? sub.name_ar : sub.name}
+                          {isRTL ? sub.name_ar : sub.name}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  {/* ⚡ Status */}
+                  {/* Status */}
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">
-                      {lang === 'ar' ? 'الحالة' : 'Status'}
+                      {isRTL ? 'الحالة' : 'Status'}
                     </Label>
-
                     <select
-                      className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3 focus:ring-2 focus:ring-purple-500"
+                      className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3"
                       value={filters.active}
                       onChange={(e) =>
                         setFilters(prev => ({
@@ -468,20 +512,17 @@ export const SemestersPage: React.FC = () => {
                         }))
                       }
                     >
-                      <option value="">
-                        {lang === 'ar' ? 'الكل' : 'All'}
-                      </option>
-                      <option value="1">   {lang === 'ar' ? 'نشظ' : 'Active'}</option>
-                      <option value="0">   {lang === 'ar' ? 'غير نشظ' : 'Inactive'}</option>
+                      <option value="">{isRTL ? 'الكل' : 'All'}</option>
+                      <option value="1">{isRTL ? 'نشط' : 'Active'}</option>
+                      <option value="0">{isRTL ? 'غير نشط' : 'Inactive'}</option>
                     </select>
                   </div>
 
-                  {/* 💰 Price */}
+                  {/* Price */}
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">
-                      {lang === 'ar' ? 'السعر' : 'Price'}
+                      {isRTL ? 'السعر' : 'Price'}
                     </Label>
-
                     <Input
                       type="number"
                       value={filters.price ?? ''}
@@ -495,56 +536,23 @@ export const SemestersPage: React.FC = () => {
                       placeholder="0"
                     />
                   </div>
-
-                  {/* 💸 Discount */}
-                  <div className="space-y-1">
-                    <Label className="text-sm text-muted-foreground">
-                      {lang === 'ar' ? 'الخصم' : 'Discount'}
-                    </Label>
-
-                    <Input
-                      type="number"
-                      value={filters.discount ?? ''}
-                      onChange={(e) =>
-                        setFilters(prev => ({
-                          ...prev,
-                          discount: e.target.value === '' ? null : Number(e.target.value),
-                        }))
-                      }
-                      className="rounded-xl"
-                      placeholder="0"
-                    />
-                  </div>
-
                 </div>
 
-                {/* ================= ACTION BUTTONS ================= */}
                 <div className="flex items-center justify-end gap-3 pt-2 border-t">
-
-                  <Button
-                    variant="outline"
-                    onClick={() => fetchSemesters(1)}
-                    className="rounded-xl"
-                  >
-                    {lang === 'ar' ? 'تطبيق' : 'Apply'}
+                  <Button variant="outline" onClick={applyFilters} className="rounded-xl">
+                    {isRTL ? 'تطبيق' : 'Apply'}
                   </Button>
-
-                  <Button
-                    onClick={() => fetchSemesters(1)}
-                    className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                  >
+                  <Button onClick={applyFilters} className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white">
                     <SlidersHorizontal className="h-4 w-4 mr-2" />
-                    {lang === 'ar' ? 'فلترة' : 'Filter'}
+                    {isRTL ? 'فلترة' : 'Filter'}
                   </Button>
-
                 </div>
-
               </Card>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ✅ Select All */}
+        {/* Select All */}
         {semesters.length > 0 && (
           <div className="flex items-center justify-end">
             <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -554,17 +562,17 @@ export const SemestersPage: React.FC = () => {
                 onChange={handleSelectAll}
                 className="rounded border-gray-300"
               />
-              {lang === 'ar' ? 'اختيار الكل' : 'Select All'}
+              {isRTL ? 'اختيار الكل' : 'Select All'}
             </label>
           </div>
         )}
 
-        {/* ✅ Table */}
+        {/* Table */}
         <Card className="rounded-2xl overflow-hidden shadow-xl border-0">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="h-10 w-10 animate-spin text-purple-500" />
-              <p className="text-muted-foreground mt-4">{lang === 'ar' ? 'جاري التحميل...' : 'Loading...'}</p>
+              <p className="text-muted-foreground mt-4">{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
             </div>
           ) : error ? (
             <Alert variant="destructive" className="m-4">
@@ -573,7 +581,7 @@ export const SemestersPage: React.FC = () => {
           ) : semesters.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Calendar className="h-16 w-16 text-muted-foreground/30 mb-4" />
-              <p className="text-muted-foreground">{lang === 'ar' ? 'لا توجد أتربة' : 'No semesters found'}</p>
+              <p className="text-muted-foreground">{isRTL ? 'لا توجد أتربة' : 'No semesters found'}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -588,12 +596,13 @@ export const SemestersPage: React.FC = () => {
                         className="rounded border-gray-300"
                       />
                     </TableHead>
-                    <TableHead>{lang === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'}</TableHead>
-                    <TableHead>{lang === 'ar' ? 'الاسم (إنجليزي)' : 'Name (English)'}</TableHead>
-                    <TableHead className="text-center">{lang === 'ar' ? 'السعر' : 'Price'}</TableHead>
-                    <TableHead className="text-center">{lang === 'ar' ? 'الخصم' : 'Discount'}</TableHead>
-                    <TableHead className="text-center">{lang === 'ar' ? 'الحالة' : 'Status'}</TableHead>
-                    <TableHead className="text-center">{lang === 'ar' ? 'الإجراءات' : 'Actions'}</TableHead>
+                    <TableHead>{isRTL ? 'الصورة' : 'Image'}</TableHead>
+                    <TableHead>{isRTL ? 'الاسم (عربي)' : 'Name (Arabic)'}</TableHead>
+                    <TableHead>{isRTL ? 'الاسم (إنجليزي)' : 'Name (English)'}</TableHead>
+                    <TableHead className="text-center">{isRTL ? 'السعر' : 'Price'}</TableHead>
+                    <TableHead className="text-center">{isRTL ? 'الخصم' : 'Discount'}</TableHead>
+                    <TableHead className="text-center">{isRTL ? 'الحالة' : 'Status'}</TableHead>
+                    <TableHead className="text-center">{isRTL ? 'الإجراءات' : 'Actions'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -616,6 +625,19 @@ export const SemestersPage: React.FC = () => {
                           />
                         </TableCell>
                         <TableCell>
+                          {semester.image_url ? (
+                            <img
+                              src={semester.image_url}
+                              alt={semester.name}
+                              className="w-10 h-10 rounded-lg object-cover border"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                              <ImageIcon className="h-5 w-5 text-gray-400" />
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <span className="font-medium">{semester.name_ar || '—'}</span>
                         </TableCell>
                         <TableCell>
@@ -624,17 +646,14 @@ export const SemestersPage: React.FC = () => {
                         <TableCell className="text-center">
                           <span className="inline-flex items-center gap-1 text-sm font-semibold text-green-600">
                             <DollarSign className="h-3 w-3" />
-                            {semester.price}
+                            {parseFloat(semester.price).toFixed(2)}
                           </span>
                         </TableCell>
                         <TableCell className="text-center">
                           <span className="text-sm">
-                            {typeof semester.discount === 'string'
-                              ? parseFloat(semester.discount).toFixed(2)
-                              : Number(semester.discount).toFixed(2)}
+                            {parseFloat(semester.discount).toFixed(2)}%
                           </span>
                         </TableCell>
-
                         <TableCell className="text-center">
                           <Button
                             type="button"
@@ -642,7 +661,7 @@ export const SemestersPage: React.FC = () => {
                             size="sm"
                             onClick={async () => {
                               const ok = confirm(
-                                lang === 'ar'
+                                isRTL
                                   ? semester.active
                                     ? 'تأكيد إيقاف الترم؟'
                                     : 'تأكيد تفعيل الترم؟'
@@ -655,8 +674,10 @@ export const SemestersPage: React.FC = () => {
                               try {
                                 await semesterService.toggleActive(semester.id);
                                 fetchSemesters(pagination.currentPage);
+                                toast.success(isRTL ? 'تم تغيير حالة الترم' : 'Semester status updated');
                               } catch (e) {
                                 console.error(e);
+                                toast.error(isRTL ? 'فشل في تغيير الحالة' : 'Failed to update status');
                               }
                             }}
                             className={
@@ -667,13 +688,13 @@ export const SemestersPage: React.FC = () => {
                           >
                             {semester.active ? (
                               <>
-                                <CheckCircle className="h-3.5 w-3.5" />
-                                {lang === 'ar' ? 'نشط' : 'Active'}
+                                <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                {isRTL ? 'نشط' : 'Active'}
                               </>
                             ) : (
                               <>
-                                <XCircle className="h-3.5 w-3.5" />
-                                {lang === 'ar' ? 'غير نشط' : 'Inactive'}
+                                <XCircle className="h-3.5 w-3.5 mr-1" />
+                                {isRTL ? 'غير نشط' : 'Inactive'}
                               </>
                             )}
                           </Button>
@@ -707,7 +728,7 @@ export const SemestersPage: React.FC = () => {
           )}
         </Card>
 
-        {/* ✅ Pagination */}
+        {/* Pagination */}
         {pagination.lastPage > 1 && (
           <div className="flex items-center justify-center gap-3 py-4">
             <Button
@@ -734,101 +755,144 @@ export const SemestersPage: React.FC = () => {
           </div>
         )}
 
-        {/* ✅ Modal for Create/Edit */}
+        {/* Modal for Create/Edit - Same pattern as HeroForm */}
         <Dialog open={showModal} onOpenChange={setShowModal}>
-          <DialogContent className="max-w-lg rounded-2xl">
+          <DialogContent className="max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
                 {editingSemester
-                  ? (lang === 'ar' ? 'تعديل الترم' : 'Edit Semester')
-                  : (lang === 'ar' ? 'إضافة ترم جديد' : 'Add New Semester')}
+                  ? (isRTL ? 'تعديل الترم' : 'Edit Semester')
+                  : (isRTL ? 'إضافة ترم جديد' : 'Add New Semester')}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-4 mt-4">
-              <div>
-                <select
-                  className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3"
-                  value={formData.subject_id ?? ''}
-                  onChange={(e) =>
-                    setFormData(prev => ({
-                      ...prev,
-                      subject_id: e.target.value ? Number(e.target.value) : null,
-                    }))
-                  }
-                >
-                  <option value="">
-                    {lang === 'ar' ? 'كل المواد' : 'All Subjects'}
-                  </option>
+            {fetchingSemester ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                <span className="ml-2">{isRTL ? 'جاري تحميل البيانات...' : 'Loading data...'}</span>
+              </div>
+            ) : (
+              <form onSubmit={editingSemester ? handleUpdate : handleCreate} className="space-y-4 mt-4">
+                {/* File Uploader - Same as HeroForm */}
+                <FileUploader
+                  label={isRTL ? 'صورة الترم' : 'Semester Image'}
+                  onUploadSuccess={(fileId) => {
+                    console.log('Uploaded file ID:', fileId);
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      image: fileId
+                    }));
+                  }}
+                  multiple={false}
+                  accept="image/*"
+                  maxFiles={1}
+                  defaultImageUrl={currentSemester?.image_url}
+                  defaultImageId={currentSemester?.image}
+                  onRemoveImage={handleRemoveImage}
+                />
 
-                  {subjects.map((sub: any) => (
-                    <option key={sub.id} value={sub.id}>
-                      {lang === 'ar' ? sub.name_ar : sub.name}
+                {/* Subject Select */}
+                <div>
+                  <Label>{isRTL ? 'المادة' : 'Subject'}</Label>
+                  <select
+                    className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3 mt-1"
+                    value={formData.subject_id ?? ''}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        subject_id: e.target.value ? Number(e.target.value) : null,
+                      }))
+                    }
+                  >
+                    <option value="">
+                      {isRTL ? 'اختر المادة' : 'Select Subject'}
                     </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label>{lang === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)'}</Label>
-                <Input
-                  value={formData.name_ar}
-                  onChange={(e) => setFormData({ ...formData, name_ar: e.target.value })}
-                  placeholder={lang === 'ar' ? 'أدخل اسم الترم بالعربية' : 'Enter semester name in Arabic'}
-                  className="rounded-xl mt-1"
-                  dir="rtl"
-                />
-              </div>
+                    {subjects.map((sub: any) => (
+                      <option key={sub.id} value={sub.id}>
+                        {isRTL ? sub.name_ar : sub.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <Label>{lang === 'ar' ? 'الاسم (إنجليزي)' : 'Name (English)'}</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder={lang === 'ar' ? 'أدخل اسم الترم بالإنجليزية' : 'Enter semester name in English'}
-                  className="rounded-xl mt-1"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+                {/* Arabic Name */}
                 <div>
-                  <Label>{lang === 'ar' ? 'السعر' : 'Price'}</Label>
+                  <Label>{isRTL ? 'الاسم (عربي)' : 'Name (Arabic)'}</Label>
                   <Input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                    placeholder="0.00"
+                    value={formData.name_ar}
+                    onChange={(e) => setFormData({ ...formData, name_ar: e.target.value })}
+                    placeholder={isRTL ? 'أدخل اسم الترم بالعربية' : 'Enter semester name in Arabic'}
                     className="rounded-xl mt-1"
+                    dir="rtl"
+                    required
                   />
                 </div>
+
+                {/* English Name */}
                 <div>
-                  <Label>{lang === 'ar' ? 'الخصم (%)' : 'Discount (%)'}</Label>
+                  <Label>{isRTL ? 'الاسم (إنجليزي)' : 'Name (English)'}</Label>
                   <Input
-                    type="number"
-                    value={formData.discount}
-                    onChange={(e) => setFormData({ ...formData, discount: parseFloat(e.target.value) || 0 })}
-                    placeholder="0"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder={isRTL ? 'أدخل اسم الترم بالإنجليزية' : 'Enter semester name in English'}
                     className="rounded-xl mt-1"
+                    required
                   />
                 </div>
-              </div>
 
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                <Button variant="outline" onClick={() => setShowModal(false)}>
-                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                </Button>
-                <Button
-                  onClick={editingSemester ? handleUpdate : handleCreate}
-                  disabled={submitting}
-                  className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500"
-                >
-                  {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  <Save className="h-4 w-4" />
-                  {editingSemester
-                    ? (lang === 'ar' ? 'تحديث' : 'Update')
-                    : (lang === 'ar' ? 'إضافة' : 'Create')}
-                </Button>
-              </div>
-            </div>
+                {/* Price & Discount */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>{isRTL ? 'السعر' : 'Price'}</Label>
+                    <Input
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                      placeholder="0.00"
+                      className="rounded-xl mt-1"
+                      required
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <Label>{isRTL ? 'الخصم (%)' : 'Discount (%)'}</Label>
+                    <Input
+                      type="number"
+                      value={formData.discount}
+                      onChange={(e) => setFormData({ ...formData, discount: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                      className="rounded-xl mt-1"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setShowModal(false)} 
+                    className="flex-1 rounded-xl"
+                  >
+                    {isRTL ? 'إلغاء' : 'Cancel'}
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={submitting} 
+                    className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                  >
+                    {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    <Save className="h-4 w-4 mr-2" />
+                    {editingSemester
+                      ? (isRTL ? 'تحديث' : 'Update')
+                      : (isRTL ? 'إضافة' : 'Create')}
+                  </Button>
+                </div>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>
