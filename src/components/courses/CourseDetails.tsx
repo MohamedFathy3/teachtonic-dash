@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import type { Course } from '@/types/course.types';
 import type { CourseDetail } from '@/types/course-detail.types';
 import FileUploader from '@/components/FileUploader';
-import { Switch } from '@/components/ui/switch'; 
+import { Switch } from '@/components/ui/switch';
 
 interface CourseDetailsProps {
   courseId: number;
@@ -44,10 +44,10 @@ const staggerContainer = {
   }
 };
 
-const InfoCard: React.FC<{ icon: React.ElementType; label: string; value: React.ReactNode; color?: string }> = ({ 
-  icon: Icon, label, value, color = "primary" 
+const InfoCard: React.FC<{ icon: React.ElementType; label: string; value: React.ReactNode; color?: string }> = ({
+  icon: Icon, label, value, color = "primary"
 }) => (
-  <motion.div 
+  <motion.div
     whileHover={{ scale: 1.02, y: -2 }}
     className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-br from-card to-muted/30 border border-border/50 shadow-sm"
   >
@@ -64,14 +64,14 @@ const InfoCard: React.FC<{ icon: React.ElementType; label: string; value: React.
 export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, onEdit }) => {
   const { t, lang } = useApp();
   const isRTL = lang === 'ar';
-  
+
   // ✅ State للكورس
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isLiked, setIsLiked] = useState(false);
-  
+
   // 🔥 State للدروس - استخدام show API
   const [lessons, setLessons] = useState<CourseDetail[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(false);
@@ -81,16 +81,17 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     total: 0,
     lastPage: 1
   });
-  
+
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [editingLesson, setEditingLesson] = useState<CourseDetail | null>(null);
   const [deletingLesson, setDeletingLesson] = useState<CourseDetail | null>(null);
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
-  
+  const [selectedPdfId, setSelectedPdfId] = useState<number | null>(null);
+  const [selectedPdfUrl, setSelectedPdfUrl] = useState<string | null>(null);
   // فرم الدرس
   const [lessonForm, setLessonForm] = useState({
-    title: '',
+    title: '',        // هيُحفظ في titles عند الإرسال
     title_ar: '',
     description: '',
     description_ar: '',
@@ -99,7 +100,9 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     lession_time: '20:00',
     price: 0,
     image_id: null as number | null,
+    pdf_id: null as number | null,     // ✨ جديد
   });
+
 
   // ✅ جلب بيانات الكورس من API
   const fetchCourse = async () => {
@@ -128,13 +131,13 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
         page: page,
         perPage: lessonsPagination.perPage
       });
-      
+
       console.log('📚 Lessons from API:', response);
-      
+
       // التعامل مع استجابة الـ API
       const lessonsData = response?.data || [];
       setLessons(lessonsData);
-      
+
       // تحديث معلومات الـ pagination
       if (response?.pagination) {
         setLessonsPagination({
@@ -156,15 +159,15 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
     try {
       await courseDetailService.toggleMustPassToUnlock(lesson.id, checked);
-      
+
       // تحديث القائمة المحلية
       setLessons(prev => prev.map(l =>
         l.id === lesson.id ? { ...l, must_pass_to_unlock: checked } : l
       ));
-      
+
       // عرض رسالة نجاح
       toast.success(
-        checked 
+        checked
           ? (lang === 'ar' ? 'تم تفعيل شرط اجتياز الامتحان' : 'Exam pass requirement enabled')
           : (lang === 'ar' ? 'تم إلغاء شرط اجتياز الامتحان' : 'Exam pass requirement disabled')
       );
@@ -222,6 +225,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   // معالج إضافة/تعديل درس
   const handleSaveLesson = async () => {
     if (!courseId) return;
+
     if (!lessonForm.title && !lessonForm.title_ar) {
       toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الدرس' : 'Please enter lesson title');
       return;
@@ -229,16 +233,21 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
 
     const payload: any = {
       course_id: courseId,
-      title: lessonForm.title,
-      title_ar: lessonForm.title_ar,
+      titles: lessonForm.title ? [lessonForm.title] : [],
+      titles_ar: lessonForm.title_ar ? [lessonForm.title_ar] : [],
       description: lessonForm.description,
       description_ar: lessonForm.description_ar,
       content_link: lessonForm.content_link,
       lession_date: lessonForm.lession_date,
       lession_time: lessonForm.lession_time,
       price: lessonForm.price,
+      pdf_id: lessonForm.pdf_id, // ✅ fixed
     };
-    
+
+    if (lessonForm.pdf_id) {
+      payload.pdf = lessonForm.pdf_id;
+    }
+
     if (selectedImageId) {
       payload.image = selectedImageId;
     } else if (lessonForm.image_id) {
@@ -247,21 +256,31 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
 
     try {
       if (editingLesson) {
-        await courseDetailService.update(editingLesson.id, payload);
+        const result = await courseDetailService.update(editingLesson.id, payload);
+          await fetchLessons(1);
+        console.log("selectedPdfId", selectedPdfId);
+        console.log("lessonForm.pdf_id", lessonForm.pdf_id);
+        console.log("payload", payload);
+        console.log("result", result);
+
+
         toast.success(lang === 'ar' ? 'تم تحديث الدرس بنجاح' : 'Lesson updated successfully');
       } else {
         await courseDetailService.create(payload);
         toast.success(lang === 'ar' ? 'تم إضافة الدرس بنجاح' : 'Lesson added successfully');
       }
-      // إعادة جلب الدروس
+
       await fetchLessons(lessonsPagination.currentPage);
+
       setShowLessonModal(false);
       resetLessonForm();
+
     } catch (error) {
       console.error('Error saving lesson:', error);
       toast.error(lang === 'ar' ? 'حدث خطأ أثناء حفظ الدرس' : 'Error saving lesson');
     }
   };
+
 
   // معالج حذف درس
   const handleDeleteLesson = async () => {
@@ -279,43 +298,56 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
 
   const resetLessonForm = () => {
     setLessonForm({
-      title: '',
-      title_ar: '',
-      description: '',
-      description_ar: '',
+      title: '', title_ar: '',
+      description: '', description_ar: '',
       content_link: '',
       lession_date: new Date().toISOString().split('T')[0],
       lession_time: '20:00',
       price: 0,
       image_id: null,
+      pdf_id: null,   // ✨ جديد
     });
     setSelectedImageId(null);
     setSelectedImageUrl(null);
+    setSelectedPdfId(null);    // ✨ جديد
+    setSelectedPdfUrl(null);   // ✨ جديد
     setEditingLesson(null);
   };
-
   const openEditLesson = async (lesson: CourseDetail) => {
     setEditingLesson(lesson);
+
     setLessonForm({
-      title: lesson.title,
-      title_ar: lesson.title_ar || '',
-      description: lesson.description,
-      description_ar: lesson.description_ar || '',
-      content_link: lesson.content_link,
+      title: Array.isArray(lesson.titles) ? (lesson.titles[0] ?? '') : '',
+      title_ar: Array.isArray(lesson.titles_ar) ? (lesson.titles_ar[0] ?? '') : '',
+      description: lesson.description ?? '',
+      description_ar: lesson.description_ar ?? '',
+      content_link: lesson.content_link ?? '',
       lession_date: lesson.lession_date,
       lession_time: lesson.lession_time || '20:00',
-      price: parseFloat(lesson.price as any),
-      image_id: (lesson as any).image?.id || null,
+      price: parseFloat(lesson.price as any) || 0,
+      image_id: lesson.image?.id ?? null,
+      pdf_id: lesson.pdf?.id ?? null,
     });
-    
-    if ((lesson as any).image?.fullUrl) {
-      setSelectedImageUrl((lesson as any).image.fullUrl);
-      setSelectedImageId((lesson as any).image.id);
+
+    // ✅ Image
+    if (lesson.image?.fullUrl) {
+      setSelectedImageUrl(lesson.image.fullUrl);
+      setSelectedImageId(lesson.image.id);
+    } else {
+      setSelectedImageUrl(null);
+      setSelectedImageId(null);
     }
-    
+
+    // ✅ PDF — استخدم pdf.fullUrl أو pdfUrl كـ fallback
+    const pdfUrl = lesson.pdf?.fullUrl || lesson.pdfUrl || null;
+    const pdfId = lesson.pdf?.id ?? null;
+    setSelectedPdfId(pdfId);
+    setSelectedPdfUrl(pdfUrl);
+
+
+    // ✅ افتح الـ modal بعد ما كل الـ state اتسيت
     setShowLessonModal(true);
   };
-
   const features = [
     t('certificateOfCompletion'),
     t('lifetimeAccess'),
@@ -359,7 +391,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const teacherName = course.teacher?.name;
   const teacherEmail = course.teacher?.email;
   const teacherPhone = course.teacher?.phone;
-  
+
   const students = (course as any)?.students || [];
 
   return (
@@ -386,7 +418,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             </motion.div>
           )}
           <div>
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"
@@ -398,7 +430,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             </p>
           </div>
         </div>
-        
+
         <div className="flex gap-2">
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button variant="outline" size="sm" onClick={() => setIsLiked(!isLiked)} className="gap-1">
@@ -418,7 +450,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       </div>
 
       {/* Hero Section */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="relative rounded-2xl overflow-hidden shadow-xl"
@@ -434,7 +466,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             <BookOpen className="h-20 w-20 text-muted-foreground/30" />
           </div>
         )}
-        
+
         <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/70 to-transparent">
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="bg-white/20 text-white backdrop-blur-sm">
@@ -501,8 +533,8 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {features.map((feature, idx) => (
-                <motion.div 
-                  key={idx} 
+                <motion.div
+                  key={idx}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
@@ -550,7 +582,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : lessons.length === 0 ? (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-12 bg-gradient-to-br from-muted/30 to-muted/20 rounded-xl"
@@ -591,7 +623,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                               {lesson.price}
                             </Badge>
                           )}
-                          
+
                           {/* 🔥 شارة شرط اجتياز الامتحان */}
                           {lesson.must_pass_to_unlock && (
                             <Badge variant="warning" className="text-xs gap-1 bg-amber-500/20 text-amber-600 border-amber-300">
@@ -599,7 +631,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                               {lang === 'ar' ? 'يجب اجتياز الامتحان' : 'Must pass exam'}
                             </Badge>
                           )}
-                          
+
                           {/* 🔥 شارة الحضور (للطلاب) */}
                           {lesson.attended && (
                             <Badge variant="success" className="text-xs gap-1 bg-green-500/20 text-green-600 border-green-300">
@@ -608,14 +640,13 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                             </Badge>
                           )}
                         </div>
-                        
                         <h4 className="font-semibold text-base">
-                          {isRTL && lesson.title_ar ? lesson.title_ar : lesson.title}
+                          {isRTL && lesson.titles_ar ? lesson.titles_ar : (lesson.titles || '—')}
                         </h4>
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                           {isRTL && lesson.description_ar ? lesson.description_ar : lesson.description}
                         </p>
-                        
+
                         {lesson.content_link && (
                           <a
                             href={lesson.content_link}
@@ -628,7 +659,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                           </a>
                         )}
                       </div>
-                      
+
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {/* 🔥 Switch لتحديد شرط اجتياز الامتحان (للمعلم/admin فقط) */}
                         <div className="flex items-center gap-1 mr-2 px-2 py-1 rounded-lg bg-muted/50">
@@ -641,7 +672,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                             className="data-[state=checked]:bg-amber-500 scale-75"
                           />
                         </div>
-                        
+
                         <Button
                           size="icon"
                           variant="ghost"
@@ -663,7 +694,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                   </motion.div>
                 ))}
               </AnimatePresence>
-              
+
               {/* 🔥 Pagination buttons */}
               {lessonsPagination.lastPage > 1 && (
                 <div className="flex justify-center gap-2 mt-4">
@@ -764,7 +795,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
 
         {/* Instructor Tab */}
         <TabsContent value="instructor" className="mt-4">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="flex items-start gap-5 p-6 rounded-xl bg-gradient-to-r from-primary/5 to-secondary/5 border"
@@ -809,7 +840,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               {editingLesson ? (t('editLesson') || 'تعديل درس') : (t('addLesson') || 'إضافة درس جديد')}
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 mt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -867,6 +898,8 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               />
             </div>
 
+
+
             <FileUploader
               label={t('lessonImage') || 'صورة الدرس (اختياري)'}
               onUploadSuccess={handleImageUpload}
@@ -878,6 +911,27 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               defaultImageId={selectedImageId}
               onRemoveImage={handleRemoveImage}
             />
+            {/* PDF uploader ✨ جديد */}
+            {/* PDF uploader ✨ جديد */}
+            <FileUploader
+              label={t('lessonPdf')}
+              onUploadSuccess={(pdfId: number) => {
+                setSelectedPdfId(pdfId);
+                setLessonForm(prev => ({ ...prev, pdf_id: pdfId }));
+              }}
+              multiple={false}
+              accept="application/pdf"
+              preview={false}
+              uniqueId="lesson-pdf"
+              defaultImageUrl={selectedPdfUrl ?? undefined}
+              defaultImageId={selectedPdfId ?? undefined}
+              onRemoveImage={() => {
+                setSelectedPdfId(null);
+                setSelectedPdfUrl(null);
+                setLessonForm(prev => ({ ...prev, pdf_id: null }));
+              }}
+            />
+
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>

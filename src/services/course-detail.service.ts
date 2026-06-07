@@ -7,8 +7,8 @@ import api from '@/lib/api';
 export interface CourseDetail {
   id: number;
   course_id: number;
-  title: string;
-  title_ar: string;
+  titles: string[];    // ← كان title
+  titles_ar: string[];   // ← كان title_ar
   description: string;
   description_ar: string;
   content_link: string;
@@ -16,9 +16,13 @@ export interface CourseDetail {
   lession_time: string;
   price: string;
   discount: string;
-    must_pass_to_unlock?: boolean; // 🔥 أضف هذا
+  must_pass_to_unlock?: boolean;
+  attended?: boolean;
   createdAt: string;
-  image?: any;
+  imageUrl?: string;
+  image?: { id: number; fullUrl: string; } | null;
+  pdfUrl?: string;            // ✨ جديد
+  pdf?: { id: number; fullUrl: string; } | null; 
 }
 
 class CourseDetailService extends BaseService<CourseDetail> {
@@ -35,13 +39,13 @@ class CourseDetailService extends BaseService<CourseDetail> {
       page: params?.page || 1,
       paginate: true,
     };
-    
+
     console.log('🔍 CourseDetail Request:', requestBody);
-    
+
     const response = await api.post(`/${this.endpoint}/index`, requestBody);
-    
+
     console.log('📦 CourseDetail Response:', response.data);
-    
+
     return response.data;
   }
 
@@ -52,16 +56,17 @@ class CourseDetailService extends BaseService<CourseDetail> {
 
   async update(id: number, data: any): Promise<CourseDetail> {
     const response = await api.patch(`/${this.endpoint}/${id}`, data);
-    return response.data.data;
+
+    return response.data;
   }
 
   async deleteDetail(id: number): Promise<void> {
-    await api.delete(`/${this.endpoint}/delete`,{
-      data: {items:[id]}
+    await api.delete(`/${this.endpoint}/delete`, {
+      data: { items: [id] }
     });
   }
 
-    async toggleMustPassToUnlock(id: number, value: boolean): Promise<CourseDetail> {
+  async toggleMustPassToUnlock(id: number, value: boolean): Promise<CourseDetail> {
     const response = await api.put(`/${this.endpoint}/${id}/must_pass_to_unlock`, {
       must_pass_to_unlock: value
     });

@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/exams/ExamForm.tsx
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +19,7 @@ import { Loader2, ChevronLeft, Save, FileText } from 'lucide-react';
 import type { Exam, ExamFormData } from '@/types/exam.types';
 import FileUploader from '@/components/FileUploader';
 import { AsyncSelect } from '@/components/ui/AsyncSelect'; // 🔥 استخدم AsyncSelect
-
+import { courseDetailService } from '@/services/course-detail.service';
 interface ExamFormProps {
   exam?: Exam;
   onSubmit: (data: ExamFormData) => Promise<void>;
@@ -55,7 +61,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({
       description_ar: '',
       type: 'exam',
       teacher_id: user?.id || 1,
-      course_detail_id: courseDetailId ?? 1,
+      course_detail_id: courseDetailId ?? null, // 🔥 استخدم courseDetailId إذا تم تمريره، وإلا null
       stage_id: 1,
       total_marks: 0,
       total_marks_pass_marks: 0,
@@ -64,6 +70,8 @@ export const ExamForm: React.FC<ExamFormProps> = ({
 
   const [formData, setFormData] =
     useState<ExamFormData>(initialFormData);
+
+
 
 
 
@@ -125,6 +133,46 @@ export const ExamForm: React.FC<ExamFormProps> = ({
     setImageId(null);
   };
 
+
+
+
+
+  const [lessons, setLessons] = useState<{ label: string; value: number }[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(false);
+  useEffect(() => {
+    const fetchLessons = async () => {
+      setLoadingLessons(true);
+      try {
+        const res = await courseDetailService.getAll({ perPage: 50 });
+
+        const data = res?.data ?? [];
+
+        const options = data.map((lesson: any) => ({
+          label:
+            lesson.titles?.[0] ||
+            lesson.titles_ar?.[0] ||
+            lesson.description?.slice(0, 20) ||
+            `Lesson #${lesson.id}`,
+          value: String(lesson.id), // 👈 مهم جدًا
+        }));
+
+        setLessons(options);
+
+        // 👇 مهم: set default value بعد التحميل
+        if (!formData.course_detail_id && options.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            course_detail_id: Number(options[0].value),
+          }));
+        }
+
+      } finally {
+        setLoadingLessons(false);
+      }
+    };
+
+    fetchLessons();
+  }, []);
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
@@ -264,14 +312,40 @@ export const ExamForm: React.FC<ExamFormProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t('lesson') || 'Lesson'} *</Label>
-                <AsyncSelect
-                  configKey="lessons"
-                  value={formData.course_detail_id}
-                  onChange={(id) => handleChange('course_detail_id', id || 1)}
-                  placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select lesson'}
-                  required
-                />
+                <Select
+                  value={
+                    formData.course_detail_id != null
+                      ? String(formData.course_detail_id)
+                      : undefined
+                  }
+                  onValueChange={(val) =>
+                    handleChange('course_detail_id', Number(val))
+                  }
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select lesson'} />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {loadingLessons ? (
+                      <SelectItem value="loading" disabled>
+                        Loading...
+                      </SelectItem>
+                    ) : lessons.length === 0 ? (
+                      <SelectItem value="empty" disabled>
+                        No lessons found
+                      </SelectItem>
+                    ) : (
+                      lessons.map((l) => (
+                        <SelectItem key={l.value} value={l.value.toString()}>
+                          {l.label}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
+
               <div className="space-y-2">
                 <Label>{t('stage')} *</Label>
                 <AsyncSelect
