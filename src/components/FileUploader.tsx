@@ -6,13 +6,13 @@ import api from "@/lib/api";
 
 type Props = {
   label?: string;
-  onUploadSuccess: (id: number) => void; 
+  onUploadSuccess: (id: number) => void;
   multiple?: boolean;
   accept?: string;
   preview?: boolean;
   uniqueId?: string;
   maxFiles?: number;
-  maxVideoSize?: number; 
+  maxVideoSize?: number;
   defaultImageUrl?: string | null;
   defaultImageId?: number | null;
   onRemoveImage?: () => void;
@@ -80,11 +80,11 @@ export default function FileUploader({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!e.target.files || e.target.files.length === 0) return;
 
     const files = Array.from(e.target.files);
-    
+
     if (files.length > maxFiles) {
       alert(`You can only upload up to ${maxFiles} files at once`);
       return;
@@ -103,10 +103,10 @@ export default function FileUploader({
     if (preview) {
       const newPreviewUrls: string[] = [];
       const newPreviewTypes: string[] = [];
-      
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
+
         if (file.type.startsWith('image/')) {
           const reader = new FileReader();
           reader.onload = (e) => {
@@ -129,7 +129,7 @@ export default function FileUploader({
 
     try {
       const uploadedIds: number[] = [];
-      
+
       for (const file of files) {
         const formData = new FormData();
         formData.append("file", file);
@@ -143,7 +143,7 @@ export default function FileUploader({
           const fileId = data.data.id;
           uploadedIds.push(fileId);
           onUploadSuccess(fileId);
-          
+
           setUploadedFiles(prev => [...prev, {
             id: fileId,
             name: file.name,
@@ -153,12 +153,12 @@ export default function FileUploader({
           console.error("Upload failed for file:", file.name);
         }
       }
-      
+
       if (uploadedIds.length > 0) {
         setShowDefaultImage(false);
         console.log(`✅ ${uploadedIds.length} file(s) uploaded successfully`);
       }
-      
+
     } catch (error) {
       console.error("Upload error:", error);
       alert("❌ Error uploading files");
@@ -185,7 +185,6 @@ export default function FileUploader({
     if (onRemoveImage) {
       onRemoveImage();
     }
-    onUploadSuccess(0);
   };
 
   // 🔥 معرفة إذا كان default هو فيديو
@@ -260,10 +259,10 @@ export default function FileUploader({
             <UploadCloud className="text-gray-500 mb-2" size={28} />
             <p className="text-gray-600 text-sm">Click to upload or drag & drop</p>
             <p className="text-gray-400 text-xs mt-1">
-              {accept.includes("video") && accept.includes("image") 
+              {accept.includes("video") && accept.includes("image")
                 ? "📷 Images: PNG, JPG, GIF up to 10MB | 🎥 Videos: MP4, WebM, MOV up to 5MB"
-                : accept === "image/*" 
-                  ? "PNG, JPG, GIF up to 10MB" 
+                : accept === "image/*"
+                  ? "PNG, JPG, GIF up to 10MB"
                   : "PDF, DOC, DOCX up to 10MB"}
             </p>
             {multiple && (

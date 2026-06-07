@@ -5,8 +5,8 @@ import { Student } from "./student.types";
 export interface CourseDetail {
   id: number;
   course_id: number;
-  title: string;
-  title_ar: string;
+  titles: string[];      // ← كان title
+  titles_ar: string[];
   description: string;
   description_ar: string;
   content_link: string;
@@ -20,6 +20,8 @@ export interface CourseDetail {
     previewUrl: string;
     name: string;
   };
+  pdfUrl?: string;            // ✨ جديد
+  pdf?: { id: number; fullUrl: string; } | null;
   imageUrl?: string;
   createdAt: string;
   course?: {
