@@ -78,6 +78,7 @@ export interface TeacherFormData {
   stage: TeacherStagePayload[];   // للـ API
   subject: TeacherSubjectPayload[]; // للـ API
   image?: number;
+  imageUrl?: number | string; // للعرض (ممكن ID أو URL)
 }
 
 // للـ Filters

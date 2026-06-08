@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/instructor/InstructorBankQuestions.tsx
-
 
 import type { Variants } from "framer-motion";
 import { toast } from '@/hooks/use-toast';
@@ -10,20 +10,23 @@ import React, {
     useMemo,
     useRef,
     useState,
-    startTransition,
 } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { bankQuestionsService } from '@/services/bank-questions.service';
 import type { BankQuestion } from '@/types/bank-questions.types';
-import { PageHeader } from '@/components/lms/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Search, ChevronLeft, ChevronRight, Filter, X, GraduationCap, BookOpen, HelpCircle, Sparkles, FileText, Grid3x3, List, Eye, Power, Zap, PowerOff, Trash2, RefreshCw, CheckCircle, XCircle, Clock, Award, TrendingUp, Users, Calendar, Settings2, ChevronDown, ChevronUp, Plus, Save, Edit2 } from 'lucide-react';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { 
+    Loader2, Search, ChevronLeft, ChevronRight, Filter, X, 
+    GraduationCap, BookOpen, HelpCircle, Sparkles, FileText, 
+    Grid3x3, List, CheckCircle, XCircle, Award, Calendar, 
+    RefreshCw, Eye, Edit2, Trash2, Plus, Save, Clock
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
@@ -89,8 +92,6 @@ const getQuestionTypeIcon = (type: string) => {
 };
 
 const BankQuestionCard: React.FC<{ question: BankQuestion; lang: string }> = ({ question, lang }) => {
-    const isRTL = lang === 'ar';
-
     return (
         <motion.div
             layout
@@ -197,7 +198,7 @@ const BankQuestionCard: React.FC<{ question: BankQuestion; lang: string }> = ({ 
 };
 
 export const InstructorBankQuestions: React.FC = () => {
-    const { t, lang, user } = useApp();
+    const { lang, user } = useApp();
     const { stages, subjects } = useTeacherMeta(user?.id);
 
     const isRTL = lang === 'ar';
@@ -249,51 +250,6 @@ export const InstructorBankQuestions: React.FC = () => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // ✅ Load saved filters from localStorage
-    useEffect(() => {
-        const saved = localStorage.getItem('bankQuestionFilters');
-        if (!saved) return;
-
-        try {
-            const parsed = JSON.parse(saved);
-
-            if (JSON.stringify(parsed) !== JSON.stringify(filters)) {
-                setFilters(parsed);
-                setSavedFilters(parsed);
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    }, []);
-    // ✅ Sync filters with URL
-    useEffect(() => {
-        const urlFilters: QuestionFilters = {
-            stageId: searchParams.get('stage') ? Number(searchParams.get('stage')) : null,
-            subjectId: searchParams.get('subject') ? Number(searchParams.get('subject')) : null,
-            questionType: searchParams.get('type') || null,
-            minMarks: searchParams.get('minMarks') ? Number(searchParams.get('minMarks')) : null,
-            maxMarks: searchParams.get('maxMarks') ? Number(searchParams.get('maxMarks')) : null,
-        };
-
-        const hasAny =
-            urlFilters.stageId ||
-            urlFilters.subjectId ||
-            urlFilters.questionType ||
-            urlFilters.minMarks ||
-            urlFilters.maxMarks;
-
-        if (hasAny) {
-            setFilters(prev => ({
-                ...prev,
-                ...urlFilters
-            }));
-        }
-    }, [searchParams]);
-    // ✅ Build API filters
-
-
-
-
     // ✅ Fetch Questions
     const fetchQuestions = useCallback(async (page = 1) => {
         if (!user?.id) return;
@@ -301,65 +257,79 @@ export const InstructorBankQuestions: React.FC = () => {
         setError(null);
 
         try {
+            const filterParams: any = {};
+            
+            if (filters.stageId) filterParams.stage_id = filters.stageId;
+            if (filters.subjectId) filterParams.subject_id = filters.subjectId;
+            if (filters.questionType) filterParams.question_type = filters.questionType;
+            if (filters.minMarks !== null && filters.minMarks !== undefined) filterParams.min_mark = filters.minMarks;
+            if (filters.maxMarks !== null && filters.maxMarks !== undefined) filterParams.max_mark = filters.maxMarks;
+            if (debouncedSearch) filterParams.search = debouncedSearch;
+            
+            filterParams.teacher_id = user.id;
+
+         
+
             const response = await bankQuestionsService.getAllBankQuestions({
                 page,
                 perPage: pagination.perPage,
-                teacher_id: user.id,
-                stage_id: filters.stageId || undefined,
-                subject_id: filters.subjectId || undefined,
-                question_type: filters.questionType || undefined,
-                min_mark: filters.minMarks || undefined,
-                max_mark: filters.maxMarks || undefined,
-                search: debouncedSearch || undefined,
+                ...filterParams
             });
 
-            setQuestions(response.data || []);
-            setPagination(prev => ({
-                ...prev,
-                currentPage: response.meta?.current_page ?? page,
-                lastPage: response.meta?.last_page ?? 1,
-                total: response.meta?.total ?? 0,
-                perPage: response.meta?.per_page ?? prev.perPage,
-            }));
+
+            // ✅ معالجة الاستجابة حسب هيكلها
+            if (response && response.data && Array.isArray(response.data)) {
+                setQuestions(response.data);
+                setPagination({
+                    currentPage: response.meta?.current_page ?? page,
+                    lastPage: response.meta?.last_page ?? 1,
+                    total: response.meta?.total ?? response.data.length,
+                    perPage: response.meta?.per_page ?? pagination.perPage,
+                });
+            } else if (Array.isArray(response)) {
+                setQuestions(response);
+                setPagination(prev => ({
+                    ...prev,
+                    currentPage: page,
+                    total: response.length,
+                }));
+            } else {
+                setQuestions([]);
+                setPagination(prev => ({
+                    ...prev,
+                    total: 0,
+                }));
+            }
         } catch (err: any) {
+            console.error('❌ Error fetching questions:', err);
             setError(err?.message || 'Error loading questions');
             setQuestions([]);
         } finally {
             setLoading(false);
         }
-    }, [user?.id, filters, debouncedSearch]);
+    }, [user?.id, filters, debouncedSearch, pagination.perPage]);
 
+    // ✅ Auto fetch when dependencies change
     useEffect(() => {
         fetchQuestions(1);
     }, [fetchQuestions]);
 
-
-
-    // ✅ أضف flag عشان تتجنب الـ circular update
-    const isApplyingFilters = useRef(false);
-
-    const applyFilters = () => {
-        isApplyingFilters.current = true; // 🔒 lock
-        localStorage.setItem('bankQuestionFilters', JSON.stringify(filters));
-        setSavedFilters(filters);
-
-        const newParams = new URLSearchParams();
-        if (filters.stageId) newParams.set('stage', String(filters.stageId));
-        if (filters.subjectId) newParams.set('subject', String(filters.subjectId));
-        if (filters.questionType) newParams.set('type', filters.questionType);
-        if (filters.minMarks) newParams.set('minMarks', String(filters.minMarks));
-        if (filters.maxMarks) newParams.set('maxMarks', String(filters.maxMarks));
-
-        setSearchParams(newParams);
-        setShowFilters(false);
-
-        setTimeout(() => { isApplyingFilters.current = false; }, 100); // 🔓 unlock
-    };
-
-    // ✅ الـ URL sync effect مع الـ lock
+    // ✅ Load saved filters from localStorage on mount
     useEffect(() => {
-        if (isApplyingFilters.current) return; // ← تجاهل لو إحنا اللي غيرنا الـ URL
+        const saved = localStorage.getItem('bankQuestionFilters');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setFilters(parsed);
+                setSavedFilters(parsed);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    }, []);
 
+    // ✅ Sync filters with URL
+    useEffect(() => {
         const urlFilters: QuestionFilters = {
             stageId: searchParams.get('stage') ? Number(searchParams.get('stage')) : null,
             subjectId: searchParams.get('subject') ? Number(searchParams.get('subject')) : null,
@@ -375,6 +345,31 @@ export const InstructorBankQuestions: React.FC = () => {
             setFilters(prev => ({ ...prev, ...urlFilters }));
         }
     }, [searchParams]);
+
+    // ✅ Apply Filters
+    const applyFilters = () => {
+        // حفظ الفلاتر في localStorage
+        localStorage.setItem('bankQuestionFilters', JSON.stringify(filters));
+        setSavedFilters(filters);
+
+        // تحديث URL params
+        const newParams = new URLSearchParams();
+        if (filters.stageId) newParams.set('stage', String(filters.stageId));
+        if (filters.subjectId) newParams.set('subject', String(filters.subjectId));
+        if (filters.questionType) newParams.set('type', filters.questionType);
+        if (filters.minMarks) newParams.set('minMarks', String(filters.minMarks));
+        if (filters.maxMarks) newParams.set('maxMarks', String(filters.maxMarks));
+        
+        setSearchParams(newParams);
+        setShowFilters(false);
+        
+        // ✅ جلب البيانات بعد تطبيق الفلاتر
+        fetchQuestions(1);
+        
+        toast.success(lang === 'ar' ? 'تم تطبيق الفلاتر بنجاح' : 'Filters applied successfully');
+    };
+
+    // ✅ Clear Filters
     const clearFilters = () => {
         const reset = {
             stageId: null,
@@ -387,7 +382,13 @@ export const InstructorBankQuestions: React.FC = () => {
         setSavedFilters(null);
         localStorage.removeItem('bankQuestionFilters');
         setSearchParams({});
+        
+        // ✅ جلب البيانات بدون فلتر
+        fetchQuestions(1);
+        
+        toast.info(lang === 'ar' ? 'تم مسح جميع الفلاتر' : 'All filters cleared');
     };
+
     // ✅ Load saved filters
     const loadSavedFilters = () => {
         if (savedFilters) {
@@ -476,11 +477,11 @@ export const InstructorBankQuestions: React.FC = () => {
                 {/* ✅ Stats Cards */}
                 <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     {[
-                        { label: lang === 'ar' ? 'إجمالي الأسئلة' : 'Total Questions', value: stats.total, icon: HelpCircle, color: 'from-blue-500 to-cyan-500', delay: 0 },
-                        { label: lang === 'ar' ? 'صح/خطأ' : 'True/False', value: stats.trueFalse, icon: CheckCircle, color: 'from-green-500 to-emerald-500', delay: 0.1 },
-                        { label: lang === 'ar' ? 'اختيار من متعدد' : 'Multiple Choice', value: stats.multipleChoice, icon: List, color: 'from-purple-500 to-pink-500', delay: 0.2 },
-                        { label: lang === 'ar' ? 'مقالي' : 'Essay', value: stats.essay, icon: FileText, color: 'from-orange-500 to-red-500', delay: 0.3 },
-                        { label: lang === 'ar' ? 'إجمالي الدرجات' : 'Total Marks', value: stats.totalMarks, icon: Award, color: 'from-yellow-500 to-amber-500', delay: 0.4 },
+                        { label: lang === 'ar' ? 'إجمالي الأسئلة' : 'Total Questions', value: stats.total, icon: HelpCircle, color: 'from-blue-500 to-cyan-500' },
+                        { label: lang === 'ar' ? 'صح/خطأ' : 'True/False', value: stats.trueFalse, icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
+                        { label: lang === 'ar' ? 'اختيار من متعدد' : 'Multiple Choice', value: stats.multipleChoice, icon: List, color: 'from-purple-500 to-pink-500' },
+                        { label: lang === 'ar' ? 'مقالي' : 'Essay', value: stats.essay, icon: FileText, color: 'from-orange-500 to-red-500' },
+                        { label: lang === 'ar' ? 'إجمالي الدرجات' : 'Total Marks', value: stats.totalMarks, icon: Award, color: 'from-yellow-500 to-amber-500' },
                     ].map((stat, idx) => (
                         <motion.div
                             key={idx}
@@ -495,7 +496,7 @@ export const InstructorBankQuestions: React.FC = () => {
                                     <motion.p
                                         initial={{ scale: 0 }}
                                         animate={{ scale: 1 }}
-                                        transition={{ delay: stat.delay, type: "spring" }}
+                                        transition={{ delay: idx * 0.1, type: "spring" }}
                                         className="text-2xl font-bold mt-1"
                                     >
                                         {stat.value}
@@ -582,7 +583,6 @@ export const InstructorBankQuestions: React.FC = () => {
                                                 <option value="">
                                                     {lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
                                                 </option>
-
                                                 {stages.map((stage: any) => (
                                                     <option key={stage.id} value={stage.id}>
                                                         {stage.name}
@@ -610,7 +610,6 @@ export const InstructorBankQuestions: React.FC = () => {
                                                 <option value="">
                                                     {lang === 'ar' ? 'جميع المواد' : 'All Subjects'}
                                                 </option>
-
                                                 {subjects
                                                     .filter((s: any) => !filters.stageId || s.stage_id === filters.stageId)
                                                     .map((subject: any) => (
@@ -630,7 +629,7 @@ export const InstructorBankQuestions: React.FC = () => {
                                             <select
                                                 value={filters.questionType || ''}
                                                 onChange={(e) => setFilters(prev => ({ ...prev, questionType: e.target.value || null }))}
-                                                className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
                                             >
                                                 <option value="">{lang === 'ar' ? 'جميع الأنواع' : 'All Types'}</option>
                                                 {questionTypeOptions.map(opt => (
@@ -648,18 +647,11 @@ export const InstructorBankQuestions: React.FC = () => {
                                             <div className="flex gap-2">
                                                 <Input
                                                     type="number"
-                                                    placeholder={lang === 'ar' ? 'من' : 'From'}
                                                     value={filters.minMarks || ''}
                                                     onChange={(e) => setFilters(prev => ({ ...prev, minMarks: e.target.value ? Number(e.target.value) : null }))}
                                                     className="rounded-xl"
                                                 />
-                                                <Input
-                                                    type="number"
-                                                    placeholder={lang === 'ar' ? 'إلى' : 'To'}
-                                                    value={filters.maxMarks || ''}
-                                                    onChange={(e) => setFilters(prev => ({ ...prev, maxMarks: e.target.value ? Number(e.target.value) : null }))}
-                                                    className="rounded-xl"
-                                                />
+                                              
                                             </div>
                                         </div>
                                     </div>
@@ -680,12 +672,28 @@ export const InstructorBankQuestions: React.FC = () => {
                                     {(filters.stageId || filters.subjectId || filters.questionType || filters.minMarks || filters.maxMarks) && (
                                         <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
                                             <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
-                                            {filters.stageId && <Badge variant="secondary" className="gap-1 text-xs"><GraduationCap className="h-3 w-3" /> {lang === 'ar' ? 'المرحلة' : 'Stage'}</Badge>}
-                                            {filters.subjectId && <Badge variant="secondary" className="gap-1 text-xs"><BookOpen className="h-3 w-3" /> {lang === 'ar' ? 'المادة' : 'Subject'}</Badge>}
-                                            {filters.questionType && <Badge variant="secondary" className="gap-1 text-xs"><HelpCircle className="h-3 w-3" /> {questionTypeOptions.find(o => o.value === filters.questionType)?.label}</Badge>}
+                                            {filters.stageId && (
+                                                <Badge variant="secondary" className="gap-1 text-xs">
+                                                    <GraduationCap className="h-3 w-3" /> 
+                                                    {stages.find((s: any) => s.id === filters.stageId)?.name || lang === 'ar' ? 'المرحلة' : 'Stage'}
+                                                </Badge>
+                                            )}
+                                            {filters.subjectId && (
+                                                <Badge variant="secondary" className="gap-1 text-xs">
+                                                    <BookOpen className="h-3 w-3" /> 
+                                                    {subjects.find((s: any) => s.id === filters.subjectId)?.name || lang === 'ar' ? 'المادة' : 'Subject'}
+                                                </Badge>
+                                            )}
+                                            {filters.questionType && (
+                                                <Badge variant="secondary" className="gap-1 text-xs">
+                                                    <HelpCircle className="h-3 w-3" /> 
+                                                    {questionTypeOptions.find(o => o.value === filters.questionType)?.label}
+                                                </Badge>
+                                            )}
                                             {(filters.minMarks || filters.maxMarks) && (
                                                 <Badge variant="secondary" className="gap-1 text-xs">
-                                                    <Award className="h-3 w-3" /> {filters.minMarks || 0} - {filters.maxMarks || '∞'}
+                                                    <Award className="h-3 w-3" /> 
+                                                    {filters.minMarks || 0} - {filters.maxMarks || '∞'}
                                                 </Badge>
                                             )}
                                         </div>
@@ -879,3 +887,5 @@ export const InstructorBankQuestions: React.FC = () => {
         </motion.div>
     );
 };
+
+export default InstructorBankQuestions;

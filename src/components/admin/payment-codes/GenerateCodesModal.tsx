@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/components/admin/payment-codes/GenerateCodesModal.tsx (المعدل بالكامل مع Excel و Dark Mode)
+// src/components/admin/payment-codes/GenerateCodesModal.tsx (المعدل بالكامل مع Excel و Dark Mode و type_code)
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
@@ -8,7 +8,7 @@ import { Fragment } from 'react';
 import { usePaymentCodes } from '@/hooks/usePaymentCodes';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import { useApp } from '@/contexts/AppContext';
-import { X, Gift, Download, FileSpreadsheet, CheckCircle, Copy, Eye } from 'lucide-react';
+import { X, Gift, Download, FileSpreadsheet, CheckCircle, Copy, Eye, Wifi, Building, MonitorSmartphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -24,6 +24,7 @@ interface GeneratedCode {
   id: number;
   code: string;
   type: string;
+  type_code: 'online' | 'center';
   amount?: number;
   course_id?: number;
   course_name?: string;
@@ -45,6 +46,12 @@ const codeTypes = [
   { value: 'lesson', label: 'درس', labelEn: 'Lesson', icon: '📖', color: 'from-orange-500 to-amber-500', bg: 'bg-orange-50 dark:bg-orange-950/30', textColor: 'text-orange-700 dark:text-orange-400' },
 ];
 
+// خيارات نوع الاستخدام
+const usageTypeOptions = [
+  { value: 'online', label: 'أونلاين', labelEn: 'Online', icon: Wifi, color: 'from-blue-500 to-cyan-500', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-700 dark:text-blue-400' },
+  { value: 'center', label: 'مركز', labelEn: 'Center', icon: Building, color: 'from-purple-500 to-violet-500', bg: 'bg-purple-50 dark:bg-purple-950/30', textColor: 'text-purple-700 dark:text-purple-400' },
+];
+
 export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({ 
   isOpen, 
   onClose, 
@@ -55,6 +62,7 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
   const generateCodes = useGenerateCodes();
   const [formData, setFormData] = useState<any>({
     type: 'wallet',
+    type_code: 'online', // القيمة الافتراضية: أونلاين
     count: 1,
     amount: 60,
   });
@@ -70,84 +78,52 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
     return () => clearTimeout(timer);
   }, [formData.type]);
 
-  // دالة تصدير الأكواد إلى Excel
-  const exportToExcel = (codes: GeneratedCode[]) => {
-    try {
-      const isArabic = lang === 'ar';
-      
-      // تحويل البيانات إلى الصيغة المناسبة لـ Excel
-      const excelData = codes.map((code, index) => {
-        const row: any = {
-          [isArabic ? '#' : 'No']: index + 1,
-          [isArabic ? 'الكود' : 'Code']: code.code,
-          [isArabic ? 'النوع' : 'Type']: getTypeLabel(code.type),
-          [isArabic ? 'الحالة' : 'Status']: code.status === 'active' ? (isArabic ? 'نشط' : 'Active') : (isArabic ? 'غير نشط' : 'Inactive'),
-          [isArabic ? 'تاريخ الإنشاء' : 'Created At']: new Date(code.created_at).toLocaleString(isArabic ? 'ar-EG' : 'en-US'),
-        };
-
-        // إضافة حقول إضافية حسب النوع
-        if (code.amount) {
-          row[isArabic ? 'القيمة (ج.م)' : 'Value (EGP)'] = code.amount;
-        }
-        if (code.course_name) {
-          row[isArabic ? 'الكورس' : 'Course'] = code.course_name;
-        }
-        if (code.semester_name) {
-          row[isArabic ? 'الترم' : 'Semester'] = code.semester_name;
-        }
-        if (code.lesson_name) {
-          row[isArabic ? 'الدرس' : 'Lesson'] = code.lesson_name;
-        }
-        if (code.expires_at) {
-          row[isArabic ? 'تاريخ الانتهاء' : 'Expires At'] = new Date(code.expires_at).toLocaleString(isArabic ? 'ar-EG' : 'en-US');
-        }
-        if (code.used_by) {
-          row[isArabic ? 'مستخدم بواسطة' : 'Used By'] = code.used_by;
-        }
-        if (code.used_at) {
-          row[isArabic ? 'تاريخ الاستخدام' : 'Used At'] = new Date(code.used_at).toLocaleString(isArabic ? 'ar-EG' : 'en-US');
-        }
-
-        return row;
-      });
-
-      // إنشاء ورقة عمل
-      const worksheet = XLSX.utils.json_to_sheet(excelData);
-      
-      // تعيين عرض الأعمدة
-      const colWidths = Object.keys(excelData[0] || {}).map(() => ({ wch: 20 }));
-      worksheet['!cols'] = colWidths;
-
-      // تنسيق الرأس (جعل الخط عريض)
-      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
-      for (let col = range.s.c; col <= range.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
-        if (worksheet[cellAddress]) {
-          worksheet[cellAddress].s = {
-            font: { bold: true, sz: 12 },
-            fill: { fgColor: { rgb: "4F81BD" } },
-            fontColor: { rgb: "FFFFFF" }
-          };
-        }
-      }
-
-      // إنشاء مصنف وحفظ الملف
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, isArabic ? 'أكواد الدفع' : 'Payment Codes');
-      
-      // تصدير الملف
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
-      const fileName = `payment_codes_${new Date().toISOString().split('T')[0]}.xlsx`;
-      saveAs(blob, fileName);
-      
-      toast.success(isArabic ? 'تم تصدير الأكواد بنجاح' : 'Codes exported successfully');
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error(lang === 'ar' ? 'حدث خطأ أثناء تصدير الأكواد' : 'Error exporting codes');
+const exportToExcel = (codes: GeneratedCode[]) => {
+  try {
+    if (!codes || codes.length === 0) {
+      toast.error(lang === 'ar' ? 'لا توجد أكواد للتصدير' : 'No codes to export');
+      return;
     }
-  };
+
+    const isArabic = lang === 'ar';
+    
+    // تحويل البيانات إلى الصيغة المناسبة لـ Excel
+    const excelData = codes.map((code, index) => {
+      const row: any = {
+        [isArabic ? '#' : 'No']: index + 1,
+        [isArabic ? 'الكود' : 'Code']: code.code,
+        [isArabic ? 'النوع' : 'Type']: getTypeLabel(code.type),
+        [isArabic ? 'نوع الاستخدام' : 'Usage Type']: getUsageTypeLabel(code.type_code),
+        [isArabic ? 'القيمة (ج.م)' : 'Value (EGP)']: code.amount || '—',
+        [isArabic ? 'تاريخ الإنشاء' : 'Created At']: new Date(code.created_at).toLocaleString(isArabic ? 'ar-EG' : 'en-US'),
+      };
+
+      return row;
+    });
+
+    // إنشاء ورقة عمل
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    
+    // تعيين عرض الأعمدة
+    const colWidths = [{ wch: 8 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 20 }];
+    worksheet['!cols'] = colWidths;
+
+    // إنشاء مصنف وحفظ الملف
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, isArabic ? 'أكواد الدفع' : 'Payment Codes');
+    
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    
+    const fileName = `payment_codes_${new Date().toISOString().split('T')[0]}.xlsx`;
+    saveAs(blob, fileName);
+    
+    toast.success(isArabic ? 'تم تصدير الأكواد بنجاح' : 'Codes exported successfully');
+  } catch (error) {
+    console.error('Export error:', error);
+    toast.error(lang === 'ar' ? 'حدث خطأ أثناء تصدير الأكواد' : 'Error exporting codes');
+  }
+};
 
   // دالة نسخ جميع الأكواد
   const copyAllCodes = () => {
@@ -162,59 +138,77 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
     toast.success(lang === 'ar' ? 'تم نسخ الكود' : 'Code copied');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const payload: any = {
-      type: formData.type,
-      count: formData.count,
-    };
-
-    switch (formData.type) {
-      case 'wallet':
-        payload.amount = formData.amount;
-        break;
-      case 'course':
-        payload.course_id = formData.course_id;
-        break;
-      case 'semester':
-        payload.semester_id = formData.semester_id;
-        break;
-      case 'lesson':
-        payload.course_detail_id = formData.course_detail_id;
-        break;
-    }
-
-    try {
-      const result = await generateCodes.mutateAsync(payload);
-      console.log('API Response:', result);
-      
-      // استخراج الأكواد المولدة من الاستجابة
-      let codes: GeneratedCode[] = [];
-      if (result?.data?.codes) {
-        codes = result.data.codes;
-      } else if (result?.codes) {
-        codes = result.codes;
-      } else if (Array.isArray(result)) {
-        codes = result;
-      }
-      
-      setGeneratedCodes(codes);
-      setShowResults(true);
-      
-      toast.success(lang === 'ar' ? `تم إنشاء ${codes.length} كود بنجاح` : `${codes.length} codes generated successfully`);
-      
-      onSuccess();
-    } catch (error: any) {
-      console.error('Generate error:', error);
-      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'حدث خطأ أثناء إنشاء الأكواد' : 'Error generating codes'));
-    }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  const payload: any = {
+    type: formData.type,
+    type_code: formData.type_code,
+    count: formData.count,
   };
 
+  switch (formData.type) {
+    case 'wallet':
+      payload.amount = formData.amount;
+      break;
+    case 'course':
+      payload.course_id = formData.course_id;
+      break;
+    case 'semester':
+      payload.semester_id = formData.semester_id;
+      break;
+    case 'lesson':
+      payload.course_detail_id = formData.course_detail_id;
+      break;
+  }
+
+  try {
+    const result = await generateCodes.mutateAsync(payload);
+    console.log('API Response:', result);
+    
+    // استخراج الأكواد المولدة من الاستجابة - التعديل هنا
+    let codes: GeneratedCode[] = [];
+    
+    // شكل الـ response بتاعك: { status: true, message: "...", count: 1, data: [...] }
+    if (result?.data && Array.isArray(result.data)) {
+      // البيانات موجودة في result.data كمصفوفة
+      codes = result.data.map((item: any) => ({
+        code: item.code,
+        type: item.type,
+        type_code: item.type_code,
+        amount: item.amount,
+        course_id: item.course_id,
+        semester_id: item.semester_id,
+        course_detail_id: item.course_detail_id,
+        created_at: item.created_at,
+        status: 'active',
+      }));
+    } else if (result?.codes && Array.isArray(result.codes)) {
+      codes = result.codes;
+    } else if (Array.isArray(result)) {
+      codes = result;
+    } else if (result?.data?.codes && Array.isArray(result.data.codes)) {
+      codes = result.data.codes;
+    }
+    
+    console.log('Extracted codes:', codes);
+    setGeneratedCodes(codes);
+    setShowResults(true);
+    
+    toast.success(lang === 'ar' 
+      ? `تم إنشاء ${codes.length} كود بنجاح` 
+      : `${codes.length} codes generated successfully`);
+    
+    onSuccess();
+  } catch (error: any) {
+    console.error('Generate error:', error);
+    toast.error(error?.response?.data?.message || (lang === 'ar' ? 'حدث خطأ أثناء إنشاء الأكواد' : 'Error generating codes'));
+  }
+};
   const handleClose = () => {
     setShowResults(false);
     setGeneratedCodes([]);
-    setFormData({ type: 'wallet', count: 1, amount: 60 });
+    setFormData({ type: 'wallet', type_code: 'online', count: 1, amount: 60 });
     setSelectedCourse(null);
     onClose();
   };
@@ -225,8 +219,18 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
     return lang === 'ar' ? typeConfig.label : typeConfig.labelEn;
   };
 
+  const getUsageTypeLabel = (typeCode: string) => {
+    const usageConfig = usageTypeOptions.find(t => t.value === typeCode);
+    if (!usageConfig) return typeCode;
+    return lang === 'ar' ? usageConfig.label : usageConfig.labelEn;
+  };
+
   const getCurrentTypeConfig = () => {
     return codeTypes.find(t => t.value === formData.type) || codeTypes[0];
+  };
+
+  const getCurrentUsageConfig = () => {
+    return usageTypeOptions.find(t => t.value === formData.type_code) || usageTypeOptions[0];
   };
 
   const renderDynamicFields = () => {
@@ -323,105 +327,111 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
     );
   };
 
-  // عرض نتائج الأكواد المولدة
-  // const renderResults = () => (
-  //   <motion.div
-  //     initial={{ opacity: 0, scale: 0.95 }}
-  //     animate={{ opacity: 1, scale: 1 }}
-  //     exit={{ opacity: 0, scale: 0.95 }}
-  //     className="p-6 space-y-4"
-  //   >
-  //     <div className="text-center">
-  //       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
-  //         <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
-  //       </div>
-  //       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-  //         {lang === 'ar' ? 'تم إنشاء الأكواد بنجاح!' : 'Codes Generated Successfully!'}
-  //       </h3>
-  //       <p className="text-gray-600 dark:text-gray-400">
-  //         {lang === 'ar' 
-  //           ? `تم إنشاء ${generatedCodes.length} كود بنجاح` 
-  //           : `${generatedCodes.length} codes have been generated successfully`}
-  //       </p>
-  //     </div>
+  const renderResults = () => (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="p-6 space-y-4"
+    >
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+          <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          {lang === 'ar' ? 'تم إنشاء الأكواد بنجاح!' : 'Codes Generated Successfully!'}
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400">
+          {lang === 'ar' 
+            ? `تم إنشاء ${generatedCodes.length} كود بنجاح` 
+            : `${generatedCodes.length} codes have been generated successfully`}
+        </p>
+      </div>
 
-  //     {/* إجراءات التصدير */}
-  //     <div className="flex gap-3 pt-2">
-  //       <motion.button
-  //         whileHover={{ scale: 1.02 }}
-  //         whileTap={{ scale: 0.98 }}
-  //         onClick={() => exportToExcel(generatedCodes)}
-  //         className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center gap-2"
-  //       >
-  //         <FileSpreadsheet size={18} />
-  //         {lang === 'ar' ? 'تصدير Excel' : 'Export Excel'}
-  //       </motion.button>
-  //       <motion.button
-  //         whileHover={{ scale: 1.02 }}
-  //         whileTap={{ scale: 0.98 }}
-  //         onClick={copyAllCodes}
-  //         className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center justify-center gap-2"
-  //       >
-  //         <Copy size={18} />
-  //         {lang === 'ar' ? 'نسخ الكل' : 'Copy All'}
-  //       </motion.button>
-  //     </div>
+      {/* إجراءات التصدير */}
+      <div className="flex gap-3 pt-2">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => exportToExcel(generatedCodes)}
+          className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center gap-2"
+        >
+          <FileSpreadsheet size={18} />
+          {lang === 'ar' ? 'تصدير Excel' : 'Export Excel'}
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={copyAllCodes}
+          className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center justify-center gap-2"
+        >
+          <Copy size={18} />
+          {lang === 'ar' ? 'نسخ الكل' : 'Copy All'}
+        </motion.button>
+      </div>
 
-  //     {/* قائمة الأكواد */}
-  //     <div className="max-h-80 overflow-y-auto space-y-2 border-t dark:border-gray-700 pt-4">
-  //       <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-  //         {lang === 'ar' ? 'الأكواد المُنشأة:' : 'Generated Codes:'}
-  //       </p>
-  //       {generatedCodes.map((code, index) => (
-  //         <motion.div
-  //           key={code.id || index}
-  //           initial={{ opacity: 0, x: -20 }}
-  //           animate={{ opacity: 1, x: 0 }}
-  //           transition={{ delay: index * 0.05 }}
-  //           className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-750 transition-all"
-  //         >
-  //           <div className="flex-1">
-  //             <code className="text-sm font-mono text-gray-800 dark:text-gray-200">{code.code}</code>
-  //             {code.amount && (
-  //               <span className="text-xs text-gray-500 dark:text-gray-400 mr-2">
-  //                 ({code.amount} EGP)
-  //               </span>
-  //             )}
-  //           </div>
-  //           <button
-  //             onClick={() => copySingleCode(code.code)}
-  //             className="p-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-  //           >
-  //             <Copy size={16} />
-  //           </button>
-  //         </motion.div>
-  //       ))}
-  //     </div>
+      {/* قائمة الأكواد */}
+      <div className="max-h-80 overflow-y-auto space-y-2 border-t dark:border-gray-700 pt-4">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {lang === 'ar' ? 'الأكواد المُنشأة:' : 'Generated Codes:'}
+        </p>
+        {generatedCodes.map((code, index) => (
+          <motion.div
+            key={code.id || index}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-750 transition-all"
+          >
+            <div className="flex-1">
+              <code className="text-sm font-mono text-gray-800 dark:text-gray-200">{code.code}</code>
+              {code.amount && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 mr-2">
+                  ({code.amount} EGP)
+                </span>
+              )}
+              <span className={`text-xs px-2 py-0.5 rounded-full mr-2 ${
+                code.type_code === 'online' 
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' 
+                  : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
+              }`}>
+                {getUsageTypeLabel(code.type_code)}
+              </span>
+            </div>
+            <button
+              onClick={() => copySingleCode(code.code)}
+              className="p-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <Copy size={16} />
+            </button>
+          </motion.div>
+        ))}
+      </div>
 
-  //     <div className="flex gap-3 pt-4">
-  //       <motion.button
-  //         whileHover={{ scale: 1.02 }}
-  //         whileTap={{ scale: 0.98 }}
-  //         onClick={handleClose}
-  //         className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
-  //       >
-  //         {lang === 'ar' ? 'إغلاق' : 'Close'}
-  //       </motion.button>
-  //       <motion.button
-  //         whileHover={{ scale: 1.02 }}
-  //         whileTap={{ scale: 0.98 }}
-  //         onClick={() => {
-  //           setShowResults(false);
-  //           setGeneratedCodes([]);
-  //           setFormData({ type: 'wallet', count: 1, amount: 60 });
-  //         }}
-  //         className="flex-1 px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all"
-  //       >
-  //         {lang === 'ar' ? 'إنشاء المزيد' : 'Create More'}
-  //       </motion.button>
-  //     </div>
-  //   </motion.div>
-  // );
+      <div className="flex gap-3 pt-4">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleClose}
+          className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+        >
+          {lang === 'ar' ? 'إغلاق' : 'Close'}
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => {
+            setShowResults(false);
+            setGeneratedCodes([]);
+            setFormData({ type: 'wallet', type_code: 'online', count: 1, amount: 60 });
+          }}
+          className="flex-1 px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all"
+        >
+          {lang === 'ar' ? 'إنشاء المزيد' : 'Create More'}
+        </motion.button>
+      </div>
+    </motion.div>
+  );
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -484,7 +494,6 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
                           </div>
                         </div>
                         
-                        {/* Decorative sparkles */}
                         <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/10 to-transparent" />
                       </div>
 
@@ -504,6 +513,7 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
                                 onClick={() => {
                                   setFormData({ 
                                     type: type.value as any, 
+                                    type_code: formData.type_code,
                                     count: formData.count,
                                     ...(type.value === 'wallet' ? { amount: 60 } : {})
                                   });
@@ -528,6 +538,47 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
                                 )}
                               </motion.button>
                             ))}
+                          </div>
+                        </div>
+
+                        {/* Usage Type Selection (NEW) */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            {lang === 'ar' ? 'نوع الاستخدام' : 'Usage Type'}
+                          </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {usageTypeOptions.map((option) => {
+                              const Icon = option.icon;
+                              const isActive = formData.type_code === option.value;
+                              return (
+                                <motion.button
+                                  key={option.value}
+                                  type="button"
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => setFormData({ ...formData, type_code: option.value as any })}
+                                  className={`relative p-3 rounded-xl text-center transition-all ${
+                                    isActive
+                                      ? `bg-gradient-to-r ${option.color} text-white shadow-lg`
+                                      : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-center gap-2 mb-1">
+                                    <Icon size={20} />
+                                  </div>
+                                  <div className="text-sm font-medium">
+                                    {lang === 'ar' ? option.label : option.labelEn}
+                                  </div>
+                                  {isActive && (
+                                    <motion.div
+                                      layoutId="activeUsageTab"
+                                      className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"
+                                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                    />
+                                  )}
+                                </motion.button>
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -571,6 +622,18 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
                           {renderDynamicFields()}
                         </AnimatePresence>
 
+                        {/* Info Box */}
+                        <div className={`p-3 rounded-lg ${getCurrentUsageConfig().bg} border border-gray-200 dark:border-gray-700`}>
+                          <div className="flex items-center gap-2">
+                            {React.createElement(getCurrentUsageConfig().icon, { size: 16, className: getCurrentUsageConfig().textColor })}
+                            <p className={`text-xs ${getCurrentUsageConfig().textColor}`}>
+                              {lang === 'ar' 
+                                ? `هذه الأكواد ستكون متاحة للاستخدام عبر ${getCurrentUsageConfig().label}`
+                                : `These codes will be available for use via ${getCurrentUsageConfig().labelEn}`}
+                            </p>
+                          </div>
+                        </div>
+
                         {/* Actions */}
                         <div className="flex gap-3 pt-4">
                           <motion.button
@@ -605,9 +668,7 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
                       </form>
                     </motion.div>
                   ) : (
-                    // عرض النتائج
-                    <div className="p-4"> ok</div>
-                    // renderResults()
+                    renderResults()
                   )}
                 </AnimatePresence>
               </Dialog.Panel>

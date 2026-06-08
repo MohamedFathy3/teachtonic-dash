@@ -16,11 +16,31 @@ import { Label } from '@/components/ui/label';
 import {
   Loader2, Search, Users, User, Phone, Calendar,
   Monitor, Building2, CheckCircle, XCircle, Filter, X,
-  ChevronLeft, ChevronRight, Award, Sparkles, Eye, Clock
+  ChevronLeft, ChevronRight, Award, Sparkles, Eye, Clock,
+  Key, Lock, Save, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import api from '@/lib/api';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 // ✅ Animations
 const containerVariants = {
@@ -83,6 +103,17 @@ export const InstructorStudents: React.FC = () => {
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [showLearningPage, setShowLearningPage] = useState(false);
 
+  // ✅ State for Change Password Modal
+  const [changePasswordStudent, setChangePasswordStudent] = useState<Student | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  // ✅ State for Toggle Active Alert
+  const [toggleActiveStudent, setToggleActiveStudent] = useState<Student | null>(null);
+  const [togglingActive, setTogglingActive] = useState(false);
+
   // ✅ Pagination
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -92,13 +123,10 @@ export const InstructorStudents: React.FC = () => {
   });
 
   // ✅ Fetch Center Hours for filter
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const fetchCenterHours = useCallback(async () => {
     setLoadingCenterHours(true);
     try {
-      const response = await api.post('/center-hour/index', {
-        
-      });
+      const response = await api.post('/center-hour/index', {});
       if (response.data?.data) {
         setCenterHours(response.data.data);
       }
@@ -107,7 +135,7 @@ export const InstructorStudents: React.FC = () => {
     } finally {
       setLoadingCenterHours(false);
     }
-  }, [user?.id]);
+  }, []);
 
   // ✅ Load center hours when component mounts
   useEffect(() => {
@@ -162,7 +190,6 @@ export const InstructorStudents: React.FC = () => {
       result = result.filter(s => s.code_parent?.includes(filterCodeParent));
     }
 
-    // 🔥 فلتر center_hour_id
     if (filterCenterHourId) {
       result = result.filter(s => String(s.center_hour_id) === filterCenterHourId);
     }
@@ -255,6 +282,81 @@ export const InstructorStudents: React.FC = () => {
 
   const applyFilters = () => {
     fetchStudents(1);
+  };
+
+  // ✅ Change Password Function
+  const handleChangePassword = async () => {
+    if (!changePasswordStudent) return;
+    
+    // Validation
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError(lang === 'ar' ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match');
+      return;
+    }
+    
+    setChangingPassword(true);
+    setPasswordError(null);
+    
+    try {
+      const response = await api.post('/student/change-password', {
+        student_id: changePasswordStudent.id,
+        password: newPassword,
+      });
+      
+      if (response.data?.status === true || response.status === 200) {
+        toast.success(lang === 'ar' 
+          ? `تم تغيير كلمة مرور الطالب ${changePasswordStudent.name} بنجاح` 
+          : `Password changed successfully for ${changePasswordStudent.name}`
+        );
+        setChangePasswordStudent(null);
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        throw new Error(response.data?.message || 'Failed to change password');
+      }
+    } catch (error: any) {
+      console.error('Change password error:', error);
+      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'فشل تغيير كلمة المرور' : 'Failed to change password'));
+      setPasswordError(error?.response?.data?.message || (lang === 'ar' ? 'حدث خطأ أثناء تغيير كلمة المرور' : 'An error occurred'));
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  // ✅ Toggle Active/Inactive Function
+  const handleToggleActive = async () => {
+    if (!toggleActiveStudent) return;
+    
+    setTogglingActive(true);
+    
+    try {
+      const newStatus = !toggleActiveStudent.active;
+      const response = await api.put(`/student/${toggleActiveStudent.id}/active`, {
+        active: newStatus
+      });
+      
+      if (response.data?.status === true || response.status === 200) {
+        toast.success(lang === 'ar' 
+          ? `${toggleActiveStudent.name} ${newStatus ? 'تم تفعيله' : 'تم إلغاء تفعيله'} بنجاح` 
+          : `${toggleActiveStudent.name} has been ${newStatus ? 'activated' : 'deactivated'} successfully`
+        );
+        // Refresh students list
+        fetchStudents(pagination.currentPage);
+        setToggleActiveStudent(null);
+      } else {
+        throw new Error(response.data?.message || 'Failed to toggle status');
+      }
+    } catch (error: any) {
+      console.error('Toggle active error:', error);
+      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'فشل تغيير حالة الطالب' : 'Failed to change student status'));
+    } finally {
+      setTogglingActive(false);
+    }
   };
 
   // ✅ Show learning page if a student is selected
@@ -413,7 +515,7 @@ export const InstructorStudents: React.FC = () => {
               <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                   
-                  {/* 🔥 Center Hour Filter - NEW */}
+                  {/* Center Hour Filter */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <Clock className="h-4 w-4" />
@@ -434,12 +536,6 @@ export const InstructorStudents: React.FC = () => {
                         </option>
                       ))}
                     </select>
-                    {loadingCenterHours && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        {lang === 'ar' ? 'جاري تحميل الساعات...' : 'Loading hours...'}
-                      </p>
-                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -535,7 +631,7 @@ export const InstructorStudents: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* ✅ Students Grid - باقي الكود كما هو */}
+        {/* ✅ Students Grid */}
         <motion.div variants={containerVariants} className="space-y-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
@@ -563,9 +659,9 @@ export const InstructorStudents: React.FC = () => {
                   whileHover={{ y: -4 }}
                   className="group"
                 >
-                  <Card className="relative overflow-hidden rounded-2xl border hover:shadow-xl transition-all duration-300">
+                  <Card className={`relative overflow-hidden rounded-2xl border hover:shadow-xl transition-all duration-300 ${!student.active ? 'opacity-75' : ''}`}>
                     {/* Card Header with Gradient */}
-                    <div className={`relative h-24 bg-gradient-to-r from-blue-500 to-cyan-500 ${!student.active ? 'opacity-50' : ''}`}>
+                    <div className={`relative h-24 bg-gradient-to-r ${student.active ? 'from-blue-500 to-cyan-500' : 'from-gray-500 to-gray-600'}`}>
                       <div className="absolute -bottom-8 left-6">
                         <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800">
                           <span className="text-xl font-bold text-primary">
@@ -593,6 +689,7 @@ export const InstructorStudents: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">{student.stage?.name || `Stage ${student.stage_id}`}</p>
+                          <p className="text-xs text-muted-foreground">ID: {student.id}</p>
                         </div>
                       </div>
 
@@ -621,7 +718,7 @@ export const InstructorStudents: React.FC = () => {
                       </div>
 
                       {/* Actions */}
-                      <div className="mt-4 pt-3 border-t flex justify-end gap-2">
+                      <div className="mt-4 pt-3 border-t flex flex-wrap justify-end gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -633,6 +730,42 @@ export const InstructorStudents: React.FC = () => {
                         >
                           <Eye className="h-3 w-3" />
                           {t('viewLearning') || 'عرض التعلم'}
+                        </Button>
+                        
+                        {/* 🔥 Change Password Button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 rounded-full"
+                          onClick={() => {
+                            setChangePasswordStudent(student);
+                            setNewPassword('');
+                            setConfirmPassword('');
+                            setPasswordError(null);
+                          }}
+                        >
+                          <Key className="h-3 w-3" />
+                          {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+                        </Button>
+                        
+                        {/* 🔥 Toggle Active Button */}
+                        <Button
+                          size="sm"
+                          variant={student.active ? "destructive" : "default"}
+                          className={`gap-1 rounded-full ${student.active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'}`}
+                          onClick={() => setToggleActiveStudent(student)}
+                        >
+                          {student.active ? (
+                            <>
+                              <XCircle className="h-3 w-3" />
+                              {lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate'}
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="h-3 w-3" />
+                              {lang === 'ar' ? 'تفعيل' : 'Activate'}
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -700,6 +833,132 @@ export const InstructorStudents: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ✅ Change Password Modal */}
+      <Dialog open={!!changePasswordStudent} onOpenChange={(open) => !open && setChangePasswordStudent(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-blue-500" />
+              {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === 'ar' 
+                ? `تغيير كلمة المرور للطالب: ${changePasswordStudent?.name}`
+                : `Change password for student: ${changePasswordStudent?.name}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                {lang === 'ar' ? 'كلمة المرور الجديدة' : 'New Password'}
+              </Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={lang === 'ar' ? 'أدخل كلمة المرور الجديدة' : 'Enter new password'}
+                className="rounded-xl"
+              />
+              <p className="text-xs text-muted-foreground">
+                {lang === 'ar' ? 'يجب أن تكون كلمة المرور 6 أحرف على الأقل' : 'Password must be at least 6 characters'}
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                {lang === 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password'}
+              </Label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder={lang === 'ar' ? 'أعد إدخال كلمة المرور' : 'Re-enter password'}
+                className="rounded-xl"
+              />
+            </div>
+            
+            {passwordError && (
+              <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded-lg">
+                <AlertCircle className="h-4 w-4" />
+                {passwordError}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setChangePasswordStudent(null)}
+            >
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </Button>
+            <Button
+              onClick={handleChangePassword}
+              disabled={changingPassword}
+              className="gap-2"
+            >
+              {changingPassword ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {lang === 'ar' ? 'جاري التغيير...' : 'Changing...'}
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  {lang === 'ar' ? 'تغيير' : 'Change'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ Toggle Active Confirmation Dialog */}
+      <AlertDialog open={!!toggleActiveStudent} onOpenChange={(open) => !open && setToggleActiveStudent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {toggleActiveStudent?.active 
+                ? (lang === 'ar' ? 'إلغاء تفعيل الطالب' : 'Deactivate Student')
+                : (lang === 'ar' ? 'تفعيل الطالب' : 'Activate Student')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {toggleActiveStudent?.active
+                ? (lang === 'ar' 
+                    ? `هل أنت متأكد من إلغاء تفعيل الطالب "${toggleActiveStudent?.name}"؟ لن يتمكن الطالب من تسجيل الدخول.`
+                    : `Are you sure you want to deactivate "${toggleActiveStudent?.name}"? The student will not be able to login.`)
+                : (lang === 'ar'
+                    ? `هل أنت متأكد من تفعيل الطالب "${toggleActiveStudent?.name}"؟`
+                    : `Are you sure you want to activate "${toggleActiveStudent?.name}"?`)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleActive}
+              className={toggleActiveStudent?.active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'}
+              disabled={togglingActive}
+            >
+              {togglingActive ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {lang === 'ar' ? 'جاري...' : 'Loading...'}
+                </>
+              ) : (
+                toggleActiveStudent?.active
+                  ? (lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate')
+                  : (lang === 'ar' ? 'تفعيل' : 'Activate')
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 };
