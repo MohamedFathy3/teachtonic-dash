@@ -9,8 +9,7 @@ import { semesterService, Semester, SemesterFormData, SemesterFilters } from '@/
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import FileUploader from '@/components/FileUploader';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -46,10 +45,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 export const SemestersPage: React.FC = () => {
-  const { t, lang, user } = useApp();
+  const { lang, user } = useApp();
   const teacherId = user?.id;
 
-  const { stages, subjects } = useTeacherMeta(teacherId);
+  const { subjects } = useTeacherMeta(teacherId);
   const isRTL = lang === 'ar';
 
   // State
@@ -178,8 +177,13 @@ export const SemestersPage: React.FC = () => {
       await semesterService.updateSemester(editingSemester.id, formData);
       toast.success(isRTL ? 'تم تحديث الترم بنجاح' : 'Semester updated successfully');
       setShowModal(false);
-      resetForm();
-      fetchSemesters(pagination.currentPage);
+      // 🔥 المهم: من غير resetForm هنا عشان نحافظ على البيانات
+      // بس هنعمل resetForm بعد ما نقفل المودال
+      setTimeout(() => {
+        resetForm();
+      }, 300);
+      // 🔥 نجيب البيانات تاني عشان نحدث الجدول
+      await fetchSemesters(pagination.currentPage);
     } catch (error: any) {
       toast.error(error.response?.data?.message || (isRTL ? 'فشل في تحديث الترم' : 'Failed to update semester'));
     } finally {
@@ -233,6 +237,7 @@ export const SemestersPage: React.FC = () => {
   const openEditModal = useCallback(async (semester: Semester) => {
     setFetchingSemester(true);
     try {
+      // نجيب البيانات كاملة من الـ API
       const fullSemester = await semesterService.getSemester(semester.id);
       setCurrentSemester(fullSemester);
       
@@ -471,7 +476,6 @@ export const SemestersPage: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Subject */}
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">
                       {isRTL ? 'المادة' : 'Subject'}
@@ -497,7 +501,6 @@ export const SemestersPage: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* Status */}
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">
                       {isRTL ? 'الحالة' : 'Status'}
@@ -518,7 +521,6 @@ export const SemestersPage: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* Price */}
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">
                       {isRTL ? 'السعر' : 'Price'}
@@ -625,9 +627,9 @@ export const SemestersPage: React.FC = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          {semester.image_url ? (
+                          {semester.imageUrl ? (
                             <img
-                              src={semester.image_url}
+                              src={semester.imageUrl}
                               alt={semester.name}
                               className="w-10 h-10 rounded-lg object-cover border"
                             />
@@ -755,8 +757,13 @@ export const SemestersPage: React.FC = () => {
           </div>
         )}
 
-        {/* Modal for Create/Edit - Same pattern as HeroForm */}
-        <Dialog open={showModal} onOpenChange={setShowModal}>
+        {/* Modal for Create/Edit */}
+        <Dialog open={showModal} onOpenChange={(open) => {
+          if (!open) {
+            resetForm();
+          }
+          setShowModal(open);
+        }}>
           <DialogContent className="max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
@@ -773,7 +780,7 @@ export const SemestersPage: React.FC = () => {
               </div>
             ) : (
               <form onSubmit={editingSemester ? handleUpdate : handleCreate} className="space-y-4 mt-4">
-                {/* File Uploader - Same as HeroForm */}
+                {/* File Uploader */}
                 <FileUploader
                   label={isRTL ? 'صورة الترم' : 'Semester Image'}
                   onUploadSuccess={(fileId) => {
@@ -786,8 +793,7 @@ export const SemestersPage: React.FC = () => {
                   multiple={false}
                   accept="image/*"
                   maxFiles={1}
-                  defaultImageUrl={currentSemester?.image_url}
-                  defaultImageId={currentSemester?.image}
+                  defaultImageUrl={currentSemester?.imageUrl}
                   onRemoveImage={handleRemoveImage}
                 />
 
@@ -874,7 +880,10 @@ export const SemestersPage: React.FC = () => {
                   <Button 
                     type="button" 
                     variant="outline" 
-                    onClick={() => setShowModal(false)} 
+                    onClick={() => {
+                      resetForm();
+                      setShowModal(false);
+                    }} 
                     className="flex-1 rounded-xl"
                   >
                     {isRTL ? 'إلغاء' : 'Cancel'}

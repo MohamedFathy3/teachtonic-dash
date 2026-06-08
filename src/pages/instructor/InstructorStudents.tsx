@@ -1,12 +1,13 @@
-// src/pages/instructor/InstructorStudents.tsx
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// src/pages/instructor/InstructorStudents.tsx
+
 import { useMemo } from 'react';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { studentService, Student } from '@/services/student.service';
-import { StudentLearningPage } from './StudentLearningPage'; // استورد صفحة التعلم
+import { StudentLearningPage } from './StudentLearningPage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -15,10 +16,11 @@ import { Label } from '@/components/ui/label';
 import {
   Loader2, Search, Users, User, Phone, Calendar,
   Monitor, Building2, CheckCircle, XCircle, Filter, X,
-  ChevronLeft, ChevronRight, Award, Sparkles, Eye
+  ChevronLeft, ChevronRight, Award, Sparkles, Eye, Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
+import api from '@/lib/api';
 
 // ✅ Animations
 const containerVariants = {
@@ -39,6 +41,20 @@ const itemVariants = {
   },
 } as any;
 
+// ✅ Interface for Center Hour
+interface CenterHour {
+  id: number;
+  title: string;
+  date: string;
+  hours_start: string;
+  hours_end: string;
+  address: string;
+  phone: string;
+  note: string;
+  teacher_id: number;
+  createdAt: string;
+}
+
 export const InstructorStudents: React.FC = () => {
   const { t, lang, user } = useApp();
   const { stages } = useTeacherMeta(user?.id);
@@ -57,9 +73,11 @@ export const InstructorStudents: React.FC = () => {
   const [filterId, setFilterId] = useState<string>('');
   const [filterPhone, setFilterPhone] = useState('');
   const [filterCodeParent, setFilterCodeParent] = useState('');
-  const [filterCenterHourId, setFilterCenterHourId] = useState('');
-
-
+  const [filterCenterHourId, setFilterCenterHourId] = useState<string>('');
+  
+  // ✅ State for Center Hours list
+  const [centerHours, setCenterHours] = useState<CenterHour[]>([]);
+  const [loadingCenterHours, setLoadingCenterHours] = useState(false);
 
   // ✅ Selected student for learning page
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
@@ -72,6 +90,31 @@ export const InstructorStudents: React.FC = () => {
     total: 0,
     perPage: 10,
   });
+
+  // ✅ Fetch Center Hours for filter
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const fetchCenterHours = useCallback(async () => {
+    setLoadingCenterHours(true);
+    try {
+      const response = await api.post('/center-hour/index', {
+        
+      });
+      if (response.data?.data) {
+        setCenterHours(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch center hours:', error);
+    } finally {
+      setLoadingCenterHours(false);
+    }
+  }, [user?.id]);
+
+  // ✅ Load center hours when component mounts
+  useEffect(() => {
+    if (user?.id) {
+      fetchCenterHours();
+    }
+  }, [user?.id, fetchCenterHours]);
 
   // ✅ Debounce search
   useEffect(() => {
@@ -119,8 +162,10 @@ export const InstructorStudents: React.FC = () => {
       result = result.filter(s => s.code_parent?.includes(filterCodeParent));
     }
 
-
-
+    // 🔥 فلتر center_hour_id
+    if (filterCenterHourId) {
+      result = result.filter(s => String(s.center_hour_id) === filterCenterHourId);
+    }
 
     return result;
   }, [
@@ -132,8 +177,8 @@ export const InstructorStudents: React.FC = () => {
     filterId,
     filterPhone,
     filterCodeParent,
+    filterCenterHourId,
   ]);
-
 
   // ✅ Fetch students
   const fetchStudents = useCallback(async (page = 1) => {
@@ -184,7 +229,6 @@ export const InstructorStudents: React.FC = () => {
     user?.id
   ]);
 
-
   useEffect(() => {
     if (!user?.id) return;
     fetchStudents(1);
@@ -208,8 +252,6 @@ export const InstructorStudents: React.FC = () => {
     setDebouncedSearch('');
     setShowFilters(false);
   };
-
-
 
   const applyFilters = () => {
     fetchStudents(1);
@@ -254,6 +296,11 @@ export const InstructorStudents: React.FC = () => {
     });
   };
 
+  // ✅ Get center hour display text
+  const getCenterHourDisplay = (hour: CenterHour) => {
+    return `${hour.title} - ${hour.date} (${hour.hours_start} to ${hour.hours_end})`;
+  };
+
   return (
     <motion.div
       initial="hidden"
@@ -272,7 +319,6 @@ export const InstructorStudents: React.FC = () => {
             disabled={loading || students.length === 0}
           />
           <div className="flex items-center gap-3">
-
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl blur-xl opacity-60" />
               <div className="relative h-12 w-12 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
@@ -280,15 +326,12 @@ export const InstructorStudents: React.FC = () => {
               </div>
             </div>
             <div>
-
               <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
                 {t('myStudents') || 'طلابي'}
               </h1>
-
               <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                 <Sparkles className="h-3 w-3" />
                 {stats.total} {t('totalStudents') || 'طالب'} • {stats.active} {t('active') || 'نشط'}
-
               </p>
             </div>
           </div>
@@ -334,7 +377,7 @@ export const InstructorStudents: React.FC = () => {
               <Filter className="h-4 w-4" />
               {t('filters') || 'فلاتر'}
             </Button>
-            {(filterStageId || filterAttendance || filterStatus) && (
+            {(filterStageId || filterAttendance || filterStatus || filterCenterHourId) && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -348,15 +391,11 @@ export const InstructorStudents: React.FC = () => {
           </div>
 
           <div className="relative">
-
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-
             <Input
-              placeholder={lang === 'ar' ? 'بحث بالاسم ' : 'Search by name  '}
+              placeholder={lang === 'ar' ? 'بحث بالاسم' : 'Search by name'}
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-              }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 w-64 rounded-xl"
             />
           </div>
@@ -372,8 +411,36 @@ export const InstructorStudents: React.FC = () => {
               className="overflow-hidden"
             >
               <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-5">
-
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                  
+                  {/* 🔥 Center Hour Filter - NEW */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      {lang === 'ar' ? 'الساعة المركزية' : 'Center Hour'}
+                    </Label>
+                    <select
+                      value={filterCenterHourId}
+                      onChange={(e) => setFilterCenterHourId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                      disabled={loadingCenterHours}
+                    >
+                      <option value="">
+                        {lang === 'ar' ? 'جميع الساعات المركزية' : 'All Center Hours'}
+                      </option>
+                      {centerHours.map((hour) => (
+                        <option key={hour.id} value={String(hour.id)}>
+                          {getCenterHourDisplay(hour)}
+                        </option>
+                      ))}
+                    </select>
+                    {loadingCenterHours && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        {lang === 'ar' ? 'جاري تحميل الساعات...' : 'Loading hours...'}
+                      </p>
+                    )}
+                  </div>
 
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{lang === 'ar' ? 'الهاتف' : 'Phone'}</Label>
@@ -386,18 +453,17 @@ export const InstructorStudents: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">{lang === 'ar' ? 'كود ولي الأمر' : 'code_parent'}</Label>
+                    <Label className="text-sm font-medium">{lang === 'ar' ? 'كود ولي الأمر' : 'Parent Code'}</Label>
                     <Input
                       value={filterCodeParent}
                       onChange={(e) => setFilterCodeParent(e.target.value)}
-                      placeholder={lang === 'ar' ? 'اكتب كود ولي الأمر' : 'Enter code_parent'}
+                      placeholder={lang === 'ar' ? 'اكتب كود ولي الأمر' : 'Enter parent code'}
                       className="w-full px-3 py-2 rounded-xl border bg-background"
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{t('stage') || 'المرحلة'}</Label>
-
                     <select
                       value={filterStageId || ''}
                       onChange={(e) => {
@@ -409,7 +475,6 @@ export const InstructorStudents: React.FC = () => {
                       <option value="">
                         {lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
                       </option>
-
                       {stages.map((stage: any) => (
                         <option key={stage.id} value={stage.id}>
                           {stage.name}
@@ -417,6 +482,7 @@ export const InstructorStudents: React.FC = () => {
                       ))}
                     </select>
                   </div>
+
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{t('attendanceType') || 'نوع الحضور'}</Label>
                     <select
@@ -429,6 +495,7 @@ export const InstructorStudents: React.FC = () => {
                       <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
                     </select>
                   </div>
+
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{t('status') || 'الحالة'}</Label>
                     <select
@@ -442,7 +509,18 @@ export const InstructorStudents: React.FC = () => {
                     </select>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{t('studentId') || 'رقم الطالب'}</Label>
+                    <Input
+                      type="number"
+                      value={filterId}
+                      onChange={(e) => setFilterId(e.target.value)}
+                      placeholder={lang === 'ar' ? 'رقم الطالب' : 'Student ID'}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                    />
+                  </div>
                 </div>
+
                 <div className="flex justify-end gap-3 mt-5 pt-3 border-t">
                   <Button variant="outline" size="sm" onClick={clearFilters}>
                     {t('reset') || 'إعادة تعيين'}
@@ -457,7 +535,7 @@ export const InstructorStudents: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* ✅ Students Grid */}
+        {/* ✅ Students Grid - باقي الكود كما هو */}
         <motion.div variants={containerVariants} className="space-y-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
@@ -556,7 +634,6 @@ export const InstructorStudents: React.FC = () => {
                           <Eye className="h-3 w-3" />
                           {t('viewLearning') || 'عرض التعلم'}
                         </Button>
-
                       </div>
                     </div>
 
@@ -627,5 +704,4 @@ export const InstructorStudents: React.FC = () => {
   );
 };
 
-// ✅ Export default for lazy loading
 export default InstructorStudents;

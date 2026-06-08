@@ -686,8 +686,9 @@ export const translations = {
 
     abouts: "عن المنصة",
     footers: "تذييل الصفحة",
-
+    attendanceType: "نوع الحضور",
     // Time
+    studentId: "معرف الطالب",
     today: "اليوم",
     yesterday: "أمس",
     tomorrow: "غداً",

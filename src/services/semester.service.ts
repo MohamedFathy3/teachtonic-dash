@@ -16,7 +16,7 @@ export interface Semester {
   createdAt: string;
   subject_id: number | null;
   image: number | null;
-   image_url?: string | null;
+   imageUrl?: string | null;
 }
 
 export interface SemesterFormData {
