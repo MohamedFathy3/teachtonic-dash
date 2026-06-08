@@ -3,7 +3,7 @@
 // src/components/courses/CourseDetails.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, DollarSign, BookOpen, GraduationCap, User, MapPin, Globe, ChevronLeft, Edit2, Heart, Share2, Eye, Award, Target, CheckCircle2, Plus, Trash2, Video, Link as LinkIcon, Loader2, Phone, Mail, Star, UserCheck, Lock } from 'lucide-react';
+import { Calendar, Clock, Users, DollarSign, BookOpen, GraduationCap, User, MapPin, Globe, ChevronLeft, Edit2, Heart, Share2, Eye, Award, Target, CheckCircle2, Plus, Trash2, Video, Link as LinkIcon, Loader2, Phone, Mail, Star, UserCheck, Lock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -61,6 +61,83 @@ const InfoCard: React.FC<{ icon: React.ElementType; label: string; value: React.
   </motion.div>
 );
 
+// ✅ مكوّن لإدارة قائمة ديناميكية (Array Field)
+const ArrayFieldManager: React.FC<{
+  label: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+  placeholder: string;
+  dir?: 'rtl' | 'ltr';
+  icon?: React.ElementType;
+}> = ({ label, values, onChange, placeholder, dir = 'ltr', icon: Icon }) => {
+  const handleAdd = () => onChange([...values, '']);
+  const handleRemove = (idx: number) => onChange(values.filter((_, i) => i !== idx));
+  const handleChange = (idx: number, val: string) =>
+    onChange(values.map((v, i) => (i === idx ? val : v)));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="block text-sm font-medium">{label}</label>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={handleAdd}
+          className="h-7 px-2 text-xs gap-1 text-primary hover:bg-primary/10"
+        >
+          <Plus className="h-3 w-3" />
+          إضافة
+        </Button>
+      </div>
+      <AnimatePresence initial={false}>
+        {values.map((val, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="flex items-center gap-2"
+          >
+            {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
+            <Input
+              value={val}
+              onChange={(e) => handleChange(idx, e.target.value)}
+              placeholder={`${placeholder} ${idx + 1}`}
+              className="rounded-xl flex-1"
+              dir={dir}
+            />
+            {values.length > 1 && (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={() => handleRemove(idx)}
+                className="h-8 w-8 shrink-0 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+      {values.length === 0 && (
+        <Button
+          type="button"
+          variant="dashed"
+          size="sm"
+          onClick={handleAdd}
+          className="w-full rounded-xl border-dashed text-muted-foreground"
+        >
+          <Plus className="h-3 w-3 mr-1" />
+          {placeholder}
+        </Button>
+      )}
+    </div>
+  );
+};
+
 export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, onEdit }) => {
   const { t, lang } = useApp();
   const isRTL = lang === 'ar';
@@ -72,7 +149,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const [activeTab, setActiveTab] = useState('overview');
   const [isLiked, setIsLiked] = useState(false);
 
-  // 🔥 State للدروس - استخدام show API
+  // 🔥 State للدروس
   const [lessons, setLessons] = useState<CourseDetail[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(false);
   const [lessonsPagination, setLessonsPagination] = useState({
@@ -89,10 +166,12 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedPdfId, setSelectedPdfId] = useState<number | null>(null);
   const [selectedPdfUrl, setSelectedPdfUrl] = useState<string | null>(null);
-  // فرم الدرس
+
+  // ✅ فرم الدرس — titles و titles_ar و link_video كلها arrays
   const [lessonForm, setLessonForm] = useState({
-    title: '',        // هيُحفظ في titles عند الإرسال
-    title_ar: '',
+    titles: [''],           // array of EN titles
+    titles_ar: [''],        // array of AR titles
+    link_video: [''],       // array of video links
     description: '',
     description_ar: '',
     content_link: '',
@@ -100,9 +179,8 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     lession_time: '20:00',
     price: 0,
     image_id: null as number | null,
-    pdf_id: null as number | null,     // ✨ جديد
+    pdf_id: null as number | null,
   });
-
 
   // ✅ جلب بيانات الكورس من API
   const fetchCourse = async () => {
@@ -121,7 +199,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     }
   };
 
-  // 🔥 جلب الدروس باستخدام show API (index مع فلتر)
+  // 🔥 جلب الدروس
   const fetchLessons = async (page = 1) => {
     if (!courseId) return;
     setLessonsLoading(true);
@@ -133,12 +211,9 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       });
 
       console.log('📚 Lessons from API:', response);
-
-      // التعامل مع استجابة الـ API
       const lessonsData = response?.data || [];
       setLessons(lessonsData);
 
-      // تحديث معلومات الـ pagination
       if (response?.pagination) {
         setLessonsPagination({
           currentPage: response.pagination.currentPage || page,
@@ -159,13 +234,9 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const handleToggleMustPass = async (lesson: CourseDetail, checked: boolean) => {
     try {
       await courseDetailService.toggleMustPassToUnlock(lesson.id, checked);
-
-      // تحديث القائمة المحلية
       setLessons(prev => prev.map(l =>
         l.id === lesson.id ? { ...l, must_pass_to_unlock: checked } : l
       ));
-
-      // عرض رسالة نجاح
       toast.success(
         checked
           ? (lang === 'ar' ? 'تم تفعيل شرط اجتياز الامتحان' : 'Exam pass requirement enabled')
@@ -181,10 +252,8 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     fetchCourse();
   }, [courseId]);
 
-  // جلب الدروس بعد تحميل الكورس
   useEffect(() => {
     if (courseId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchLessons();
     }
   }, [courseId]);
@@ -222,26 +291,32 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     setLessonForm(prev => ({ ...prev, image_id: null }));
   };
 
-  // معالج إضافة/تعديل درس
+  // ✅ معالج حفظ الدرس — يبعت titles و titles_ar و link_video كـ arrays
   const handleSaveLesson = async () => {
     if (!courseId) return;
 
-    if (!lessonForm.title && !lessonForm.title_ar) {
+    // تنظيف الـ arrays من القيم الفارغة
+    const cleanTitles = lessonForm.titles.filter(t => t.trim() !== '');
+    const cleanTitlesAr = lessonForm.titles_ar.filter(t => t.trim() !== '');
+    const cleanLinkVideo = lessonForm.link_video.filter(l => l.trim() !== '');
+
+    if (cleanTitles.length === 0 && cleanTitlesAr.length === 0) {
       toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الدرس' : 'Please enter lesson title');
       return;
     }
 
     const payload: any = {
       course_id: courseId,
-      titles: lessonForm.title ? [lessonForm.title] : [],
-      titles_ar: lessonForm.title_ar ? [lessonForm.title_ar] : [],
+      titles: cleanTitles,
+      titles_ar: cleanTitlesAr,
+      link_video: cleanLinkVideo,
       description: lessonForm.description,
       description_ar: lessonForm.description_ar,
       content_link: lessonForm.content_link,
       lession_date: lessonForm.lession_date,
       lession_time: lessonForm.lession_time,
       price: lessonForm.price,
-      pdf_id: lessonForm.pdf_id, // ✅ fixed
+      pdf_id: lessonForm.pdf_id,
     };
 
     if (lessonForm.pdf_id) {
@@ -257,13 +332,9 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     try {
       if (editingLesson) {
         const result = await courseDetailService.update(editingLesson.id, payload);
-          await fetchLessons(1);
-        console.log("selectedPdfId", selectedPdfId);
-        console.log("lessonForm.pdf_id", lessonForm.pdf_id);
-        console.log("payload", payload);
-        console.log("result", result);
-
-
+        await fetchLessons(1);
+        console.log('payload sent:', payload);
+        console.log('result:', result);
         toast.success(lang === 'ar' ? 'تم تحديث الدرس بنجاح' : 'Lesson updated successfully');
       } else {
         await courseDetailService.create(payload);
@@ -271,16 +342,13 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       }
 
       await fetchLessons(lessonsPagination.currentPage);
-
       setShowLessonModal(false);
       resetLessonForm();
-
     } catch (error) {
       console.error('Error saving lesson:', error);
       toast.error(lang === 'ar' ? 'حدث خطأ أثناء حفظ الدرس' : 'Error saving lesson');
     }
   };
-
 
   // معالج حذف درس
   const handleDeleteLesson = async () => {
@@ -296,29 +364,50 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     }
   };
 
+  // ✅ reset الفرم
   const resetLessonForm = () => {
     setLessonForm({
-      title: '', title_ar: '',
-      description: '', description_ar: '',
+      titles: [''],
+      titles_ar: [''],
+      link_video: [''],
+      description: '',
+      description_ar: '',
       content_link: '',
       lession_date: new Date().toISOString().split('T')[0],
       lession_time: '20:00',
       price: 0,
       image_id: null,
-      pdf_id: null,   // ✨ جديد
+      pdf_id: null,
     });
     setSelectedImageId(null);
     setSelectedImageUrl(null);
-    setSelectedPdfId(null);    // ✨ جديد
-    setSelectedPdfUrl(null);   // ✨ جديد
+    setSelectedPdfId(null);
+    setSelectedPdfUrl(null);
     setEditingLesson(null);
   };
+
+  // ✅ فتح modal التعديل — يملأ الـ arrays صح
   const openEditLesson = async (lesson: CourseDetail) => {
     setEditingLesson(lesson);
 
+    // titles: لو array خده زي ما هو، لو مش array حوله لـ array
+    const titlesArr = Array.isArray(lesson.titles)
+      ? (lesson.titles.length > 0 ? lesson.titles : [''])
+      : [lesson.titles ?? ''];
+
+    const titlesArArr = Array.isArray(lesson.titles_ar)
+      ? (lesson.titles_ar.length > 0 ? lesson.titles_ar : [''])
+      : [lesson.titles_ar ?? ''];
+
+    // link_video: لو موجود في الـ lesson
+    const linkVideoArr = Array.isArray((lesson as any).link_video)
+      ? ((lesson as any).link_video.length > 0 ? (lesson as any).link_video : [''])
+      : (lesson.content_link ? [lesson.content_link] : ['']);
+
     setLessonForm({
-      title: Array.isArray(lesson.titles) ? (lesson.titles[0] ?? '') : '',
-      title_ar: Array.isArray(lesson.titles_ar) ? (lesson.titles_ar[0] ?? '') : '',
+      titles: titlesArr,
+      titles_ar: titlesArArr,
+      link_video: linkVideoArr,
       description: lesson.description ?? '',
       description_ar: lesson.description_ar ?? '',
       content_link: lesson.content_link ?? '',
@@ -338,16 +427,15 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       setSelectedImageId(null);
     }
 
-    // ✅ PDF — استخدم pdf.fullUrl أو pdfUrl كـ fallback
+    // ✅ PDF
     const pdfUrl = lesson.pdf?.fullUrl || lesson.pdfUrl || null;
     const pdfId = lesson.pdf?.id ?? null;
     setSelectedPdfId(pdfId);
     setSelectedPdfUrl(pdfUrl);
 
-
-    // ✅ افتح الـ modal بعد ما كل الـ state اتسيت
     setShowLessonModal(true);
   };
+
   const features = [
     t('certificateOfCompletion'),
     t('lifetimeAccess'),
@@ -355,7 +443,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     t('downloadableResources')
   ];
 
-  // عرض حالة التحميل
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-96">
@@ -365,7 +452,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     );
   }
 
-  // عرض الخطأ
   if (error || !course) {
     return (
       <div className="flex flex-col items-center justify-center h-96">
@@ -381,7 +467,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     );
   }
 
-  // استخراج البيانات من course object
   const title = isRTL && course.title_ar ? course.title_ar : course.title;
   const description = isRTL && course.description_ar ? course.description_ar : course.description;
   const about = isRTL && course.about_ar ? course.about_ar : course.about;
@@ -391,7 +476,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const teacherName = course.teacher?.name;
   const teacherEmail = course.teacher?.email;
   const teacherPhone = course.teacher?.phone;
-
   const students = (course as any)?.students || [];
 
   return (
@@ -406,12 +490,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
         <div className="flex items-center gap-3">
           {onBack && (
             <motion.div whileHover={{ x: -5 }}>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onBack}
-                className="gap-1 shrink-0"
-              >
+              <Button variant="ghost" size="sm" onClick={onBack} className="gap-1 shrink-0">
                 <ChevronLeft className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />
                 {t('back')}
               </Button>
@@ -430,7 +509,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             </p>
           </div>
         </div>
-
         <div className="flex gap-2">
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button variant="outline" size="sm" onClick={() => setIsLiked(!isLiked)} className="gap-1">
@@ -456,17 +534,12 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
         className="relative rounded-2xl overflow-hidden shadow-xl"
       >
         {(course.image?.fullUrl || course.imageUrl) ? (
-          <img
-            src={course.image?.fullUrl || course.imageUrl}
-            alt={title}
-            className="w-full h-56 md:h-80 object-cover"
-          />
+          <img src={course.image?.fullUrl || course.imageUrl} alt={title} className="w-full h-56 md:h-80 object-cover" />
         ) : (
           <div className="w-full h-56 md:h-80 flex items-center justify-center bg-gradient-to-r from-primary/20 to-secondary/20">
             <BookOpen className="h-20 w-20 text-muted-foreground/30" />
           </div>
         )}
-
         <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/70 to-transparent">
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="bg-white/20 text-white backdrop-blur-sm">
@@ -525,7 +598,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               {description || about || t('noDescription')}
             </p>
           </motion.div>
-
           <motion.div variants={fadeIn}>
             <h3 className="font-semibold mb-3 flex items-center gap-2">
               <Award className="h-5 w-5 text-primary" />
@@ -546,7 +618,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               ))}
             </div>
           </motion.div>
-
           <motion.div variants={fadeIn} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <InfoCard icon={Calendar} label={t('startDate')} value={formatDate(course.start_date)} />
             <InfoCard icon={Calendar} label={t('endDate')} value={formatDate(course.end_date)} />
@@ -559,6 +630,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
           </motion.div>
         </TabsContent>
 
+       
         {/* Lessons Tab */}
         <TabsContent value="lessons" className="mt-4">
           <div className="flex justify-between items-center mb-4">
@@ -567,10 +639,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               {t('courseLessons') || 'دروس الكورس'} ({lessonsPagination.total})
             </h3>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button size="sm" onClick={() => {
-                resetLessonForm();
-                setShowLessonModal(true);
-              }} className="gap-1">
+              <Button size="sm" onClick={() => { resetLessonForm(); setShowLessonModal(true); }} className="gap-1">
                 <Plus className="h-4 w-4" />
                 {t('addLesson') || 'إضافة درس'}
               </Button>
@@ -623,16 +692,12 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                               {lesson.price}
                             </Badge>
                           )}
-
-                          {/* 🔥 شارة شرط اجتياز الامتحان */}
                           {lesson.must_pass_to_unlock && (
                             <Badge variant="warning" className="text-xs gap-1 bg-amber-500/20 text-amber-600 border-amber-300">
                               <Lock className="h-3 w-3" />
                               {lang === 'ar' ? 'يجب اجتياز الامتحان' : 'Must pass exam'}
                             </Badge>
                           )}
-
-                          {/* 🔥 شارة الحضور (للطلاب) */}
                           {lesson.attended && (
                             <Badge variant="success" className="text-xs gap-1 bg-green-500/20 text-green-600 border-green-300">
                               <CheckCircle2 className="h-3 w-3" />
@@ -640,28 +705,44 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                             </Badge>
                           )}
                         </div>
-                        <h4 className="font-semibold text-base">
-                          {isRTL && lesson.titles_ar ? lesson.titles_ar : (lesson.titles || '—')}
-                        </h4>
+
+                        {/* عرض الـ titles كـ array */}
+                        <div className="space-y-0.5">
+                          {Array.isArray(isRTL ? lesson.titles_ar : lesson.titles)
+                            ? (isRTL ? lesson.titles_ar : lesson.titles).map((t: string, i: number) => (
+                              <h4 key={i} className={`font-semibold ${i === 0 ? 'text-base' : 'text-sm text-muted-foreground'}`}>
+                                {t || '—'}
+                              </h4>
+                            ))
+                            : <h4 className="font-semibold text-base">{(isRTL ? lesson.titles_ar : lesson.titles) || '—'}</h4>
+                          }
+                        </div>
+
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                           {isRTL && lesson.description_ar ? lesson.description_ar : lesson.description}
                         </p>
 
-                        {lesson.content_link && (
-                          <a
-                            href={lesson.content_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
-                          >
+                        {/* عرض روابط الفيديو */}
+                        {Array.isArray(lesson.link_video) && lesson.link_video.filter(Boolean).length > 0 ? (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {lesson.link_video.filter(Boolean).map((link: string, i: number) => (
+                              <a key={i} href={link} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                <LinkIcon className="h-3 w-3" />
+                                {t('watchLesson') || 'فيديو'} {lesson.link_video.length > 1 ? `${i + 1}` : ''}
+                              </a>
+                            ))}
+                          </div>
+                        ) : lesson.content_link ? (
+                          <a href={lesson.content_link} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2">
                             <LinkIcon className="h-3 w-3" />
                             {t('watchLesson') || 'مشاهدة الدرس'}
                           </a>
-                        )}
+                        ) : null}
                       </div>
 
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {/* 🔥 Switch لتحديد شرط اجتياز الامتحان (للمعلم/admin فقط) */}
                         <div className="flex items-center gap-1 mr-2 px-2 py-1 rounded-lg bg-muted/50">
                           <label className="text-[10px] text-muted-foreground cursor-pointer whitespace-nowrap">
                             {lang === 'ar' ? 'امتحان إجباري' : 'Exam required'}
@@ -672,21 +753,14 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                             className="data-[state=checked]:bg-amber-500 scale-75"
                           />
                         </div>
-
-                        <Button
-                          size="icon"
-                          variant="ghost"
+                        <Button size="icon" variant="ghost"
                           className="h-8 w-8 rounded-full hover:bg-primary/10"
-                          onClick={() => openEditLesson(lesson)}
-                        >
+                          onClick={() => openEditLesson(lesson)}>
                           <Edit2 className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
+                        <Button size="icon" variant="ghost"
                           className="h-8 w-8 rounded-full hover:bg-red-100 dark:hover:bg-red-900/20 text-red-500"
-                          onClick={() => setDeletingLesson(lesson)}
-                        >
+                          onClick={() => setDeletingLesson(lesson)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -695,26 +769,19 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                 ))}
               </AnimatePresence>
 
-              {/* 🔥 Pagination buttons */}
               {lessonsPagination.lastPage > 1 && (
                 <div className="flex justify-center gap-2 mt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <Button variant="outline" size="sm"
                     onClick={() => fetchLessons(lessonsPagination.currentPage - 1)}
-                    disabled={lessonsPagination.currentPage === 1}
-                  >
+                    disabled={lessonsPagination.currentPage === 1}>
                     {lang === 'ar' ? 'السابق' : 'Previous'}
                   </Button>
                   <span className="text-sm text-muted-foreground py-2 px-3">
                     {lessonsPagination.currentPage} / {lessonsPagination.lastPage}
                   </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <Button variant="outline" size="sm"
                     onClick={() => fetchLessons(lessonsPagination.currentPage + 1)}
-                    disabled={lessonsPagination.currentPage === lessonsPagination.lastPage}
-                  >
+                    disabled={lessonsPagination.currentPage === lessonsPagination.lastPage}>
                     {lang === 'ar' ? 'التالي' : 'Next'}
                   </Button>
                 </div>
@@ -731,7 +798,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               {t('enrolledStudents') || 'الطلاب المسجلين'} ({students.length})
             </h3>
           </div>
-
           {students.length === 0 ? (
             <div className="text-center py-12 bg-muted/30 rounded-xl">
               <User className="h-16 w-16 mx-auto text-muted-foreground/30 mb-3" />
@@ -784,7 +850,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               {about || description || t('noDescription')}
             </p>
           </motion.div>
-
           <motion.div variants={fadeIn} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <InfoCard icon={GraduationCap} label={t('stage')} value={stageName} />
             <InfoCard icon={BookOpen} label={t('subject')} value={subjectName} />
@@ -832,7 +897,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
         </TabsContent>
       </Tabs>
 
-      {/* Modal لإضافة/تعديل درس */}
+      {/* ✅ Modal إضافة/تعديل درس — بـ arrays */}
       <Dialog open={showLessonModal} onOpenChange={setShowLessonModal}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl">
           <DialogHeader>
@@ -841,29 +906,27 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">{t('title')} (EN)</label>
-                <Input
-                  value={lessonForm.title}
-                  onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
-                  placeholder="Lesson title in English"
-                  className="rounded-xl"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">{t('title')} (AR)</label>
-                <Input
-                  value={lessonForm.title_ar}
-                  onChange={(e) => setLessonForm({ ...lessonForm, title_ar: e.target.value })}
-                  placeholder="عنوان الدرس بالعربية"
-                  className="rounded-xl text-right"
-                  dir="rtl"
-                />
-              </div>
-            </div>
+          <div className="space-y-5 mt-4">
 
+            {/* ✅ Titles EN — array */}
+            <ArrayFieldManager
+              label={`${t('title')} (EN)`}
+              values={lessonForm.titles}
+              onChange={(vals) => setLessonForm(prev => ({ ...prev, titles: vals }))}
+              placeholder="Lesson title in English"
+              dir="ltr"
+            />
+
+            {/* ✅ Titles AR — array */}
+            <ArrayFieldManager
+              label={`${t('title')} (AR)`}
+              values={lessonForm.titles_ar}
+              onChange={(vals) => setLessonForm(prev => ({ ...prev, titles_ar: vals }))}
+              placeholder="عنوان الدرس بالعربية"
+              dir="rtl"
+            />
+
+            {/* Description */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">{t('description')} (EN)</label>
@@ -888,18 +951,28 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               </div>
             </div>
 
+            {/* ✅ link_video — array */}
+            <ArrayFieldManager
+              label={t('videoLink') || 'روابط الفيديو'}
+              values={lessonForm.link_video}
+              onChange={(vals) => setLessonForm(prev => ({ ...prev, link_video: vals }))}
+              placeholder="https://youtube.com/watch?v=..."
+              dir="ltr"
+              icon={LinkIcon}
+            />
+
+            {/* content_link (رابط خارجي عام) */}
             <div>
-              <label className="block text-sm font-medium mb-1">{t('videoLink') || 'رابط الفيديو'}</label>
+              <label className="block text-sm font-medium mb-1">{t('contentLink') || 'رابط المحتوى'}</label>
               <Input
                 value={lessonForm.content_link}
                 onChange={(e) => setLessonForm({ ...lessonForm, content_link: e.target.value })}
-                placeholder="https://youtube.com/... or https://example.com/video"
+                placeholder="http://example.com"
                 className="rounded-xl"
               />
             </div>
 
-
-
+            {/* Image uploader */}
             <FileUploader
               label={t('lessonImage') || 'صورة الدرس (اختياري)'}
               onUploadSuccess={handleImageUpload}
@@ -911,8 +984,8 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               defaultImageId={selectedImageId}
               onRemoveImage={handleRemoveImage}
             />
-            {/* PDF uploader ✨ جديد */}
-            {/* PDF uploader ✨ جديد */}
+
+            {/* PDF uploader */}
             <FileUploader
               label={t('lessonPdf')}
               onUploadSuccess={(pdfId: number) => {
@@ -932,7 +1005,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               }}
             />
 
-
+            {/* Date / Time / Price */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">{t('date') || 'التاريخ'}</label>
