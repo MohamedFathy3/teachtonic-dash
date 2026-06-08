@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/courses/CourseDetails.tsx
 
-import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, DollarSign, BookOpen, GraduationCap, User, MapPin, Globe, ChevronLeft, Edit2, Heart, Share2, Eye, Award, Target, CheckCircle2, Plus, Trash2, Video, Link as LinkIcon, Loader2, Phone, Mail, Star, UserCheck, Lock, X } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calendar, Clock, Users, DollarSign, BookOpen, GraduationCap, User, MapPin, Globe, ChevronLeft, Edit2, Heart, Share2, Eye, Award, Target, CheckCircle2, Plus, Trash2, Video, Link as LinkIcon, Loader2, Phone, Mail, Star, UserCheck, Lock, X, Filter, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,11 +23,20 @@ import type { Course } from '@/types/course.types';
 import type { CourseDetail } from '@/types/course-detail.types';
 import FileUploader from '@/components/FileUploader';
 import { Switch } from '@/components/ui/switch';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 interface CourseDetailsProps {
   courseId: number;
   onBack?: () => void;
   onEdit?: () => void;
+}
+
+// ✅ Student Filters Interface
+interface StudentFilters {
+  search: string;
+  typeOfAttendance: string;
+  active: string;
+  phone: string;
 }
 
 // ✅ أنيميشن
@@ -166,6 +175,15 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedPdfId, setSelectedPdfId] = useState<number | null>(null);
   const [selectedPdfUrl, setSelectedPdfUrl] = useState<string | null>(null);
+  
+  // ✅ State للفلتر في الطلاب
+  const [studentFilters, setStudentFilters] = useState<StudentFilters>({
+    search: '',
+    typeOfAttendance: '',
+    active: '',
+    phone: '',
+  });
+  const [showStudentFilters, setShowStudentFilters] = useState(false);
 
   // ✅ فرم الدرس — titles و titles_ar و link_video كلها arrays
   const [lessonForm, setLessonForm] = useState({
@@ -246,6 +264,49 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       console.error('Error toggling must_pass_to_unlock:', error);
       toast.error(lang === 'ar' ? 'حدث خطأ أثناء تغيير الإعداد' : 'Error changing setting');
     }
+  };
+
+  // ✅ دالة لفلترة الطلاب
+  const filteredStudents = useMemo(() => {
+    const students = (course as any)?.students || [];
+    let filtered = [...students];
+
+    // بحث بالاسم أو المعرف
+    if (studentFilters.search) {
+      const searchTerm = studentFilters.search.toLowerCase();
+      filtered = filtered.filter(s => 
+        s.name?.toLowerCase().includes(searchTerm) ||
+        s.id?.toString().includes(searchTerm)
+      );
+    }
+
+    // فلتر نوع الحضور
+    if (studentFilters.typeOfAttendance) {
+      filtered = filtered.filter(s => s.type_of_attendance === studentFilters.typeOfAttendance);
+    }
+
+    // فلتر الحالة
+    if (studentFilters.active !== '') {
+      filtered = filtered.filter(s => s.active === (studentFilters.active === 'active'));
+    }
+
+    // فلتر رقم الهاتف
+    if (studentFilters.phone) {
+      filtered = filtered.filter(s => s.phone?.includes(studentFilters.phone));
+    }
+
+    return filtered;
+  }, [course, studentFilters]);
+
+  // ✅ دالة لمسح الفلاتر
+  const clearStudentFilters = () => {
+    setStudentFilters({
+      search: '',
+      typeOfAttendance: '',
+      active: '',
+      phone: '',
+    });
+    setShowStudentFilters(false);
   };
 
   useEffect(() => {
@@ -630,7 +691,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
           </motion.div>
         </TabsContent>
 
-       
         {/* Lessons Tab */}
         <TabsContent value="lessons" className="mt-4">
           <div className="flex justify-between items-center mb-4">
@@ -790,51 +850,271 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
           )}
         </TabsContent>
 
-        {/* Students Tab */}
+        {/* Students Tab with Filters and Export */}
         <TabsContent value="students" className="mt-4">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <h3 className="font-semibold flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
-              {t('enrolledStudents') || 'الطلاب المسجلين'} ({students.length})
+              {t('enrolledStudents') || 'الطلاب المسجلين'} ({filteredStudents.length} / {students.length})
             </h3>
+            
+            <div className="flex gap-2">
+              {/* زر الفلتر */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowStudentFilters(!showStudentFilters)}
+                className="gap-1"
+              >
+                <Filter className="h-4 w-4" />
+                {lang === 'ar' ? 'فلتر' : 'Filter'}
+                {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active || studentFilters.phone) && (
+                  <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center rounded-full ml-1">
+                    {[studentFilters.search, studentFilters.typeOfAttendance, studentFilters.active, studentFilters.phone].filter(Boolean).length}
+                  </Badge>
+                )}
+              </Button>
+              
+              {/* زر التصدير */}
+              <ExportExcelButton
+                data={filteredStudents.map((s: any) => ({
+                  id: s.id,
+                  name: s.name,
+                  phone: s.phone,
+                  type_of_attendance: s.type_of_attendance === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'مركز' : 'Center'),
+                  active: s.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
+                  created_at: new Date(s.created_at || s.createdAt).toLocaleDateString(),
+                  code_parent: s.code_parent || '—',
+                  phone_parent: s.phone_parent || '—',
+                }))}
+                fileName={`course_${courseId}_students`}
+                label={lang === 'ar' ? 'تصدير Excel' : 'Export Excel'}
+                disabled={filteredStudents.length === 0}
+              />
+            </div>
           </div>
+
+          {/* فلتر الطلاب */}
+          <AnimatePresence>
+            {showStudentFilters && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-4 overflow-hidden"
+              >
+                <Card className="p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* بحث بالاسم */}
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        {lang === 'ar' ? 'بحث بالاسم أو المعرف' : 'Search by name or ID'}
+                      </label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={studentFilters.search}
+                          onChange={(e) => setStudentFilters(prev => ({ ...prev, search: e.target.value }))}
+                          placeholder={lang === 'ar' ? 'اسم الطالب...' : 'Student name...'}
+                          className="pl-9 rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    {/* فلتر نوع الحضور */}
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        {lang === 'ar' ? 'نوع الحضور' : 'Attendance Type'}
+                      </label>
+                      <select
+                        value={studentFilters.typeOfAttendance}
+                        onChange={(e) => setStudentFilters(prev => ({ ...prev, typeOfAttendance: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl border bg-background"
+                      >
+                        <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+                        <option value="online">🖥️ {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
+                        <option value="center">🏢 {lang === 'ar' ? 'مركز' : 'Center'}</option>
+                      </select>
+                    </div>
+
+                    {/* فلتر الحالة */}
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        {lang === 'ar' ? 'الحالة' : 'Status'}
+                      </label>
+                      <select
+                        value={studentFilters.active}
+                        onChange={(e) => setStudentFilters(prev => ({ ...prev, active: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl border bg-background"
+                      >
+                        <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+                        <option value="active">✅ {lang === 'ar' ? 'نشط' : 'Active'}</option>
+                        <option value="inactive">❌ {lang === 'ar' ? 'غير نشط' : 'Inactive'}</option>
+                      </select>
+                    </div>
+
+                    {/* فلتر رقم الهاتف */}
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        {lang === 'ar' ? 'رقم الهاتف' : 'Phone Number'}
+                      </label>
+                      <Input
+                        value={studentFilters.phone}
+                        onChange={(e) => setStudentFilters(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder={lang === 'ar' ? 'رقم الهاتف...' : 'Phone number...'}
+                        className="rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  {/* أزرار الفلتر */}
+                  <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
+                    <Button variant="outline" size="sm" onClick={clearStudentFilters} className="gap-1">
+                      <X className="h-3 w-3" />
+                      {lang === 'ar' ? 'مسح الكل' : 'Clear All'}
+                    </Button>
+                    <Button size="sm" onClick={() => setShowStudentFilters(false)} className="gap-1 bg-gradient-to-r from-primary to-secondary">
+                      <Search className="h-3 w-3" />
+                      {lang === 'ar' ? 'تطبيق' : 'Apply'}
+                    </Button>
+                  </div>
+
+                  {/* عرض الفلاتر النشطة */}
+                  {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active || studentFilters.phone) && (
+                    <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t">
+                      <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
+                      {studentFilters.search && (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          🔍 {studentFilters.search}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => setStudentFilters(prev => ({ ...prev, search: '' }))} />
+                        </Badge>
+                      )}
+                      {studentFilters.typeOfAttendance && (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          {studentFilters.typeOfAttendance === 'online' ? '🖥️ أونلاين' : '🏢 مركز'}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => setStudentFilters(prev => ({ ...prev, typeOfAttendance: '' }))} />
+                        </Badge>
+                      )}
+                      {studentFilters.active && (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          {studentFilters.active === 'active' ? '✅ نشط' : '❌ غير نشط'}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => setStudentFilters(prev => ({ ...prev, active: '' }))} />
+                        </Badge>
+                      )}
+                      {studentFilters.phone && (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          📞 {studentFilters.phone}
+                          <X className="h-3 w-3 cursor-pointer" onClick={() => setStudentFilters(prev => ({ ...prev, phone: '' }))} />
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* قائمة الطلاب */}
           {students.length === 0 ? (
             <div className="text-center py-12 bg-muted/30 rounded-xl">
               <User className="h-16 w-16 mx-auto text-muted-foreground/30 mb-3" />
               <p className="text-muted-foreground">{t('noStudentsYet') || 'لا يوجد طلاب مسجلين بعد'}</p>
             </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="text-center py-12 bg-muted/30 rounded-xl">
+              <Search className="h-16 w-16 mx-auto text-muted-foreground/30 mb-3" />
+              <p className="text-muted-foreground">{lang === 'ar' ? 'لا توجد نتائج مطابقة للبحث' : 'No matching students found'}</p>
+              <Button variant="link" onClick={clearStudentFilters} className="mt-2">
+                {lang === 'ar' ? 'مسح الفلاتر' : 'Clear filters'}
+              </Button>
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {students.map((student: any, idx: number) => (
+              {filteredStudents.map((student: any, idx: number) => (
                 <motion.div
                   key={student.id}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: idx * 0.05 }}
                   whileHover={{ y: -3 }}
-                  className="p-4 rounded-xl bg-gradient-to-r from-card to-muted/20 border shadow-sm"
+                  className="p-4 rounded-xl bg-gradient-to-r from-card to-muted/20 border shadow-sm group"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     <Avatar className="h-12 w-12 border-2 border-primary/20">
                       <AvatarFallback className="bg-gradient-to-r from-primary/20 to-secondary/20">
                         {student.name?.charAt(0) || 'S'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <p className="font-semibold">{student.name}</p>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        <span>{student.phone}</span>
-                      </div>
-                      {student.type_of_attendance && (
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {student.type_of_attendance === 'online' ? '🖥️ أونلاين' : '🏢 مركز'}
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold">{student.name}</p>
+                          <p className="text-xs text-muted-foreground">ID: {student.id}</p>
+                        </div>
+                        <Badge variant={student.active ? "default" : "secondary"} className="text-[10px]">
+                          {student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
                         </Badge>
-                      )}
+                      </div>
+                      
+                      <div className="mt-2 space-y-1">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Phone className="h-3 w-3" />
+                          <span>{student.phone}</span>
+                        </div>
+                        {student.phone_parent && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            <span>{lang === 'ar' ? 'ولي الأمر:' : 'Parent:'} {student.phone_parent}</span>
+                          </div>
+                        )}
+                        {student.code_parent && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Award className="h-3 w-3" />
+                            <span>{lang === 'ar' ? 'الكود:' : 'Code:'} {student.code_parent}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {student.type_of_attendance === 'online' ? (
+                            <Globe className="h-3 w-3 text-blue-500" />
+                          ) : (
+                            <MapPin className="h-3 w-3 text-green-500" />
+                          )}
+                          <span>
+                            {student.type_of_attendance === 'online' 
+                              ? (lang === 'ar' ? 'أونلاين' : 'Online')
+                              : (lang === 'ar' ? 'مركز' : 'Center')}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
               ))}
+            </div>
+          )}
+          
+          {/* إحصائيات سريعة */}
+          {students.length > 0 && (
+            <div className="mt-4 p-3 rounded-xl bg-muted/30 text-sm text-muted-foreground flex justify-between items-center flex-wrap gap-2">
+              <span>{lang === 'ar' ? '📊 إجمالي الطلاب' : '📊 Total Students'}: {students.length}</span>
+              <div className="flex gap-4 flex-wrap">
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  {lang === 'ar' ? 'نشط' : 'Active'}: {students.filter((s: any) => s.active).length}
+                </span>
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                  {lang === 'ar' ? 'غير نشط' : 'Inactive'}: {students.filter((s: any) => !s.active).length}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Globe className="h-3 w-3 text-blue-500" />
+                  {lang === 'ar' ? 'أونلاين' : 'Online'}: {students.filter((s: any) => s.type_of_attendance === 'online').length}
+                </span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3 text-green-500" />
+                  {lang === 'ar' ? 'مركز' : 'Center'}: {students.filter((s: any) => s.type_of_attendance === 'center').length}
+                </span>
+              </div>
             </div>
           )}
         </TabsContent>
