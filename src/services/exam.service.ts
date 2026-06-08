@@ -83,7 +83,26 @@ class ExamService extends BaseService<Exam> {
       throw error;
     }
   }
+// src/services/exam.service.ts
 
+// ✅ تبديل إظهار النتيجة
+async toggleShowResult(id: number): Promise<Exam> {
+  try {
+    const response = await api.put(`/${this.endpoint}/${id}/show_result`);
+    toast({
+      title: "Success",
+      description: "Show result toggled successfully"
+    });
+    return response.data.data;
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Failed to update setting",
+      variant: "destructive"
+    });
+    throw error;
+  }
+}
   // ✅ جلب الامتحانات المحذوفة
   async getDeletedExams(
     perPage: number = 12,

@@ -751,7 +751,7 @@ export const translations = {
     question: "السؤال",
     gradeEssayQuestion: "تقييم السؤال المقالي",
     writeYourAnswer: "اكتب إجابتك هنا...",
-    paymentCodes: "رموز الدفع",
+    paymentCodes: "الاكواد  ",
     centerhours: "مواعيد السناتر ",
     reject: "رفض",
 viewLearning: "عرض تفاصيل  ",

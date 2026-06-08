@@ -15,7 +15,6 @@ export interface SelectConfig {
   labelFieldAr?: string;
   idField?: string;
   transformData?: (item: any) => AsyncSelectOption;
-  // 🔥 customFetcher يدخل له extraFilters
   customFetcher?: (params: {
     page: number;
     perPage: number;
@@ -32,7 +31,6 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     searchField: 'name',
     labelField: 'name',
     labelFieldAr: 'name_ar',
-   
   },
   subjects: {
     endpoint: '/subject/index',
@@ -96,16 +94,29 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     labelField: 'title',
     labelFieldAr: 'title_ar',
     customFetcher: async (params) => {
-      // 🔥 نبني الـ filters مع course_id من extraFilters
+      // 🔥 بناء الفلاتر من extraFilters
       const filters: Record<string, any> = {};
 
-      // 🔥 المهم: نضيف course_id من extraFilters
+      // 🔥 إضافة teacher_id من extraFilters (لجلب دروس المعلم فقط)
+      if (params.extraFilters?.teacher_id) {
+        filters.teacher_id = params.extraFilters.teacher_id;
+      }
+
+      // 🔥 إضافة stage_id من extraFilters
+      if (params.extraFilters?.stage_id) {
+        filters.stage_id = params.extraFilters.stage_id;
+      }
+
+      // 🔥 إضافة course_id من extraFilters (لو موجود)
       if (params.extraFilters?.course_id) {
         filters.course_id = params.extraFilters.course_id;
       }
 
+      console.log('🔍 Lessons Request - Filters:', filters);
+      console.log('🔍 Lessons Request - ExtraFilters:', params.extraFilters);
+
       const requestBody: any = {
-        filters,  // 🔥 هنا هنبعت course_id
+        filters,
         orderBy: 'id',
         orderByDirection: 'desc',
         perPage: params.perPage,
@@ -115,22 +126,26 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
 
       if (params.search) {
         requestBody.search = params.search;
-        requestBody.searchFields = ['title', 'title_ar'];
+        requestBody.searchFields = ['titles', 'titles_ar', 'description', 'description_ar'];
       }
 
-      console.log('🔍 Lessons Request:', requestBody);
+      console.log('🔍 Lessons Request Body:', requestBody);
 
       const response = await api.post('/course-detail/index', requestBody);
 
+      console.log('📥 Lessons Response:', response.data);
+
       const data = response.data.data.map((lesson: any) => ({
         id: lesson.id,
-        name: lesson.title,
-        name_ar: lesson.title_ar,
+        name: lesson.titles?.[0] || lesson.title || `Lesson ${lesson.id}`,
+        name_ar: lesson.titles_ar?.[0] || lesson.title_ar || `الدرس ${lesson.id}`,
         original: lesson,
         course_id: lesson.course_id,
         price: lesson.price,
         lession_date: lesson.lession_date,
         lession_time: lesson.lession_time,
+        description: lesson.description,
+        description_ar: lesson.description_ar,
       }));
 
       return {
@@ -139,6 +154,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
       };
     },
   },
+  
   semesters: {
     endpoint: '/semesters/index',
     orderBy: 'id',
@@ -169,7 +185,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
         requestBody.filters.teacher_id = extraFilters.teacher_id;
       }
 
-      console.log('🔍 Semesters requestBody:', requestBody); // للتأكد
+      console.log('🔍 Semesters requestBody:', requestBody);
 
       const response = await api.post('/semesters/index', requestBody);
 

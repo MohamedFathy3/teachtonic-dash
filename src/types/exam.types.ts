@@ -66,6 +66,15 @@ export interface CreateQuestionDTO {
   options?: Omit<Option, 'id'>[];
 }
 
+export interface ExamFilters {
+  stageId: number | null;
+  subjectId: number | null;
+  semesterId: number | null;
+  active: boolean | null;
+  marksMin: number | null;
+  marksMax: number | null;
+  lessonId: number | null;
+}
 // ✅ DTO لإضافة أسئلة متعددة
 export interface AddQuestionsDTO {
   exam_id: number;
