@@ -7,17 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
-import { 
-  Search, 
-  Plus, 
-  MoreHorizontal, 
-  ChevronLeft, 
-  ChevronRight, 
-  Edit, 
-  Trash2, 
-  Layers, 
-  Trash, 
-  Archive, 
+import {
+  Search,
+  Plus,
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  Edit,
+  Trash2,
+  Layers,
+  Trash,
+  Archive,
   RotateCcw,
   Eye,
   Image as ImageIcon
@@ -37,33 +37,32 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
-
 export function AboutsPage() {
   const { dir, lang } = useApp();
   const navigate = useNavigate();
-  
-  const { 
-    abouts, 
-    loading, 
-    total, 
-    currentPage, 
-    lastPage, 
+
+  const {
+    abouts,
+    loading,
+    total,
+    currentPage,
+    lastPage,
     showDeleted,
     setShowDeleted,
     selectedAbouts,
     setSelectedAbouts,
-    createAbout, 
-    updateAbout, 
-    deleteAbout, 
+    createAbout,
+    updateAbout,
+    deleteAbout,
     forceDeleteAbout,
     restoreAbout,
-    toggleActive, 
+    toggleActive,
     goToPage,
     bulkDelete,
     bulkForceDelete,
     bulkRestore
   } = useAbouts();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingAboutId, setEditingAboutId] = useState<number | null>(null);
@@ -197,7 +196,7 @@ export function AboutsPage() {
           </div>
         </div>
         <div className="flex gap-2">
-           {/* ✅ زرار التصدير */}
+          {/* ✅ زرار التصدير */}
           <ExportExcelButton
             data={filteredAbouts}
             fileName="abouts-list"
@@ -207,11 +206,10 @@ export function AboutsPage() {
           <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
-            className={`gap-2 rounded-lg ${
-              showDeleted 
-                ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                : 'border-gray-200 dark:border-gray-700'
-            }`}
+            className={`gap-2 rounded-lg ${showDeleted
+              ? 'bg-orange-600 hover:bg-orange-700 text-white'
+              : 'border-gray-200 dark:border-gray-700'
+              }`}
           >
             {showDeleted ? (
               <><Archive className="h-4 w-4" />{text.showActive}</>
@@ -306,6 +304,10 @@ export function AboutsPage() {
                 <TableHead>{text.aboutName}</TableHead>
                 <TableHead className="hidden md:table-cell">{text.teacher}</TableHead>
                 <TableHead className="text-center w-20">Image</TableHead>
+                <TableHead className="hidden xl:table-cell text-center">Facebook</TableHead>
+                <TableHead className="hidden xl:table-cell text-center">Google</TableHead>
+                <TableHead className="hidden xl:table-cell text-center">TikTok</TableHead>
+                <TableHead className="hidden xl:table-cell text-center">YouTube</TableHead>
                 {!showDeleted && <TableHead className="text-center w-24">{text.status}</TableHead>}
                 <TableHead className="text-center hidden lg:table-cell">{text.createdAt}</TableHead>
                 <TableHead className="text-center w-28">{text.actions}</TableHead>
@@ -330,10 +332,10 @@ export function AboutsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <AvatarBadge 
-                          initials={getInitials(about)} 
-                          size="sm" 
-                          variant={showDeleted ? "muted" : "primary"} 
+                        <AvatarBadge
+                          initials={getInitials(about)}
+                          size="sm"
+                          variant={showDeleted ? "muted" : "primary"}
                         />
                         <div>
                           <div className={showDeleted ? 'text-gray-500 line-through' : 'font-medium'}>
@@ -350,14 +352,34 @@ export function AboutsPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {about.image?.fullUrl ? (
-                        <img 
-                          src={about.image.fullUrl} 
+                        <img
+                          src={about.image.fullUrl}
                           alt={about.name}
                           className="h-8 w-8 rounded object-cover mx-auto"
                         />
                       ) : (
                         <ImageIcon className="h-5 w-5 text-gray-400 mx-auto" />
                       )}
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell text-center">
+                      <span className="text-xs text-gray-500 truncate max-w-[100px] block mx-auto" title={about.facebook_meta}>
+                        {about.facebook_meta ? about.facebook_meta.substring(0, 20) + '...' : '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell text-center">
+                      <span className="text-xs text-gray-500 truncate max-w-[100px] block mx-auto" title={about.google_meta}>
+                        {about.google_meta ? about.google_meta.substring(0, 20) + '...' : '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell text-center">
+                      <span className="text-xs text-gray-500 truncate max-w-[100px] block mx-auto" title={about.tiktok_meta}>
+                        {about.tiktok_meta ? about.tiktok_meta.substring(0, 20) + '...' : '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell text-center">
+                      <span className="text-xs text-gray-500 truncate max-w-[100px] block mx-auto" title={about.you_tube_meta}>
+                        {about.you_tube_meta ? about.you_tube_meta.substring(0, 20) + '...' : '—'}
+                      </span>
                     </TableCell>
                     {!showDeleted && (
                       <TableCell>
@@ -370,18 +392,18 @@ export function AboutsPage() {
                     <TableCell className="text-center">
                       {showDeleted ? (
                         <div className="flex justify-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setRestoringAbout(about)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setRestoringAbout(about)}
                             className="text-green-600"
                           >
                             <RotateCcw className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setForceDeletingAbout(about)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setForceDeletingAbout(about)}
                             className="text-red-600"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -389,28 +411,20 @@ export function AboutsPage() {
                         </div>
                       ) : (
                         <div className="flex justify-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleShowClick(about.id)} 
-                            className="text-blue-600"
-                            title={text.show}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleEditClick(about.id)} 
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditClick(about.id)}
                             className="text-amber-600"
                             title={text.edit}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setDeletingAbout(about)} 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeletingAbout(about)}
                             className="text-red-600"
                             title={text.delete}
                           >
@@ -443,11 +457,11 @@ export function AboutsPage() {
               {text.showing} {filteredAbouts.length} {text.of} {total} {text.abouts}
             </p>
             <div className="flex gap-1">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8" 
-                onClick={() => goToPage(currentPage - 1)} 
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
@@ -455,11 +469,11 @@ export function AboutsPage() {
               <span className="px-3 text-sm flex items-center">
                 {currentPage} / {lastPage}
               </span>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8" 
-                onClick={() => goToPage(currentPage + 1)} 
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === lastPage}
               >
                 <ChevronRight className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
@@ -470,56 +484,56 @@ export function AboutsPage() {
       </Card>
 
       {/* Dialogs */}
-      <AboutForm 
-        open={formOpen} 
+      <AboutForm
+        open={formOpen}
         onClose={() => {
           setFormOpen(false);
           setEditingAboutId(null);
-        }} 
+        }}
         onSubmit={editingAboutId ? handleUpdate : handleCreate}
         aboutId={editingAboutId}
-        loading={actionLoading} 
+        loading={actionLoading}
       />
-      
-      <AboutDeleteDialog 
-        open={!!deletingAbout} 
-        onClose={() => setDeletingAbout(null)} 
+
+      <AboutDeleteDialog
+        open={!!deletingAbout}
+        onClose={() => setDeletingAbout(null)}
         onConfirm={async () => {
           await deleteAbout(deletingAbout.id);
           setDeletingAbout(null);
-        }} 
-        aboutName={getAboutName(deletingAbout)} 
-        loading={actionLoading} 
+        }}
+        aboutName={getAboutName(deletingAbout)}
+        loading={actionLoading}
       />
-      
-      <AboutDeleteDialog 
-        open={!!restoringAbout} 
-        onClose={() => setRestoringAbout(null)} 
+
+      <AboutDeleteDialog
+        open={!!restoringAbout}
+        onClose={() => setRestoringAbout(null)}
         onConfirm={async () => {
           await restoreAbout(restoringAbout.id);
           setRestoringAbout(null);
-        }} 
-        aboutName={getAboutName(restoringAbout)} 
-        loading={actionLoading} 
+        }}
+        aboutName={getAboutName(restoringAbout)}
+        loading={actionLoading}
         title="Restore About Section"
         confirmText="Restore"
         confirmClassName="bg-green-600"
       />
-      
-      <AboutDeleteDialog 
-        open={!!forceDeletingAbout} 
-        onClose={() => setForceDeletingAbout(null)} 
+
+      <AboutDeleteDialog
+        open={!!forceDeletingAbout}
+        onClose={() => setForceDeletingAbout(null)}
         onConfirm={async () => {
           await forceDeleteAbout(forceDeletingAbout.id);
           setForceDeletingAbout(null);
-        }} 
-        aboutName={getAboutName(forceDeletingAbout)} 
-        loading={actionLoading} 
+        }}
+        aboutName={getAboutName(forceDeletingAbout)}
+        loading={actionLoading}
         title="Permanent Delete"
         confirmText="Permanently Delete"
         confirmClassName="bg-red-700"
       />
-      
+
       <AboutDeleteDialog
         open={bulkActionDialog.open}
         onClose={() => setBulkActionDialog({ type: null, open: false })}

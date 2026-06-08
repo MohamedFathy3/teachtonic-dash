@@ -2,11 +2,11 @@
 // src/services/about.service.ts
 
 import { BaseService, PaginationParams } from './base.service';
-import type { 
-  About, 
-  AboutFilters, 
-  PaginatedResponse, 
-  AboutFormData 
+import type {
+  About,
+  AboutFilters,
+  PaginatedResponse,
+  AboutFormData
 } from '@/types/about.types';
 import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
@@ -17,7 +17,7 @@ class AboutService extends BaseService<About> {
   }
 
   async getAllAbouts(
-    filters?: AboutFilters, 
+    filters?: AboutFilters,
     perPage: number = 10,
     page: number = 1,
     search?: string,
@@ -81,18 +81,22 @@ class AboutService extends BaseService<About> {
         description: data.description,
         name_ar: data.name_ar,
         description_ar: data.description_ar,
+        facebook_meta: data.facebook_meta,
+        google_meta: data.google_meta,
+        tiktok_meta: data.tiktok_meta,
+        you_tube_meta: data.you_tube_meta,
         teacher_id: data.teacher_id,
         ...(data.image && { image: data.image }),
         active: data.active !== undefined ? data.active : true,
       };
 
       const response = await api.post('/about', payload);
-      
+
       toast({
         title: "Success",
         description: "About section created successfully",
       });
-      
+
       return response.data.data;
     } catch (error: any) {
       toast({
@@ -107,22 +111,26 @@ class AboutService extends BaseService<About> {
   async updateAbout(id: number, data: Partial<AboutFormData>): Promise<About> {
     try {
       const payload: any = {};
-      
+
       if (data.name !== undefined) payload.name = data.name;
       if (data.description !== undefined) payload.description = data.description;
       if (data.name_ar !== undefined) payload.name_ar = data.name_ar;
       if (data.description_ar !== undefined) payload.description_ar = data.description_ar;
       if (data.teacher_id !== undefined) payload.teacher_id = data.teacher_id;
+      if (data.facebook_meta !== undefined) payload.facebook_meta = data.facebook_meta;
+      if (data.google_meta !== undefined) payload.google_meta = data.google_meta;
+      if (data.tiktok_meta !== undefined) payload.tiktok_meta = data.tiktok_meta;
+      if (data.you_tube_meta !== undefined) payload.you_tube_meta = data.you_tube_meta;
       if (data.image !== undefined) payload.image = data.image;
       if (data.active !== undefined) payload.active = data.active;
 
       const response = await api.patch(`/about/${id}`, payload);
-      
+
       toast({
         title: "Success",
         description: "About section updated successfully",
       });
-      
+
       return response.data.data;
     } catch (error: any) {
       toast({

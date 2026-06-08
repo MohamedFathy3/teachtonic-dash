@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/about/AboutForm.tsx
 
 import { useState, useEffect } from 'react';
@@ -26,24 +25,28 @@ interface AboutFormProps {
 
 export function AboutForm({ open, onClose, onSubmit, aboutId, loading }: AboutFormProps) {
   const { dir, lang } = useApp();
-  
+
   const [formData, setFormData] = useState<AboutFormData>({
     name: '',
     description: '',
     name_ar: '',
     description_ar: '',
+    facebook_meta: '',
+    google_meta: '',
+    tiktok_meta: '',
+    you_tube_meta: '',
     teacher_id: 0,
     image: undefined,
     active: true,
   });
-  
+
   const [currentAbout, setCurrentAbout] = useState<About | null>(null);
   const [fetchingAbout, setFetchingAbout] = useState(false);
 
   useEffect(() => {
     const fetchAboutData = async () => {
       if (!open) return;
-      
+
       if (aboutId) {
         setFetchingAbout(true);
         try {
@@ -63,6 +66,10 @@ export function AboutForm({ open, onClose, onSubmit, aboutId, loading }: AboutFo
           description: '',
           name_ar: '',
           description_ar: '',
+          facebook_meta: '',
+          google_meta: '',
+          tiktok_meta: '',
+          you_tube_meta: '',
           teacher_id: 0,
           image: undefined,
           active: true,
@@ -75,12 +82,12 @@ export function AboutForm({ open, onClose, onSubmit, aboutId, loading }: AboutFo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.teacher_id || formData.teacher_id === 0) {
       console.error('Teacher is required');
       return;
     }
-    
+
     await onSubmit(formData);
     if (!aboutId) {
       setFormData({
@@ -88,6 +95,10 @@ export function AboutForm({ open, onClose, onSubmit, aboutId, loading }: AboutFo
         description: '',
         name_ar: '',
         description_ar: '',
+        facebook_meta: '',
+        google_meta: '',
+        tiktok_meta: '',
+        you_tube_meta: '',
         teacher_id: 0,
         image: undefined,
         active: true,
@@ -156,11 +167,54 @@ export function AboutForm({ open, onClose, onSubmit, aboutId, loading }: AboutFo
               defaultPerPage={25}
             />
           </div>
+          {/* Meta Fields */}
+          <div className="border rounded-lg p-4 space-y-3">
+            <h4 className="font-medium text-sm text-gray-500">Meta / Social</h4>
 
+            <div className="space-y-2">
+              <Label>Facebook Meta</Label>
+              <Textarea
+                value={formData.facebook_meta}
+                onChange={(e) => setFormData(prev => ({ ...prev, facebook_meta: e.target.value }))}
+                placeholder="Facebook meta description"
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Google Meta</Label>
+              <Textarea
+                value={formData.google_meta}
+                onChange={(e) => setFormData(prev => ({ ...prev, google_meta: e.target.value }))}
+                placeholder="Google meta description"
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>TikTok Meta</Label>
+              <Textarea
+                value={formData.tiktok_meta}
+                onChange={(e) => setFormData(prev => ({ ...prev, tiktok_meta: e.target.value }))}
+                placeholder="TikTok meta description"
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>YouTube Meta</Label>
+              <Textarea
+                value={formData.you_tube_meta}
+                onChange={(e) => setFormData(prev => ({ ...prev, you_tube_meta: e.target.value }))}
+                placeholder="YouTube meta description"
+                rows={2}
+              />
+            </div>
+          </div>
           {/* English Fields */}
           <div className="border rounded-lg p-4 space-y-3">
             <h4 className="font-medium text-sm text-gray-500">English Content</h4>
-            
+
             <div className="space-y-2">
               <Label>Name (EN)</Label>
               <Input
@@ -186,7 +240,7 @@ export function AboutForm({ open, onClose, onSubmit, aboutId, loading }: AboutFo
           {/* Arabic Fields */}
           <div className="border rounded-lg p-4 space-y-3">
             <h4 className="font-medium text-sm text-gray-500">Arabic Content</h4>
-            
+
             <div className="space-y-2">
               <Label>Name (AR)</Label>
               <Input
@@ -225,16 +279,16 @@ export function AboutForm({ open, onClose, onSubmit, aboutId, loading }: AboutFo
             <Button type="button" variant="outline" onClick={onClose} className="flex-1 rounded-xl">
               {dir === 'rtl' ? 'إلغاء' : 'Cancel'}
             </Button>
-            <Button 
-              type="submit" 
-              disabled={loading || !formData.teacher_id} 
+            <Button
+              type="submit"
+              disabled={loading || !formData.teacher_id}
               className="flex-1 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600"
             >
               {loading
                 ? (dir === 'rtl' ? 'جاري الحفظ...' : 'Saving...')
                 : (aboutId
-                    ? (dir === 'rtl' ? 'تحديث' : 'Update')
-                    : (dir === 'rtl' ? 'إضافة' : 'Create'))}
+                  ? (dir === 'rtl' ? 'تحديث' : 'Update')
+                  : (dir === 'rtl' ? 'إضافة' : 'Create'))}
             </Button>
           </div>
         </form>
