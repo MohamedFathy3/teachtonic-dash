@@ -23,11 +23,8 @@ interface ExamFormProps {
 
 interface ExamFormData {
   title: string;
-  title_ar?: string;
   description: string;
-  description_ar?: string;
   total_marks: number;
-  total_marks_pass_marks: number;
   duration_minutes: number;
   course_detail_id: number | null;
   stage_id: number | null;
@@ -42,11 +39,8 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
   const [imageId, setImageId] = useState<number | null>(null);
   const [formData, setFormData] = useState<ExamFormData>({
     title: '',
-    title_ar: '',
     description: '',
-    description_ar: '',
     total_marks: 0,
-    total_marks_pass_marks: 0,
     duration_minutes: 0,
     course_detail_id: null,
     stage_id: null,
@@ -66,11 +60,8 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
       const exam = await examService.getExam(examId!);
       setFormData({
         title: exam.title || '',
-        title_ar: exam.title_ar || '',
         description: exam.description || '',
-        description_ar: exam.description_ar || '',
         total_marks: exam.total_marks || 0,
-        total_marks_pass_marks: exam.total_marks_pass_marks || 0,
         duration_minutes: exam.duration_minutes || 0,
         course_detail_id: exam.course_detail_id?.id || exam.course_detail_id || null,
         stage_id: exam.stage_id?.id || exam.stage_id || null,
@@ -87,7 +78,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title) {
       toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الامتحان' : 'Please enter exam title');
       return;
@@ -137,17 +128,17 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
   // بناء الفلاتر الإضافية لـ AsyncSelect
   const getLessonExtraFilters = () => {
     const filters: Record<string, any> = {};
-    
+
     // إضافة teacher_id لجلب دروس المعلم فقط
     if (user?.id) {
       filters.teacher_id = user.id;
     }
-    
+
     // إضافة stage_id إذا تم اختياره
     if (formData.stage_id) {
       filters.stage_id = formData.stage_id;
     }
-    
+
     console.log('📤 Lesson filters:', filters);
     return filters;
   };
@@ -228,15 +219,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
             </div>
 
             {/* Arabic Title (optional) */}
-            <div className="space-y-2">
-              <Label>{lang === 'ar' ? 'العنوان بالعربية' : 'Arabic Title'}</Label>
-              <Input
-                value={formData.title_ar}
-                onChange={(e) => setFormData({ ...formData, title_ar: e.target.value })}
-                placeholder={lang === 'ar' ? 'عنوان الامتحان بالعربية (اختياري)' : 'Arabic title (optional)'}
-                className="rounded-2xl h-12"
-              />
-            </div>
+
 
             {/* Description */}
             <div className="space-y-2">
@@ -251,16 +234,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
             </div>
 
             {/* Arabic Description (optional) */}
-            <div className="space-y-2">
-              <Label>{lang === 'ar' ? 'الوصف بالعربية' : 'Arabic Description'}</Label>
-              <Textarea
-                value={formData.description_ar}
-                onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })}
-                rows={4}
-                placeholder={lang === 'ar' ? 'وصف الامتحان بالعربية (اختياري)' : 'Arabic description (optional)'}
-                className="rounded-2xl resize-none"
-              />
-            </div>
+
 
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -274,15 +248,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label>{lang === 'ar' ? 'درجة النجاح' : 'Pass Marks'}</Label>
-                <Input
-                  type="number"
-                  value={formData.total_marks_pass_marks}
-                  onChange={(e) => setFormData({ ...formData, total_marks_pass_marks: parseInt(e.target.value) || 0 })}
-                  className="rounded-xl"
-                />
-              </div>
+
               <div className="space-y-2">
                 <Label>{t('durationMinutes')}</Label>
                 <Input
@@ -303,11 +269,11 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
                   value={formData.stage_id || ''}
                   onChange={(e) => {
                     const newStageId = e.target.value ? Number(e.target.value) : null;
-                    setFormData({ 
-                      ...formData, 
+                    setFormData({
+                      ...formData,
                       stage_id: newStageId,
                       // reset lesson when stage changes
-                      course_detail_id: null 
+                      course_detail_id: null
                     });
                   }}
                   className="w-full px-3 py-2 rounded-xl border bg-background"
