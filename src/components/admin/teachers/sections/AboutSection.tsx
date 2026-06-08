@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/components/admin/teachers/sections/AboutSection.tsx
 import { sectionService } from '@/services/website.service';
 import { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
@@ -18,53 +17,53 @@ interface AboutSectionProps {
   teacherId: number;
 }
 
+const emptyForm = {
+  name: '',
+  name_ar: '',
+  description: '',
+  description_ar: '',
+  facebook_meta: '',
+  google_meta: '',
+  tiktok_meta: '',
+  you_tube_meta: '',
+  image: undefined as number | undefined,
+};
+
 export function AboutSection({ teacherId }: AboutSectionProps) {
   const { lang } = useApp();
-  const [about, setAbout] = useState<any>(null);
+  const [abouts, setAbouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    name_ar: '',
-    description: '',
-    description_ar: '',
-    meta: '', // 🔥 meta كـ string
-    image: undefined as number | undefined
-  });
+  const [editingAbout, setEditingAbout] = useState<any>(null); // null = create
+  const [formData, setFormData] = useState(emptyForm);
 
-  const fetchAbout = async () => {
+  const fetchAbouts = async () => {
     setLoading(true);
     try {
-      const response = await api.post('/about/index', { filter: { teacher_id: teacherId } });
-      const aboutData = response.data?.data?.[0] || null;
-      setAbout(aboutData);
+      const response = await api.post('/about/index', {
+        filter: { teacher_id: teacherId },
+      });
+      setAbouts(response.data?.data || []);
     } catch (error) {
-      console.error('Failed to fetch about:', error);
+      console.error('Failed to fetch abouts:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (teacherId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchAbout();
-    }
+    if (teacherId) fetchAbouts();
   }, [teacherId]);
 
-  const handleDelete = async () => {
+  const handleDelete = async (about: any) => {
     if (!about?.id) return;
-
     try {
       await sectionService.delete('about', about.id);
-      setAbout(null);
-      toast({
-        title: "Success",
-        description: "About section deleted successfully"
-      });
+      toast({ title: 'Success', description: 'About section deleted successfully' });
+      fetchAbouts();
     } catch (error) {
       console.error(error);
-      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
+      toast({ title: 'Error', description: 'Failed to delete', variant: 'destructive' });
     }
   };
 
@@ -75,61 +74,64 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
         name_ar: formData.name_ar,
         description: formData.description,
         description_ar: formData.description_ar,
+        facebook_meta: formData.facebook_meta,
+        google_meta: formData.google_meta,
+        tiktok_meta: formData.tiktok_meta,
+        you_tube_meta: formData.you_tube_meta,
         teacher_id: teacherId,
-        meta: formData.meta, // 🔥 meta كـ string
-        ...(formData.image && { image: formData.image })
+        ...(formData.image && { image: formData.image }),
       };
 
-      if (about?.id) {
-        await api.patch(`/about/${about.id}`, payload);
-        toast({ title: "Success", description: "About section updated" });
+      if (editingAbout?.id) {
+        await api.patch(`/about/${editingAbout.id}`, payload);
+        toast({ title: 'Success', description: 'About section updated' });
       } else {
         await api.post('/about', payload);
-        toast({ title: "Success", description: "About section created" });
+        toast({ title: 'Success', description: 'About section created' });
       }
 
       setDialogOpen(false);
-      fetchAbout();
+      setEditingAbout(null);
+      fetchAbouts();
     } catch (error) {
       console.error(error);
-      toast({ title: "Error", description: "Failed to save about section", variant: "destructive" });
+      toast({ title: 'Error', description: 'Failed to save about section', variant: 'destructive' });
     }
   };
 
-  const openEdit = () => {
-    if (about) {
-      setFormData({
-        name: about.name || '',
-        name_ar: about.name_ar || '',
-        description: about.description || '',
-        description_ar: about.description_ar || '',
-        meta: about.meta || '', // 🔥 meta كـ string
-        image: about.image?.id || undefined
-      });
-    } else {
-      setFormData({
-        name: '',
-        name_ar: '',
-        description: '',
-        description_ar: '',
-        meta: '',
-        image: undefined
-      });
-    }
+  const openCreate = () => {
+    setEditingAbout(null);
+    setFormData(emptyForm);
     setDialogOpen(true);
   };
 
-  const getText = () => {
-    if (!about) return 'No about section';
-    if (lang === 'ar') return about.name_ar || about.name;
-    return about.name;
+  const openEdit = (about: any) => {
+    setEditingAbout(about);
+    setFormData({
+      name: about.name || '',
+      name_ar: about.name_ar || '',
+      description: about.description || '',
+      description_ar: about.description_ar || '',
+      facebook_meta: about.facebook_meta || '',
+      google_meta: about.google_meta || '',
+      tiktok_meta: about.tiktok_meta || '',
+      you_tube_meta: about.you_tube_meta || '',
+      image: about.image?.id || undefined,
+    });
+    setDialogOpen(true);
   };
 
-  const getDescription = () => {
-    if (!about) return '';
-    if (lang === 'ar') return about.description_ar || about.description;
-    return about.description;
-  };
+  const field = (key: keyof typeof emptyForm) => ({
+    value: formData[key] as string,
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setFormData(prev => ({ ...prev, [key]: e.target.value })),
+  });
+
+  const getText = (about: any) =>
+    lang === 'ar' ? about.name_ar || about.name : about.name;
+
+  const getDescription = (about: any) =>
+    lang === 'ar' ? about.description_ar || about.description : about.description;
 
   if (loading) {
     return (
@@ -144,96 +146,110 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
   return (
     <>
       <BaseSection
-        title="About Section"
+        title={`About Section (${abouts.length})`}
         icon={<Info className="h-5 w-5 text-primary" />}
-        onAdd={!about ? openEdit : undefined}
+        onAdd={openCreate}  // ✅ دايمًا ممكن تضيف جديد
       >
-        {about ? (
-          <div className="group flex items-center justify-between gap-5 p-5 rounded-2xl border bg-card shadow-sm hover:shadow-md transition-all">
-            {/* LEFT SIDE */}
-            <div className="flex items-center gap-4 flex-1">
-              {/* IMAGE / VIDEO */}
-              {about.image?.fullUrl ? (
-                about.image.fullUrl.match(/\.(mp4|webm|ogg|mov|avi)$/i) ? (
-                  <video
-                    src={about.image.fullUrl}
-                    className="w-20 h-20 rounded-xl object-cover border"
-                    controls
-                  />
-                ) : (
-                  <img
-                    src={about.image.fullUrl}
-                    alt={getText()}
-                    className="w-20 h-20 rounded-xl object-cover border"
-                  />
-                )
-              ) : (
-                <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center">
-                  <Info className="w-5 h-5 text-muted-foreground" />
-                </div>
-              )}
+        <div className="space-y-3">
+          {abouts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center rounded-2xl border border-dashed">
+              <Info className="h-10 w-10 text-muted-foreground mb-2" />
+              <p className="text-muted-foreground text-sm">No about section added yet</p>
+              <Button variant="link" onClick={openCreate} className="mt-1">
+                Add About Section
+              </Button>
+            </div>
+          ) : (
+            abouts.map((about) => (
+              <div
+                key={about.id}
+                className="group flex items-center justify-between gap-5 p-5 rounded-2xl border bg-card shadow-sm hover:shadow-md transition-all"
+              >
+                {/* LEFT */}
+                <div className="flex items-center gap-4 flex-1">
+                  {about.image?.fullUrl ? (
+                    about.image.fullUrl.match(/\.(mp4|webm|ogg|mov|avi)$/i) ? (
+                      <video
+                        src={about.image.fullUrl}
+                        className="w-20 h-20 rounded-xl object-cover border"
+                        controls
+                      />
+                    ) : (
+                      <img
+                        src={about.image.fullUrl}
+                        alt={getText(about)}
+                        className="w-20 h-20 rounded-xl object-cover border"
+                      />
+                    )
+                  ) : (
+                    <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center">
+                      <Info className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
 
-              {/* CONTENT */}
-              <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold">
-                    {getText()}
-                  </h3>
+                  <div className="flex-1 space-y-1">
+                    <h3 className="text-lg font-semibold">{getText(about)}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {getDescription(about)}
+                    </p>
+
+                    {/* Meta badges */}
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {about.facebook_meta && (
+                        <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">
+                          FB: {about.facebook_meta.substring(0, 20)}...
+                        </span>
+                      )}
+                      {about.google_meta && (
+                        <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full border border-red-100">
+                          G: {about.google_meta.substring(0, 20)}...
+                        </span>
+                      )}
+                      {about.tiktok_meta && (
+                        <span className="text-xs bg-gray-50 text-gray-700 px-2 py-0.5 rounded-full border border-gray-200">
+                          TT: {about.tiktok_meta.substring(0, 20)}...
+                        </span>
+                      )}
+                      {about.you_tube_meta && (
+                        <span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded-full border border-red-100">
+                          YT: {about.you_tube_meta.substring(0, 20)}...
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {getDescription()}
-                </p>
-                
-                {/* 🔥 عرض الـ meta لو موجود */}
-                {about.meta && (
-                  <p className="text-xs text-muted-foreground/70 line-clamp-1">
-                    <span className="font-medium">Meta:</span> {about.meta}
-                  </p>
-                )}
+                {/* ACTIONS */}
+                <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openEdit(about)}
+                    className="hover:bg-blue-50"
+                  >
+                    <Edit className="h-4 w-4 text-blue-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(about)}
+                    className="hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
               </div>
-            </div>
-
-            {/* ACTIONS */}
-            <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={openEdit}
-                className="hover:bg-blue-50"
-              >
-                <Edit className="h-4 w-4 text-blue-600" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleDelete}
-                className="hover:bg-red-50"
-              >
-                <Trash2 className="h-4 w-4 text-red-500" />
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-10 text-center rounded-2xl border border-dashed">
-            <Info className="h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-muted-foreground text-sm">
-              No about section added yet
-            </p>
-            <Button variant="link" onClick={openEdit} className="mt-1">
-              Add About Section
-            </Button>
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </BaseSection>
 
       {/* DIALOG */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingAbout(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle>
-              {about ? 'Edit About Section' : 'Add About Section'}
+              {editingAbout ? 'Edit About Section' : 'Add About Section'}
             </DialogTitle>
           </DialogHeader>
 
@@ -242,23 +258,11 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Name (EN)</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                />
+                <Input {...field('name')} />
               </div>
-
               <div>
                 <Label>Name (AR)</Label>
-                <Input
-                  value={formData.name_ar}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name_ar: e.target.value })
-                  }
-                  dir="rtl"
-                />
+                <Input {...field('name_ar')} dir="rtl" />
               </div>
             </div>
 
@@ -266,67 +270,57 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Description (EN)</Label>
-                <Textarea
-                  rows={4}
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                />
+                <Textarea rows={4} {...field('description')} />
               </div>
-
               <div>
                 <Label>Description (AR)</Label>
-                <Textarea
-                  rows={4}
-                  dir="rtl"
-                  value={formData.description_ar}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description_ar: e.target.value })
-                  }
-                />
+                <Textarea rows={4} dir="rtl" {...field('description_ar')} />
               </div>
             </div>
 
-            {/* 🔥 META كـ STRING */}
-            <div>
-              <Label>Meta (Additional Info)</Label>
-              <Textarea
-                rows={3}
-                value={formData.meta}
-                onChange={(e) =>
-                  setFormData({ ...formData, meta: e.target.value })
-                }
-                placeholder="Enter additional information like certifications, achievements, etc..."
-                className="resize-none"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                This field can contain any additional information about the teacher
-              </p>
+            {/* META FIELDS */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <h4 className="font-medium text-sm text-gray-500">Meta / Social</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Facebook Meta</Label>
+                  <Textarea rows={2} {...field('facebook_meta')} placeholder="Facebook meta description" className="resize-none" />
+                </div>
+                <div>
+                  <Label>Google Meta</Label>
+                  <Textarea rows={2} {...field('google_meta')} placeholder="Google meta description" className="resize-none" />
+                </div>
+                <div>
+                  <Label>TikTok Meta</Label>
+                  <Textarea rows={2} {...field('tiktok_meta')} placeholder="TikTok meta description" className="resize-none" />
+                </div>
+                <div>
+                  <Label>YouTube Meta</Label>
+                  <Textarea rows={2} {...field('you_tube_meta')} placeholder="YouTube meta description" className="resize-none" />
+                </div>
+              </div>
             </div>
 
             {/* IMAGE/VIDEO */}
             <div>
               <Label>Media (Image or Video)</Label>
               <FileUploader
-                onUploadSuccess={(id) => setFormData({ ...formData, image: id })}
+                onUploadSuccess={(id) => setFormData(prev => ({ ...prev, image: id }))}
                 multiple={false}
                 accept="image/*,video/*"
                 maxVideoSize={5}
                 label="Upload Image or Video"
-                defaultImageUrl={about?.image?.fullUrl}
-                defaultImageId={about?.image?.id}
-                onRemoveImage={() => setFormData({ ...formData, image: undefined })}
+                defaultImageUrl={editingAbout?.image?.fullUrl}
+                defaultImageId={editingAbout?.image?.id}
+                onRemoveImage={() => setFormData(prev => ({ ...prev, image: undefined }))}
               />
             </div>
 
             {/* ACTIONS */}
             <div className="flex justify-end gap-2 pt-2 border-t">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
-              </Button>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
               <Button onClick={handleSubmit}>
-                {about ? 'Update' : 'Create'}
+                {editingAbout ? 'Update' : 'Create'}
               </Button>
             </div>
           </div>

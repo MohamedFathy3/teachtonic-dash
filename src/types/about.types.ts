@@ -1,3 +1,4 @@
+
 // src/types/about.types.ts
 
 export interface AboutImage {
@@ -17,6 +18,10 @@ export interface About {
   description: string;
   name_ar: string;
   description_ar: string;
+  facebook_meta: string;
+  google_meta: string;
+  tiktok_meta: string;
+  you_tube_meta: string;
   teacher_id: number;
   teacher_name?: string;
   active: boolean;
@@ -32,8 +37,12 @@ export interface AboutFormData {
   description: string;
   name_ar: string;
   description_ar: string;
+  facebook_meta: string;
+  google_meta: string;
+  tiktok_meta: string;
+  you_tube_meta: string;
   teacher_id: number;
-  image?: number; // media ID
+  image?: number;
   active?: boolean;
 }
 
@@ -64,15 +73,18 @@ export interface PaginatedResponse<T> {
   status: number;
 }
 
-// Helper function لتحويل About من API إلى FormData
 export function aboutToFormData(about: About): AboutFormData {
   return {
     name: about.name,
     description: about.description,
     name_ar: about.name_ar,
     description_ar: about.description_ar,
+    facebook_meta: about.facebook_meta ?? '',
+    google_meta: about.google_meta ?? '',
+    tiktok_meta: about.tiktok_meta ?? '',
+    you_tube_meta: about.you_tube_meta ?? '',
     teacher_id: about.teacher_id,
     image: about.image?.id,
     active: about.active,
   };
-}
+} 
