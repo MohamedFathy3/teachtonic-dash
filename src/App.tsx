@@ -17,8 +17,8 @@ import { StudentLearningPage } from "@/pages/instructor/StudentLearningPage";
 import { InstructorExams } from "@/pages/instructor/InstructorExams";
 import { DashboardLayout } from "./components/lms/DashboardLayout";
 import { useState } from "react"; // 🔥 أضف هذا السطر
-import AssignmentViewer from "./components/assignments/AssignmentViewer";
-
+import AssignmentViewer from '@/components/assignments/AssignmentViewer';
+import InstructorAssignments from "./pages/instructor/InstructorAssignments";
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -39,12 +39,12 @@ const App = () => {
               <Route
                 path="/admin/*"
                 element={
-                    <Routes>
-                      <Route path="teachers/profile" element={<TeacherProfileView />} />
-                      <Route path="courses" element={<AdminCourses />} />
-                      <Route path="courses/:id" element={<CourseDetails />} />
-                      <Route path="*" element={<Index />} />
-                    </Routes>
+                  <Routes>
+                    <Route path="teachers/profile" element={<TeacherProfileView />} />
+                    <Route path="courses" element={<AdminCourses />} />
+                    <Route path="courses/:id" element={<CourseDetails />} />
+                    <Route path="*" element={<Index />} />
+                  </Routes>
                 }
               />
 
@@ -52,13 +52,17 @@ const App = () => {
               <Route
                 path="/instructor/*"
                 element={
-                    <Routes>
-                      {/* <Route path="exams" element={<InstructorExams />} /> */}
-                      <Route path="exam/:examId" element={<ExamViewer />} />
-                        <Route path="/instructor/assignment/:assignmentId" element={<AssignmentViewer />} />
-                      <Route path="student/:studentId" element={<StudentLearningPage />} />
-                      <Route path="*" element={<Index />} />
-                    </Routes>
+                  <Routes>
+                    {/* <Route path="exams" element={<InstructorExams />} /> */}
+                    <Route path="exam/:examId" element={<ExamViewer />} />
+
+                    <Route path="assignments">
+                      <Route index element={<InstructorAssignments />} />
+                      <Route path=":assignmentId" element={<AssignmentViewer />} />
+                    </Route>
+                    <Route path="student/:studentId" element={<StudentLearningPage />} />
+                    <Route path="*" element={<Index />} />
+                  </Routes>
                 }
               />
 

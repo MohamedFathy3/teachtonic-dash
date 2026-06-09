@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/instructor/InstructorAssignments.tsx
+import { PageHeader } from "@/components/lms/PageHeader";
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -34,7 +35,7 @@ export const InstructorAssignments: React.FC = () => {
   const { t, lang, user } = useApp();
   const navigate = useNavigate();
   const isRTL = lang === 'ar';
-  
+
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,7 +70,9 @@ export const InstructorAssignments: React.FC = () => {
 
   // 🔥 عدل هنا - استخدم navigate بدلاً من setActiveTab
   const handleViewAssignment = (assignment: any) => {
-    navigate(`/instructor/assignment/${assignment.id}`);
+    console.log("VIEW CLICKED", assignment.id);
+    // App route is: /instructor/assignments/:assignmentId
+    navigate(`/instructor/assignments/${assignment.id}`);
   };
 
   const handleEditAssignment = (assignment: any) => {
@@ -170,13 +173,13 @@ export const InstructorAssignments: React.FC = () => {
         {!loading && !error && assignments.length > 0 && viewMode === 'grid' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {assignments.map((assignment) => (
-              <AssignmentCard 
-                key={assignment.id} 
-                assignment={assignment} 
-                onView={handleViewAssignment} 
-                onEdit={handleEditAssignment} 
-                onDelete={handleDeleteAssignment} 
-                onAddQuestions={handleAddQuestions} 
+              <AssignmentCard
+                key={assignment.id}
+                assignment={assignment}
+                onView={handleViewAssignment}
+                onEdit={handleEditAssignment}
+                onDelete={handleDeleteAssignment}
+                onAddQuestions={handleAddQuestions}
               />
             ))}
           </div>

@@ -25,7 +25,7 @@ export function InstructorAssistants() {
               fileName="assistants-list"
               label={'Export'}
             />
-
+          
             {/* Dialog + Button الأصلي */}
             <Dialog>
               <DialogTrigger asChild>
@@ -56,7 +56,7 @@ export function InstructorAssistants() {
           </div>
         }
       />
-
+    
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {assistantsData.map((a) => (
           <Card key={a.id} className="group rounded-2xl border-border p-5 shadow-soft transition-smooth hover:shadow-elevated hover:-translate-y-1">
