@@ -47,9 +47,9 @@ import { toast } from 'sonner';
 export const SemestersPage: React.FC = () => {
   const { lang, user } = useApp();
   const teacherId = user?.id;
+  const isRTL = lang === 'ar';
 
   const { subjects } = useTeacherMeta(teacherId);
-  const isRTL = lang === 'ar';
 
   // State
   const [semesters, setSemesters] = useState<Semester[]>([]);
@@ -114,7 +114,9 @@ export const SemestersPage: React.FC = () => {
         filters as Record<string, any>,
         pagination.perPage,
         page,
-        debouncedSearch
+        debouncedSearch,
+        teacherId,
+        lang
       );
       setSemesters(response.data);
       setPagination({
@@ -129,7 +131,7 @@ export const SemestersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.perPage, filters]);
+  }, [debouncedSearch, pagination.perPage, filters, teacherId, lang]);
 
   // Initial fetch
   useEffect(() => {
@@ -177,12 +179,9 @@ export const SemestersPage: React.FC = () => {
       await semesterService.updateSemester(editingSemester.id, formData);
       toast.success(isRTL ? 'تم تحديث الترم بنجاح' : 'Semester updated successfully');
       setShowModal(false);
-      // 🔥 المهم: من غير resetForm هنا عشان نحافظ على البيانات
-      // بس هنعمل resetForm بعد ما نقفل المودال
       setTimeout(() => {
         resetForm();
       }, 300);
-      // 🔥 نجيب البيانات تاني عشان نحدث الجدول
       await fetchSemesters(pagination.currentPage);
     } catch (error: any) {
       toast.error(error.response?.data?.message || (isRTL ? 'فشل في تحديث الترم' : 'Failed to update semester'));
@@ -237,7 +236,6 @@ export const SemestersPage: React.FC = () => {
   const openEditModal = useCallback(async (semester: Semester) => {
     setFetchingSemester(true);
     try {
-      // نجيب البيانات كاملة من الـ API
       const fullSemester = await semesterService.getSemester(semester.id);
       setCurrentSemester(fullSemester);
       
@@ -433,17 +431,17 @@ export const SemestersPage: React.FC = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={isRTL ? 'بحث بالاسم...' : 'Search by name...'}
+              placeholder={isRTL ? 'بحث بالاسم العربي...' : 'Search by English name...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 w-64 rounded-xl"
+              className="pl-9 w-64 rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
             />
             {searchQuery && (
               <button
                 onClick={clearSearch}
                 className="absolute right-3 top-1/2 -translate-y-1/2"
               >
-                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
               </button>
             )}
           </div>
@@ -562,7 +560,7 @@ export const SemestersPage: React.FC = () => {
                 type="checkbox"
                 checked={selectedIds.size === semesters.length && semesters.length > 0}
                 onChange={handleSelectAll}
-                className="rounded border-gray-300"
+                className="rounded border-gray-300 dark:border-gray-600"
               />
               {isRTL ? 'اختيار الكل' : 'Select All'}
             </label>
@@ -583,7 +581,15 @@ export const SemestersPage: React.FC = () => {
           ) : semesters.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Calendar className="h-16 w-16 text-muted-foreground/30 mb-4" />
-              <p className="text-muted-foreground">{isRTL ? 'لا توجد أتربة' : 'No semesters found'}</p>
+              <p className="text-muted-foreground">{isRTL ? 'لا توجد ترمات' : 'No semesters found'}</p>
+              <Button
+                onClick={openCreateModal}
+                variant="outline"
+                className="mt-4 gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                {isRTL ? 'أضف أول ترم' : 'Add First Semester'}
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -595,7 +601,7 @@ export const SemestersPage: React.FC = () => {
                         type="checkbox"
                         checked={selectedIds.size === semesters.length && semesters.length > 0}
                         onChange={handleSelectAll}
-                        className="rounded border-gray-300"
+                        className="rounded border-gray-300 dark:border-gray-600"
                       />
                     </TableHead>
                     <TableHead>{isRTL ? 'الصورة' : 'Image'}</TableHead>
@@ -623,7 +629,7 @@ export const SemestersPage: React.FC = () => {
                             type="checkbox"
                             checked={selectedIds.has(semester.id)}
                             onChange={(e) => handleSelect(semester.id, e.target.checked)}
-                            className="rounded border-gray-300"
+                            className="rounded border-gray-300 dark:border-gray-600"
                           />
                         </TableCell>
                         <TableCell>
@@ -657,10 +663,7 @@ export const SemestersPage: React.FC = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
+                          <button
                             onClick={async () => {
                               const ok = confirm(
                                 isRTL
@@ -682,24 +685,24 @@ export const SemestersPage: React.FC = () => {
                                 toast.error(isRTL ? 'فشل في تغيير الحالة' : 'Failed to update status');
                               }
                             }}
-                            className={
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm transition-colors ${
                               semester.active
-                                ? 'text-green-600 hover:bg-green-600/10'
-                                : 'text-red-500 hover:bg-red-500/10'
-                            }
+                                ? 'text-green-600 bg-green-50 dark:bg-green-950/20 hover:bg-green-100'
+                                : 'text-red-500 bg-red-50 dark:bg-red-950/20 hover:bg-red-100'
+                            }`}
                           >
                             {semester.active ? (
                               <>
-                                <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                <CheckCircle className="h-3.5 w-3.5" />
                                 {isRTL ? 'نشط' : 'Active'}
                               </>
                             ) : (
                               <>
-                                <XCircle className="h-3.5 w-3.5 mr-1" />
+                                <XCircle className="h-3.5 w-3.5" />
                                 {isRTL ? 'غير نشط' : 'Inactive'}
                               </>
                             )}
-                          </Button>
+                          </button>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex justify-center gap-1">
@@ -779,7 +782,10 @@ export const SemestersPage: React.FC = () => {
                 <span className="ml-2">{isRTL ? 'جاري تحميل البيانات...' : 'Loading data...'}</span>
               </div>
             ) : (
-              <form onSubmit={editingSemester ? handleUpdate : handleCreate} className="space-y-4 mt-4">
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                editingSemester ? handleUpdate() : handleCreate();
+              }} className="space-y-4 mt-4">
                 {/* File Uploader */}
                 <FileUploader
                   label={isRTL ? 'صورة الترم' : 'Semester Image'}
@@ -809,6 +815,7 @@ export const SemestersPage: React.FC = () => {
                         subject_id: e.target.value ? Number(e.target.value) : null,
                       }))
                     }
+                    required
                   >
                     <option value="">
                       {isRTL ? 'اختر المادة' : 'Select Subject'}
@@ -891,7 +898,7 @@ export const SemestersPage: React.FC = () => {
                   <Button 
                     type="submit" 
                     disabled={submitting} 
-                    className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                    className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600"
                   >
                     {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     <Save className="h-4 w-4 mr-2" />
@@ -908,3 +915,5 @@ export const SemestersPage: React.FC = () => {
     </div>
   );
 };
+
+export default SemestersPage;
