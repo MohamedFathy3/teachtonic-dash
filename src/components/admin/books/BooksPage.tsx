@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/books/BooksPage.tsx
-import { ExportExcelButton } from '@/components/common/ExportExcelButton'; // ✅ أضف هذا الاستيراد
 
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBooks } from '@/hooks/useBooks';
@@ -21,10 +21,6 @@ export const BooksPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  });
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -36,6 +32,7 @@ export const BooksPage: React.FC = () => {
     from_date: '',
     to_date: '',
   });
+  
   const { useGetAll, useBulkDelete, useToggleActive } = useBooks();
   const { data, isLoading, refetch } = useGetAll({
     search: debouncedSearch,
@@ -51,24 +48,13 @@ export const BooksPage: React.FC = () => {
   const bulkDelete = useBulkDelete();
   const toggleActive = useToggleActive();
 
-  // 🔥 Debounce للبحث
+  // Debounce للبحث
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
     }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-
-  // 🔥 تأثير Dark Mode
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
 
   const books = data?.data || [];
   const meta = data?.meta;
@@ -89,14 +75,14 @@ export const BooksPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // تبديل حالة الكتاب (نشط/غير نشط)
+  // تبديل حالة الكتاب
   const handleToggleActive = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     await toggleActive.mutateAsync(id);
     await refetch();
   };
 
-  // اختيار/إلغاء اختيار كتاب
+  // اختيار كتاب
   const handleSelectBook = (id: number, checked: boolean) => {
     if (checked) {
       setSelectedIds(prev => [...prev, id]);
@@ -114,15 +100,18 @@ export const BooksPage: React.FC = () => {
     }
   };
 
-  // تبديل الثيم
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
   // إعادة تعيين الفلتر
   const clearSearch = () => {
     setSearchQuery('');
     setDebouncedSearch('');
+    setFilters({
+      search: '',
+      writer: '',
+      active: undefined,
+      price: '',
+      from_date: '',
+      to_date: '',
+    });
   };
 
   if (isLoading) {
@@ -137,9 +126,8 @@ export const BooksPage: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="p-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -148,7 +136,7 @@ export const BooksPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card className="p-4 text-center bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-0 shadow-sm hover:shadow-md transition-all">
+            <Card className="p-4 text-center bg-gradient-to-r from-blue-500/10 to-indigo-500/10 dark:from-blue-500/5 dark:to-indigo-500/5 border-0 shadow-sm hover:shadow-md transition-all">
               <BookOpen className="h-8 w-8 mx-auto text-blue-500 mb-2" />
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{meta?.total || 0}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجمالي الكتب' : 'Total Books'}</p>
@@ -160,7 +148,7 @@ export const BooksPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className="p-4 text-center bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-0 shadow-sm hover:shadow-md transition-all">
+            <Card className="p-4 text-center bg-gradient-to-r from-green-500/10 to-emerald-500/10 dark:from-green-500/5 dark:to-emerald-500/5 border-0 shadow-sm hover:shadow-md transition-all">
               <User className="h-8 w-8 mx-auto text-green-500 mb-2" />
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {books.filter((b: any) => b.active === 1).length}
@@ -174,15 +162,16 @@ export const BooksPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card className="p-4 text-center bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-0 shadow-sm hover:shadow-md transition-all">
+            <Card className="p-4 text-center bg-gradient-to-r from-orange-500/10 to-amber-500/10 dark:from-orange-500/5 dark:to-amber-500/5 border-0 shadow-sm hover:shadow-md transition-all">
               <DollarSign className="h-8 w-8 mx-auto text-orange-500 mb-2" />
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                ${books.reduce((sum: number, b: any) => sum + parseFloat(b.price), 0).toFixed(2)}
+                {books.reduce((sum: number, b: any) => sum + parseFloat(b.price), 0).toFixed(2)} EGP
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجمالي القيمة' : 'Total Value'}</p>
             </Card>
           </motion.div>
         </div>
+
         {/* Header */}
         <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
           <div>
@@ -195,9 +184,6 @@ export const BooksPage: React.FC = () => {
           </div>
           <div className="flex gap-3 flex-wrap">
 
-
-
-
             {/* Bulk Delete Button */}
             {selectedIds.length > 0 && (
               <Button
@@ -209,6 +195,7 @@ export const BooksPage: React.FC = () => {
                 {lang === 'ar' ? `حذف (${selectedIds.length})` : `Delete (${selectedIds.length})`}
               </Button>
             )}
+
             <ExportExcelButton
               data={books}
               fileName="books-list"
@@ -216,177 +203,35 @@ export const BooksPage: React.FC = () => {
               disabled={isLoading || books.length === 0}
             />
 
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={lang === 'ar' ? 'بحث عن كتاب...' : 'Search books...'}
+                className="pl-9 pr-8 rounded-xl w-64 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+              />
+              {searchQuery && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                >
+                  <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </div>
+
             {/* Filter Toggle Button */}
             <Button
               variant="outline"
               size="icon"
               onClick={() => setShowFilters(!showFilters)}
-              className="rounded-xl"
-              title={lang === 'ar' ? 'بحث' : 'Search'}
+              className={`rounded-xl ${showFilters ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+              title={lang === 'ar' ? 'بحث متقدم' : 'Advanced Search'}
             >
               <Filter size={18} />
             </Button>
-
-            {/* Theme Toggle Button */}
-
-
-            {/* Bulk Delete Button */}
-            {/* Search Filters */}
-            <AnimatePresence>
-              {showFilters && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0, y: -20 }}
-                  animate={{ opacity: 1, height: 'auto', y: 0 }}
-                  exit={{ opacity: 0, height: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="mb-6 overflow-hidden"
-                >
-                  <Card className="p-5 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 shadow-sm">
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                      {/* Search */}
-                      <div>
-                        <label className="text-sm text-gray-600 dark:text-gray-300">
-                          {lang === 'ar' ? 'بحث' : 'Search'}
-                        </label>
-                        <Input
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Title..."
-                          className="rounded-xl"
-                        />
-                      </div>
-
-                      {/* Writer */}
-                      <div>
-                        <label className="text-sm text-gray-600 dark:text-gray-300">
-                          Writer
-                        </label>
-                        <Input
-                          value={filters.writer}
-                          onChange={(e) =>
-                            setFilters(prev => ({ ...prev, writer: e.target.value }))
-                          }
-                          placeholder="Author name"
-                          className="rounded-xl"
-                        />
-                      </div>
-
-                      {/* Active */}
-                      <div>
-                        <label className="text-sm text-gray-600 dark:text-gray-300">
-                          Status
-                        </label>
-                        <select
-                          value={
-                            filters.active === undefined
-                              ? ''
-                              : filters.active
-                                ? '1'
-                                : '0'
-                          }
-                          onChange={(e) =>
-                            setFilters(prev => ({
-                              ...prev,
-                              active:
-                                e.target.value === ''
-                                  ? undefined
-                                  : e.target.value === '1',
-                            }))
-                          }
-                          className="w-full border rounded-xl px-3 py-2 dark:bg-gray-900 dark:border-gray-700"
-                        >
-                          <option value="">All</option>
-                          <option value="1">Active</option>
-                          <option value="0">Inactive</option>
-                        </select>
-                      </div>
-
-                      {/* Price */}
-                      <div>
-                        <label className="text-sm text-gray-600 dark:text-gray-300">
-                          Price
-                        </label>
-                        <Input
-                          type="number"
-                          value={filters.price}
-                          onChange={(e) =>
-                            setFilters(prev => ({ ...prev, price: e.target.value }))
-                          }
-                          placeholder="Price"
-                          className="rounded-xl"
-                        />
-                      </div>
-
-                      {/* From Date */}
-                      <div>
-                        <label className="text-sm text-gray-600 dark:text-gray-300">
-                          From Date
-                        </label>
-                        <Input
-                          type="date"
-                          value={filters.from_date}
-                          onChange={(e) =>
-                            setFilters(prev => ({
-                              ...prev,
-                              from_date: e.target.value,
-                            }))
-                          }
-                          className="rounded-xl"
-                        />
-                      </div>
-
-                      {/* To Date */}
-                      <div>
-                        <label className="text-sm text-gray-600 dark:text-gray-300">
-                          To Date
-                        </label>
-                        <Input
-                          type="date"
-                          value={filters.to_date}
-                          onChange={(e) =>
-                            setFilters(prev => ({
-                              ...prev,
-                              to_date: e.target.value,
-                            }))
-                          }
-                          className="rounded-xl"
-                        />
-                      </div>
-
-                    </div>
-
-                    {/* Buttons */}
-                    <div className="flex justify-end gap-2 mt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          setFilters({
-                            search: '',
-                            writer: '',
-                            active: undefined,
-                            price: '',
-                            from_date: '',
-                            to_date: '',
-                          })
-                        }
-                      >
-                        Reset
-                      </Button>
-
-                      <Button
-                        onClick={() => setShowFilters(false)}
-                        className="bg-blue-600 text-white"
-                      >
-                        Apply
-                      </Button>
-                    </div>
-
-                  </Card>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* Add Book Button */}
             <Button
@@ -401,6 +246,112 @@ export const BooksPage: React.FC = () => {
             </Button>
           </div>
         </div>
+
+        {/* Filters Panel */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, y: -20 }}
+              animate={{ opacity: 1, height: 'auto', y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="mb-6 overflow-hidden"
+            >
+              <Card className="p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Writer */}
+                  <div>
+                    <label className="text-sm text-gray-600 dark:text-gray-300 block mb-2">
+                      {lang === 'ar' ? 'المؤلف' : 'Writer'}
+                    </label>
+                    <Input
+                      value={filters.writer}
+                      onChange={(e) => setFilters(prev => ({ ...prev, writer: e.target.value }))}
+                      placeholder={lang === 'ar' ? 'اسم المؤلف' : 'Author name'}
+                      className="rounded-xl bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                    />
+                  </div>
+
+                  {/* Active Status */}
+                  <div>
+                    <label className="text-sm text-gray-600 dark:text-gray-300 block mb-2">
+                      {lang === 'ar' ? 'الحالة' : 'Status'}
+                    </label>
+                    <select
+                      value={filters.active === undefined ? '' : filters.active ? '1' : '0'}
+                      onChange={(e) => setFilters(prev => ({
+                        ...prev,
+                        active: e.target.value === '' ? undefined : e.target.value === '1',
+                      }))}
+                      className="w-full border rounded-xl px-3 py-2 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+                      <option value="1">{lang === 'ar' ? 'نشط' : 'Active'}</option>
+                      <option value="0">{lang === 'ar' ? 'غير نشط' : 'Inactive'}</option>
+                    </select>
+                  </div>
+
+                  {/* Price */}
+                  <div>
+                    <label className="text-sm text-gray-600 dark:text-gray-300 block mb-2">
+                      {lang === 'ar' ? 'السعر' : 'Price'}
+                    </label>
+                    <Input
+                      type="number"
+                      value={filters.price}
+                      onChange={(e) => setFilters(prev => ({ ...prev, price: e.target.value }))}
+                      placeholder={lang === 'ar' ? 'السعر' : 'Price'}
+                      className="rounded-xl bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                    />
+                  </div>
+
+                  {/* From Date */}
+                  <div>
+                    <label className="text-sm text-gray-600 dark:text-gray-300 block mb-2">
+                      {lang === 'ar' ? 'من تاريخ' : 'From Date'}
+                    </label>
+                    <Input
+                      type="date"
+                      value={filters.from_date}
+                      onChange={(e) => setFilters(prev => ({ ...prev, from_date: e.target.value }))}
+                      className="rounded-xl bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                    />
+                  </div>
+
+                  {/* To Date */}
+                  <div>
+                    <label className="text-sm text-gray-600 dark:text-gray-300 block mb-2">
+                      {lang === 'ar' ? 'إلى تاريخ' : 'To Date'}
+                    </label>
+                    <Input
+                      type="date"
+                      value={filters.to_date}
+                      onChange={(e) => setFilters(prev => ({ ...prev, to_date: e.target.value }))}
+                      className="rounded-xl bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                    />
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={clearSearch}
+                    className="rounded-xl"
+                  >
+                    {lang === 'ar' ? 'إعادة تعيين' : 'Reset'}
+                  </Button>
+                  <Button
+                    onClick={() => setShowFilters(false)}
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl"
+                  >
+                    {lang === 'ar' ? 'تطبيق' : 'Apply'}
+                  </Button>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Select All Checkbox */}
         {books.length > 0 && (
@@ -457,7 +408,7 @@ export const BooksPage: React.FC = () => {
                       </Badge>
                     </div>
 
-                    {/* Action Buttons - Visible on Hover */}
+                    {/* Action Buttons */}
                     <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <Button
                         size="icon"
@@ -511,11 +462,11 @@ export const BooksPage: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400">
                         <DollarSign size={14} />
-                        <span>{parseFloat(book.price).toFixed(2)}</span>
+                        <span>{parseFloat(book.price).toFixed(2)} EGP</span>
                       </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
                         {format(new Date(book.createdAt), 'dd/MM/yyyy', {
                           locale: lang === 'ar' ? arSA : enUS,
                         })}
@@ -548,7 +499,7 @@ export const BooksPage: React.FC = () => {
             <Button
               onClick={() => setIsModalOpen(true)}
               variant="outline"
-              className="mt-4 gap-2"
+              className="mt-4 gap-2 rounded-xl"
             >
               <Plus size={18} />
               {lang === 'ar' ? 'أضف أول كتاب' : 'Add First Book'}
@@ -575,7 +526,7 @@ export const BooksPage: React.FC = () => {
             setSelectedIds([]);
           }}
           editingItem={editingItem}
-          isDarkMode={isDarkMode}
+          isDarkMode={document.documentElement.classList.contains('dark')}
         />
       </div>
     </div>

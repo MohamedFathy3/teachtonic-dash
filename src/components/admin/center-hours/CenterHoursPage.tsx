@@ -1,24 +1,24 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/center-hours/CenterHoursPage.tsx
-import { ExportExcelButton } from '@/components/common/ExportExcelButton'; // ✅ أضف هذا الاستيراد
 
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCenterHours } from '@/hooks/useCenterHours';
 import { CenterHourModal } from './CenterHourModal';
 import { useApp } from '@/contexts/AppContext';
-import { Plus, Trash2, Edit, Calendar, Clock, User, FileText, Search, BookOpen, Moon, Sun } from 'lucide-react';
+import { Plus, Trash2, Edit, Calendar, Clock, User, FileText, Search, BookOpen, Moon, Sun, X, Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 export const CenterHoursPage: React.FC = () => {
   const { lang } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    // 🔥 جلب الإعدادات من localStorage
-    const saved = localStorage.getItem('theme');
-    return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  });
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
     teacher_id: undefined as number | undefined,
@@ -31,13 +31,7 @@ export const CenterHoursPage: React.FC = () => {
   });
   const bulkDelete = useBulkDelete();
 
-
-  // 🔥 تصحيح: معرفة شكل البيانات
-  useEffect(() => {
-    console.log('📊 CenterHours Data:', data);
-  }, [data]);
-
-  // 🔥 استخراج البيانات حسب شكل الـ response
+  // استخراج البيانات
   const hours = data?.data?.data || data?.data || [];
   const meta = data?.data?.meta || data?.meta;
 
@@ -62,8 +56,9 @@ export const CenterHoursPage: React.FC = () => {
     }
   };
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
+  const clearSearch = () => {
+    setFilters({ search: '', teacher_id: undefined });
+    setShowFilters(false);
   };
 
   if (isLoading) {
@@ -78,10 +73,54 @@ export const CenterHoursPage: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="p-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Card className="p-4 text-center bg-gradient-to-r from-purple-500/10 to-pink-500/10 dark:from-purple-500/5 dark:to-pink-500/5 border-0 shadow-sm hover:shadow-md transition-all">
+              <Calendar className="h-8 w-8 mx-auto text-purple-500 mb-2" />
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{meta?.total || 0}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجمالي المواعيد' : 'Total Appointments'}</p>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="p-4 text-center bg-gradient-to-r from-green-500/10 to-emerald-500/10 dark:from-green-500/5 dark:to-emerald-500/5 border-0 shadow-sm hover:shadow-md transition-all">
+              <Clock className="h-8 w-8 mx-auto text-green-500 mb-2" />
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {hours.length}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'هذا الشهر' : 'This Month'}</p>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="p-4 text-center bg-gradient-to-r from-orange-500/10 to-amber-500/10 dark:from-orange-500/5 dark:to-amber-500/5 border-0 shadow-sm hover:shadow-md transition-all">
+              <User className="h-8 w-8 mx-auto text-orange-500 mb-2" />
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {new Set(hours.map((h: any) => h.teacher_id)).size}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'معلمين' : 'Teachers'}</p>
+            </Card>
+          </motion.div>
+        </div>
+
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
               {lang === 'ar' ? 'مواعيد السناتر' : 'Center Hours'}
@@ -90,8 +129,21 @@ export const CenterHoursPage: React.FC = () => {
               {lang === 'ar' ? 'إدارة مواعيد الدروس في السنتر' : 'Manage center lesson appointments'}
             </p>
           </div>
-          <div className="flex gap-3">
-            {/* ✅ زرار التصدير */}
+          <div className="flex gap-3 flex-wrap">
+
+            {/* Bulk Delete Button */}
+            {selectedIds.length > 0 && (
+              <Button
+                onClick={handleDeleteSelected}
+                variant="destructive"
+                className="gap-2 rounded-xl shadow-md hover:shadow-lg transition-all"
+              >
+                <Trash2 size={18} />
+                {lang === 'ar' ? `حذف (${selectedIds.length})` : `Delete (${selectedIds.length})`}
+              </Button>
+            )}
+
+            {/* Export Button */}
             <ExportExcelButton
               data={hours}
               fileName="center-hours"
@@ -99,57 +151,38 @@ export const CenterHoursPage: React.FC = () => {
               disabled={isLoading || hours.length === 0}
             />
 
-
-            <AnimatePresence>
-              {selectedIds.length > 0 && (
-                <motion.button
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  onClick={handleDeleteSelected}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg flex items-center gap-2 hover:bg-red-700 transition-all"
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                placeholder={lang === 'ar' ? 'بحث...' : 'Search...'}
+                className="pl-9 pr-8 rounded-xl w-64 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+              />
+              {filters.search && (
+                <button
+                  onClick={() => setFilters({ ...filters, search: '' })}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
                 >
-                  <Trash2 size={18} />
-                  {lang === 'ar' ? 'حذف' : 'Delete'} ({selectedIds.length})
-                </motion.button>
+                  <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                </button>
               )}
-            </AnimatePresence>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            </div>
+
+            {/* Add Button */}
+            <Button
               onClick={() => {
                 setEditingItem(null);
                 setIsModalOpen(true);
               }}
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
+              className="gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-md hover:shadow-lg transition-all"
             >
               <Plus size={18} />
               {lang === 'ar' ? 'إضافة موعد' : 'Add Appointment'}
-            </motion.button>
+            </Button>
           </div>
         </div>
-
-        {/* Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-6 border border-gray-100 dark:border-gray-700 transition-colors duration-300"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
-              <input
-                type="text"
-                placeholder={lang === 'ar' ? 'بحث بالعنوان...' : 'Search by title...'}
-                value={filters.search}
-                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                className="w-full pl-3 pr-10 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300"
-              />
-            </div>
-
-
-          </div>
-        </motion.div>
 
         {/* Table */}
         <motion.div
@@ -159,14 +192,32 @@ export const CenterHoursPage: React.FC = () => {
         >
           {hours.length === 0 ? (
             <div className="text-center py-12">
-              <BookOpen size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-              <p className="text-gray-500 dark:text-gray-400">{lang === 'ar' ? 'لا توجد مواعيد' : 'No appointments found'}</p>
+              <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                <Calendar size={48} className="text-gray-400 dark:text-gray-500" />
+              </div>
+              <p className="text-gray-500 dark:text-gray-400 text-lg">
+                {lang === 'ar' ? 'لا توجد مواعيد' : 'No appointments found'}
+              </p>
+              <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
+                {lang === 'ar' ? 'ابدأ بإضافة أول موعد الآن' : 'Start by adding your first appointment'}
+              </p>
+              <Button
+                onClick={() => {
+                  setEditingItem(null);
+                  setIsModalOpen(true);
+                }}
+                variant="outline"
+                className="mt-4 gap-2 rounded-xl"
+              >
+                <Plus size={18} />
+                {lang === 'ar' ? 'أضف أول موعد' : 'Add First Appointment'}
+              </Button>
             </div>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-800/50">
                     <tr className="border-b border-gray-200 dark:border-gray-700">
                       <th className="px-4 py-3 text-right w-10">
                         <input
@@ -185,9 +236,6 @@ export const CenterHoursPage: React.FC = () => {
                       <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300">
                         {lang === 'ar' ? 'الوقت' : 'Time'}
                       </th>
-                      {/* <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300">
-                        {lang === 'ar' ? 'المعلم' : 'Teacher'}
-                      </th> */}
                       <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300">
                         {lang === 'ar' ? 'ملاحظات' : 'Notes'}
                       </th>
@@ -205,7 +253,7 @@ export const CenterHoursPage: React.FC = () => {
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: 20 }}
                           transition={{ delay: index * 0.05 }}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+                          className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200"
                         >
                           <td className="px-4 py-3">
                             <input
@@ -215,22 +263,17 @@ export const CenterHoursPage: React.FC = () => {
                                 if (e.target.checked) {
                                   setSelectedIds([...selectedIds, hour.id]);
                                 } else {
-                                  setSelectedIds(
-                                    selectedIds.filter((id) => id !== hour.id)
-                                  );
+                                  setSelectedIds(selectedIds.filter((id) => id !== hour.id));
                                 }
                               }}
                               className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
                             />
                           </td>
 
-                          {/* Center */}
+                          {/* Title */}
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <BookOpen
-                                size={16}
-                                className="text-purple-500 dark:text-purple-400"
-                              />
+                              <BookOpen size={16} className="text-purple-500 dark:text-purple-400" />
                               <span className="font-medium text-gray-900 dark:text-gray-100">
                                 {hour.title}
                               </span>
@@ -249,49 +292,33 @@ export const CenterHoursPage: React.FC = () => {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                               <Clock size={14} />
-                              <span>
-                                {hour.hours_start} - {hour.hours_end}
-                              </span>
+                              <span>{hour.hours_start} - {hour.hours_end}</span>
                             </div>
                           </td>
-
-                          {/* Teacher */}
-                          {/* <td className="px-4 py-3">
-                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                              <User size={14} />
-                              <span>
-                                {hour.teacher?.name ||
-                                  hour.teacher_name ||
-                                  `ID: ${hour.teacher_id}`}
-                              </span>
-                            </div>
-                          </td> */}
 
                           {/* Notes */}
                           <td className="px-4 py-3">
                             {hour.note ? (
                               <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
                                 <FileText size={14} />
-                                <span className="truncate max-w-[200px]">
-                                  {hour.note}
-                                </span>
+                                <span className="truncate max-w-[200px]">{hour.note}</span>
                               </div>
                             ) : (
-                              "-"
+                              <span className="text-gray-400 dark:text-gray-500">-</span>
                             )}
                           </td>
 
                           {/* Actions */}
                           <td className="px-4 py-3">
                             <div className="flex gap-2">
-                              <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
+                              <Button
+                                size="sm"
+                                variant="ghost"
                                 onClick={() => handleEdit(hour)}
-                                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                                className="h-8 w-8 p-0 rounded-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30"
                               >
-                                <Edit size={18} />
-                              </motion.button>
+                                <Edit size={16} />
+                              </Button>
                             </div>
                           </td>
                         </motion.tr>
@@ -309,20 +336,24 @@ export const CenterHoursPage: React.FC = () => {
                     {Math.min(meta.current_page * meta.per_page, meta.total)} {lang === 'ar' ? 'من' : 'of'} {meta.total}
                   </div>
                   <div className="flex gap-2">
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => refetch()}
                       disabled={meta.current_page === 1}
-                      className="px-3 py-1 border border-gray-200 dark:border-gray-700 rounded disabled:opacity-50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
+                      className="rounded-lg"
                     >
                       {lang === 'ar' ? 'السابق' : 'Previous'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => refetch()}
                       disabled={meta.current_page === meta.last_page}
-                      className="px-3 py-1 border border-gray-200 dark:border-gray-700 rounded disabled:opacity-50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
+                      className="rounded-lg"
                     >
                       {lang === 'ar' ? 'التالي' : 'Next'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -339,7 +370,7 @@ export const CenterHoursPage: React.FC = () => {
           }}
           onSuccess={() => refetch()}
           editingItem={editingItem}
-          isDarkMode={isDarkMode}
+          isDarkMode={document.documentElement.classList.contains('dark')}
         />
       </div>
     </div>
