@@ -30,7 +30,7 @@ export function DashboardLayout({
 
       if (
         html.classList.contains("dark") ||
-        localStorage.getItem("theme") === "dark"
+        localStorage.getItem("lms-theme") === "dark"
       ) {
         setIsDark(true);
       } else {
