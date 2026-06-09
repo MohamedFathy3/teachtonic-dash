@@ -226,7 +226,7 @@ function LMSApp() {
           return <PaymentCodesPage />;
 
         case "assignments":
-          return <AssignmentsPage />;
+          return <InstructorAssignments />;
 
         case "books":
           return <BooksPage />;

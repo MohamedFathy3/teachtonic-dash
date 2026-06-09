@@ -118,9 +118,7 @@ export const InstructorExams: React.FC = () => {
   }, [examIdFromUrl, exams, loading, navigate]);
 
   const handleViewExam = (exam: any) => {
-    setSelectedExam(exam);
-    setActiveTab('view');
-    navigate(`/instructor/exams/${exam.id}`);
+ navigate(`/instructor/exam/${exam.id}`);
   };
 
   const handleEditExam = (exam: any) => {
@@ -177,6 +175,7 @@ export const InstructorExams: React.FC = () => {
       <ExamViewer
         exam={selectedExam}
         onBack={handleBack}
+        onCancel={handleBack}
       />
     );
   }

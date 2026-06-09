@@ -116,7 +116,7 @@ const translations = {
     activeCourses: "الكورسات النشطة",
     avgPerCourse: "متوسط لكل كورس",
     efficiencyScore: "نسبة الكفاءة",
-    studentGrowth2: "نمو الطلاب",
+    studentGrowth2: "عدد الطلاب",
     overallRating: "تقييم الأداء العام",
     topCreator: "أفضل منشئ",
     popularMentor: "مرشد شعبي",

@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/components/exams/ExamViewer.tsx
+// src/components/assignments/AssignmentViewer.tsx
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
+import { useNavigate, useParams } from 'react-router-dom';
+import { assignmentService } from '@/services/assignment.service';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,9 +13,7 @@ import { Input } from '@/components/ui/input';
 import {
   Users, FileQuestion, CheckCircle, XCircle, AlertCircle,
   Edit3, Save, Loader2, Eye, Search, ChevronLeft,
-  Trophy, Clock, Sparkles, BookOpen, GraduationCap,
-  Calendar, Award, Star, TrendingUp, BarChart3, ArrowLeft,
-  Home, LogOut
+  Trophy, Clock, Sparkles, TrendingUp, Star, ArrowLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,13 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import api from '@/lib/api';
-import { useNavigate, useParams } from 'react-router-dom';
 import { StudentLearningPage } from '@/pages/instructor/StudentLearningPage';
-
-interface ExamViewerProps {
-  examId?: number;
-  onBack?: () => void;
-}
 
 // أنيميشن المتغيرات
 const fadeInUp = {
@@ -64,7 +58,6 @@ const GradeEssayModal: React.FC<{
   const [mark, setMark] = useState<number>(answer?.mark ? parseFloat(answer.mark) : 0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   const maxMark = question ? parseFloat(question.mark) : 0;
 
   const handleSubmit = async () => {
@@ -132,11 +125,11 @@ const StudentAnswersModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   student: any;
-  exam: any;
+  assignment: any;
   questions: any[];
   onGradeSubmit: (answerId: number, mark: number) => Promise<void>;
   onViewProfile: (studentId: number) => void;
-}> = ({ isOpen, onClose, student, exam, questions, onGradeSubmit, onViewProfile }) => {
+}> = ({ isOpen, onClose, student, assignment, questions, onGradeSubmit, onViewProfile }) => {
   const { lang } = useApp();
   const [gradingAnswer, setGradingAnswer] = useState<any>(null);
   const [gradingQuestion, setGradingQuestion] = useState<any>(null);
@@ -148,7 +141,7 @@ const StudentAnswersModal: React.FC<{
     return sum + (answer?.mark ? parseFloat(answer.mark) : 0);
   }, 0);
   
-  const totalMarks = exam?.total_marks || 0;
+  const totalMarks = assignment?.total_marks || 0;
   const percentage = totalMarks > 0 ? (totalScore / totalMarks) * 100 : 0;
 
   return (
@@ -170,7 +163,7 @@ const StudentAnswersModal: React.FC<{
                 </motion.div>
                 <div>
                   <h2 className="text-xl font-bold">{student.name}</h2>
-                  <p className="text-white/80 text-sm">{exam?.title}</p>
+                  <p className="text-white/80 text-sm">{assignment?.title}</p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -284,14 +277,12 @@ const StudentAnswersModal: React.FC<{
   );
 };
 
-export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBack: propOnBack }) => {
+export const AssignmentViewer: React.FC = () => {
   const { t, lang } = useApp();
   const navigate = useNavigate();
-  const { examId: paramExamId } = useParams<{ examId: string }>();
-  const examId = propExamId || (paramExamId ? parseInt(paramExamId) : null);
-  
+  const { assignmentId } = useParams();
   const [loading, setLoading] = useState(true);
-  const [exam, setExam] = useState<any>(null);
+  const [assignment, setAssignment] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('questions');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -300,14 +291,14 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (examId) fetchExamData();
-  }, [examId, refreshKey]);
+    if (assignmentId) fetchAssignment();
+  }, [assignmentId, refreshKey]);
 
-  const fetchExamData = async () => {
+  const fetchAssignment = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/exam/${examId}`);
-      setExam(res.data.data);
+      const res = await assignmentService.getAssignment(Number(assignmentId));
+      setAssignment(res);
     } catch (error) {
       toast.error(lang === 'ar' ? 'خطأ في التحميل' : 'Error');
     } finally {
@@ -321,43 +312,25 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
   };
 
   const handleBack = () => {
-    if (propOnBack) {
-      propOnBack();
-    } else {
-      navigate('/instructor/exams');
-    }
+    navigate('/instructor/assignments');
   };
 
   if (viewingProfile) {
     return <StudentLearningPage studentId={viewingProfile} onBack={() => setViewingProfile(null)} />;
   }
 
-  if (!examId) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Card className="p-8 text-center">
-          <p>{lang === 'ar' ? 'لم يتم تحديد الامتحان' : 'Exam not found'}</p>
-          <Button onClick={handleBack} className="mt-4">{lang === 'ar' ? 'رجوع' : 'Back'}</Button>
-        </Card>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-        >
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
           <Loader2 className="h-12 w-12 text-primary" />
         </motion.div>
       </div>
     );
   }
 
-  const questions = exam?.questions || [];
-  const students = exam?.students || [];
+  const questions = assignment?.questions || [];
+  const students = assignment?.students || [];
   const filteredStudents = students.filter((s: any) => s.name?.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const getTypeLabel = (type: string) => {
@@ -375,7 +348,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
           const a = s.answers?.find((ans: any) => ans.question_id === q.id);
           return total + (a?.mark ? parseFloat(a.mark) : 0);
         }, 0);
-        const percentage = (score / (exam?.total_marks || 1)) * 100;
+        const percentage = (score / (assignment?.total_marks || 1)) * 100;
         return percentage >= 50;
       }).length / students.length * 100)
     : 0;
@@ -387,12 +360,12 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
       exit={{ opacity: 0 }}
       className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950"
     >
-      {/* Hero Header مع تحسين الرجوع */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-900 dark:via-purple-900 dark:to-pink-900">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 dark:from-emerald-900 dark:via-teal-900 dark:to-cyan-900">
         <div className="absolute inset-0 bg-black/20" />
         <div className="absolute inset-0 bg-grid-white/10 bg-[length:30px_30px]" />
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
-          {/* زر الرجوع المحسن */}
+          {/* زر الرجوع */}
           <motion.button
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -401,7 +374,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
             className="group mb-6 flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white hover:bg-white/20 transition-all duration-300"
           >
             <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-sm font-medium">{lang === 'ar' ? 'العودة إلى الامتحانات' : 'Back to Exams'}</span>
+            <span className="text-sm font-medium">{lang === 'ar' ? 'العودة إلى الواجبات' : 'Back to Assignments'}</span>
           </motion.button>
 
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -424,7 +397,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
                   transition={{ delay: 0.2 }}
                   className="text-3xl md:text-4xl font-bold text-white"
                 >
-                  {exam?.title}
+                  {assignment?.title}
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0, x: -20 }}
@@ -432,7 +405,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
                   transition={{ delay: 0.3 }}
                   className="text-white/80 mt-1"
                 >
-                  {exam?.description}
+                  {assignment?.description}
                 </motion.p>
               </div>
             </div>
@@ -444,14 +417,14 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
               className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2"
             >
               <Sparkles className="h-4 w-4 text-yellow-300" />
-              <span className="text-sm font-medium text-white">{exam?.type_exam === 'online' ? '📱 أونلاين' : '🏫 مركز'}</span>
+              <span className="text-sm font-medium text-white">{lang === 'ar' ? 'واجب' : 'Assignment'}</span>
             </motion.div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-        {/* Stats Cards - تصميم جديد */}
+        {/* Stats Cards */}
         <motion.div
           variants={staggerContainer}
           initial="initial"
@@ -460,8 +433,8 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
         >
           {[
             { icon: FileQuestion, label: lang === 'ar' ? 'الأسئلة' : 'Questions', value: questions.length, color: 'from-blue-500 to-cyan-500', bg: 'bg-blue-50 dark:bg-blue-950/30' },
-            { icon: Trophy, label: lang === 'ar' ? 'الدرجة الكلية' : 'Total Marks', value: exam?.total_marks, color: 'from-yellow-500 to-orange-500', bg: 'bg-yellow-50 dark:bg-yellow-950/30' },
-            { icon: Clock, label: lang === 'ar' ? 'المدة' : 'Duration', value: `${exam?.duration_minutes} ${lang === 'ar' ? 'دقيقة' : 'min'}`, color: 'from-green-500 to-emerald-500', bg: 'bg-green-50 dark:bg-green-950/30' },
+            { icon: Trophy, label: lang === 'ar' ? 'الدرجة الكلية' : 'Total Marks', value: assignment?.total_marks, color: 'from-yellow-500 to-orange-500', bg: 'bg-yellow-50 dark:bg-yellow-950/30' },
+            { icon: Clock, label: lang === 'ar' ? 'المدة' : 'Duration', value: `${assignment?.duration_minutes} ${lang === 'ar' ? 'دقيقة' : 'min'}`, color: 'from-green-500 to-emerald-500', bg: 'bg-green-50 dark:bg-green-950/30' },
             { icon: Users, label: lang === 'ar' ? 'الطلاب' : 'Students', value: students.length, color: 'from-purple-500 to-pink-500', bg: 'bg-purple-50 dark:bg-purple-950/30' },
           ].map((stat, idx) => (
             <motion.div
@@ -484,7 +457,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
           ))}
         </motion.div>
 
-        {/* نسبة النجاح Card منفصلة */}
+        {/* نسبة الإنجاز Card */}
         {students.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -495,16 +468,17 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
             <Card className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-none shadow-lg">
               <div className="p-5 flex justify-between items-center">
                 <div>
-                  <p className="text-sm text-muted-foreground">{lang === 'ar' ? 'نسبة النجاح' : 'Pass Rate'}</p>
+                  <p className="text-sm text-muted-foreground">{lang === 'ar' ? 'نسبة إنجاز الواجب' : 'Assignment Completion Rate'}</p>
                   <p className="text-3xl font-bold text-green-600 dark:text-green-400">{passRate}%</p>
-                  <p className="text-xs text-muted-foreground mt-1">{students.filter(s => {
-                    const score = questions.reduce((total, q) => {
-                      const a = s.answers?.find((ans: any) => ans.question_id === q.id);
-                      return total + (a?.mark ? parseFloat(a.mark) : 0);
-                    }, 0);
-                    const percentage = (score / (exam?.total_marks || 1)) * 100;
-                    return percentage >= 50;
-                  }).length} {lang === 'ar' ? 'طالب ناجح' : 'students passed'}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {students.filter(s => {
+                      const score = questions.reduce((total, q) => {
+                        const a = s.answers?.find((ans: any) => ans.question_id === q.id);
+                        return total + (a?.mark ? parseFloat(a.mark) : 0);
+                      }, 0);
+                      return (score / (assignment?.total_marks || 1)) * 100 >= 50;
+                    }).length} {lang === 'ar' ? 'طالب أتم الواجب' : 'students completed'}
+                  </p>
                 </div>
                 <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
                   <TrendingUp className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -515,7 +489,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
           </motion.div>
         )}
 
-        {/* Tabs - تصميم محسن */}
+        {/* Tabs */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -541,14 +515,14 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
               </TabsTrigger>
             </TabsList>
 
-            {/* باقي الكود كما هو... */}
+            {/* Questions Tab */}
             <TabsContent value="questions" className="mt-6 space-y-4">
               {questions.length === 0 ? (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
                   <div className="w-24 h-24 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
                     <FileQuestion className="h-12 w-12 text-slate-400" />
                   </div>
-                  <p className="text-muted-foreground">{lang === 'ar' ? 'لا توجد أسئلة في هذا الامتحان' : 'No questions in this exam'}</p>
+                  <p className="text-muted-foreground">{lang === 'ar' ? 'لا توجد أسئلة في هذا الواجب' : 'No questions in this assignment'}</p>
                 </motion.div>
               ) : (
                 questions.map((q: any, idx: number) => (
@@ -558,10 +532,10 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
                   >
-                    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-l-4 border-l-indigo-500">
+                    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-l-4 border-l-emerald-500">
                       <div className="p-5">
                         <div className="flex items-center gap-3 mb-3 flex-wrap">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
                             {idx + 1}
                           </div>
                           <Badge variant="outline" className="text-xs">
@@ -569,7 +543,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
                           </Badge>
                           <Badge variant="secondary" className="text-xs gap-1">
                             <Star className="h-3 w-3" />
-                            {q.mark} {lang === 'ar' ? 'درجات' : 'marks'}
+                            {q.mark} {lang === 'ar' ? 'درجة' : 'marks'}
                           </Badge>
                         </div>
                         <p className="font-medium mb-3">{q.question}</p>
@@ -600,6 +574,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
               )}
             </TabsContent>
 
+            {/* Students Tab */}
             <TabsContent value="students" className="mt-6">
               <div className="relative mb-6">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -625,7 +600,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
                       const a = student.answers?.find((ans: any) => ans.question_id === q.id);
                       return sum + (a?.mark ? parseFloat(a.mark) : 0);
                     }, 0);
-                    const percentage = (score / (exam?.total_marks || 1)) * 100;
+                    const percentage = (score / (assignment?.total_marks || 1)) * 100;
                     const hasPending = questions.some((q: any) => {
                       const a = student.answers?.find((ans: any) => ans.question_id === q.id);
                       return q.question_type === 'essay' && a && a.mark === null && a.answer;
@@ -643,9 +618,9 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
                           className="cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300 group border border-slate-100 dark:border-slate-800"
                           onClick={() => { setSelectedStudent(student); setStudentModalOpen(true); }}
                         >
-                          <div className="relative h-24 bg-gradient-to-r from-indigo-500 to-purple-500">
+                          <div className="relative h-24 bg-gradient-to-r from-emerald-500 to-teal-500">
                             <div className="absolute -bottom-8 left-4">
-                              <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center text-indigo-600 font-bold text-xl shadow-lg border-4 border-white dark:border-slate-800">
+                              <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center text-emerald-600 font-bold text-xl shadow-lg border-4 border-white dark:border-slate-800">
                                 {student.name?.charAt(0)?.toUpperCase() || 'S'}
                               </div>
                             </div>
@@ -653,7 +628,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
                               <div className="absolute top-3 right-3">
                                 <Badge className="bg-amber-500 text-white gap-1">
                                   <AlertCircle className="h-3 w-3" />
-                                  {lang === 'ar' ? 'بانتظار' : 'Pending'}
+                                  {lang === 'ar' ? 'بانتظار التصحيح' : 'Pending'}
                                 </Badge>
                               </div>
                             )}
@@ -666,7 +641,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
                                 {student.answers?.length || 0} {lang === 'ar' ? 'إجابات' : 'Answers'}
                               </Badge>
                               <div className="text-right">
-                                <p className="text-lg font-bold text-gray-800 dark:text-white">{score}/{exam?.total_marks}</p>
+                                <p className="text-lg font-bold text-gray-800 dark:text-white">{score}/{assignment?.total_marks}</p>
                                 <div className="flex items-center gap-1">
                                   <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <motion.div 
@@ -691,9 +666,9 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
         </motion.div>
       </div>
 
-      <StudentAnswersModal isOpen={studentModalOpen} onClose={() => { setStudentModalOpen(false); setSelectedStudent(null); }} student={selectedStudent} exam={exam} questions={questions} onGradeSubmit={handleGradeEssay} onViewProfile={(id) => { setStudentModalOpen(false); setViewingProfile(id); }} />
+      <StudentAnswersModal isOpen={studentModalOpen} onClose={() => { setStudentModalOpen(false); setSelectedStudent(null); }} student={selectedStudent} assignment={assignment} questions={questions} onGradeSubmit={handleGradeEssay} onViewProfile={(id) => { setStudentModalOpen(false); setViewingProfile(id); }} />
     </motion.div>
   );
 };
 
-export default ExamViewer;
+export default AssignmentViewer;

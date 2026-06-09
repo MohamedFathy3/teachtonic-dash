@@ -12,8 +12,8 @@ import FileUploader from '@/components/FileUploader';
 import { teacherService } from '@/services/teacher.service';
 import type { TeacherFormData, TeacherStagePayload, TeacherSubjectPayload } from '@/types/teacher.types';
 import { teacherToFormData } from '@/types/teacher.types';
-import { X, Plus, Loader2 } from 'lucide-react';
-import api from '@/lib/api'; // 🔥 استيراد api
+import { X, Plus, Loader2, Image as ImageIcon, Trash2 } from 'lucide-react';
+import api from '@/lib/api';
 
 interface Props {
   open: boolean;
@@ -24,7 +24,7 @@ interface Props {
 }
 
 export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Props) {
-  const { t, dir, lang } = useApp(); // 🔥 أضفنا lang هنا
+  const { t, dir, lang } = useApp();
   
   const [formData, setFormData] = useState<TeacherFormData>({
     name: '',
@@ -41,8 +41,10 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [selectedStageImage, setSelectedStageImage] = useState<number>(0);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // استخدم useQuery أو state لجلب الـ stages و subjects كاملة
   const [stagesMap, setStagesMap] = useState<Map<number, any>>(new Map());
   const [subjectsMap, setSubjectsMap] = useState<Map<number, any>>(new Map());
 
@@ -50,7 +52,6 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   useEffect(() => {
     const fetchMaps = async () => {
       try {
-        // جلب كل الـ stages
         const stagesRes = await api.get('/stage?perPage=100');
         const stagesMapData = new Map();
         if (stagesRes.data?.data) {
@@ -60,7 +61,6 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
         }
         setStagesMap(stagesMapData);
         
-        // جلب كل الـ subjects
         const subjectsRes = await api.get('/subject?perPage=100');
         const subjectsMapData = new Map();
         if (subjectsRes.data?.data) {
@@ -79,18 +79,58 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     }
   }, [open]);
 
-  // عرض اسم الـ stage بدل ID
-  const getStageDisplayName = (stageId: number) => {
-    const stage = stagesMap.get(stageId);
-    if (lang === 'ar' && stage?.name_ar) return stage.name_ar;
-    return stage?.name || `Stage ${stageId}`;
+  // جلب بيانات المعلم عند التعديل
+  useEffect(() => {
+    const fetchTeacherData = async () => {
+      if (!open || !teacherId) return;
+      
+      setFetchingTeacher(true);
+      try {
+        const teacher = await teacherService.getTeacher(teacherId);
+        const convertedData = teacherToFormData(teacher);
+        setFormData(convertedData);
+        
+        // حفظ رابط الصورة الحالية
+        if (teacher.imageUrl) {
+          setCurrentImageUrl(teacher.imageUrl);
+        } else if (teacher.image?.fullUrl) {
+          setCurrentImageUrl(teacher.image.fullUrl);
+        } else if (teacher.image?.previewUrl) {
+          setCurrentImageUrl(teacher.image.previewUrl);
+        }
+      } catch (error) {
+        console.error('Failed to fetch teacher:', error);
+      } finally {
+        setFetchingTeacher(false);
+      }
+    };
+
+    fetchTeacherData();
+  }, [teacherId, open]);
+
+  // معالج رفع الصورة
+  const handleImageUpload = (id: number) => {
+    setFormData(prev => ({ ...prev, image: id }));
+    setImageFile(null);
+    setImagePreview(null);
+    setCurrentImageUrl(null);
   };
 
-  // عرض اسم الـ subject بدل ID
-  const getSubjectDisplayName = (subjectId: number) => {
-    const subject = subjectsMap.get(subjectId);
-    if (lang === 'ar' && subject?.name_ar) return subject.name_ar;
-    return subject?.name || `Subject ${subjectId}`;
+  // معالج اختيار ملف صورة جديد
+  const handleImageFileSelect = (file: File) => {
+    setImageFile(file);
+    const preview = URL.createObjectURL(file);
+    setImagePreview(preview);
+    setCurrentImageUrl(null);
+    setFormData(prev => ({ ...prev, image: undefined }));
+  };
+
+  // معالج حذف الصورة
+  const handleRemoveImage = () => {
+    setFormData(prev => ({ ...prev, image: undefined }));
+    setImageFile(null);
+    setImagePreview(null);
+    setCurrentImageUrl(null);
   };
 
   const addStage = () => {
@@ -142,29 +182,24 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
         subject: [],
         image: undefined,
       });
+      setCurrentImageUrl(null);
+      setImagePreview(null);
+      setImageFile(null);
     }
     onClose();
   };
 
-  // جلب بيانات المعلم عند التعديل
-  useEffect(() => {
-    const fetchTeacherData = async () => {
-      if (!open || !teacherId) return;
-      
-      setFetchingTeacher(true);
-      try {
-        const teacher = await teacherService.getTeacher(teacherId);
-        const convertedData = teacherToFormData(teacher);
-        setFormData(convertedData);
-      } catch (error) {
-        console.error('Failed to fetch teacher:', error);
-      } finally {
-        setFetchingTeacher(false);
-      }
-    };
+  const getStageDisplayName = (stageId: number) => {
+    const stage = stagesMap.get(stageId);
+    if (lang === 'ar' && stage?.name_ar) return stage.name_ar;
+    return stage?.name || `Stage ${stageId}`;
+  };
 
-    fetchTeacherData();
-  }, [teacherId, open]);
+  const getSubjectDisplayName = (subjectId: number) => {
+    const subject = subjectsMap.get(subjectId);
+    if (lang === 'ar' && subject?.name_ar) return subject.name_ar;
+    return subject?.name || `Subject ${subjectId}`;
+  };
 
   if (fetchingTeacher) {
     return (
@@ -189,21 +224,60 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Image Upload */}
+          {/* Image Upload Section with Preview */}
           <div>
-            <Label>Profile Image</Label>
+            <Label className="mb-2 block">Profile Image</Label>
+            
+            {/* عرض الصورة الحالية أو المعاينة */}
+            {(currentImageUrl || imagePreview) && (
+              <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <img
+                      src={imagePreview || currentImageUrl || ''}
+                      alt="Teacher preview"
+                      className="w-20 h-20 rounded-full object-cover border-2 border-orange-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">
+                      {imagePreview ? 'New image ready' : 'Current image'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {imagePreview ? 'Click save to update' : teacherId ? 'Upload new image to replace' : 'Upload an image'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* File Uploader */}
             <FileUploader
-              label="Upload profile image"
-              onUploadSuccess={(id) => setFormData(prev => ({ ...prev, image: id }))}
+              label={currentImageUrl ? 'Change profile image' : 'Upload profile image'}
+              onUploadSuccess={handleImageUpload}
+              onRemoveImage={handleRemoveImage}
               multiple={false}
               accept="image/*"
               maxFiles={1}
+              uniqueId={`teacher-image-${teacherId || 'new'}`}
             />
+            
+            {/* Upload status messages */}
             {formData.image && !teacherId && (
               <p className="text-xs text-green-600 mt-1">✓ Image ready to upload</p>
             )}
-            {teacherId && formData.image && typeof formData.image === 'number' && (
-              <p className="text-xs text-blue-600 mt-1">✓ Current image ID: {formData.image}</p>
+            {teacherId && formData.image && typeof formData.image === 'number' && !imagePreview && (
+              <p className="text-xs text-blue-600 mt-1">✓ Image will be updated with ID: {formData.image}</p>
+            )}
+            {imageFile && (
+              <p className="text-xs text-green-600 mt-1">✓ New image selected: {imageFile.name}</p>
             )}
           </div>
 
@@ -253,7 +327,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
             </div>
           </div>
 
-          {/* Stages Section - Using AsyncSelect */}
+          {/* Stages Section */}
           <div className="border rounded-lg p-4">
             <Label className="mb-2 block">Stages & Images</Label>
             <div className="flex gap-2 mb-3 flex-wrap">
@@ -301,7 +375,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
             </div>
           </div>
 
-          {/* Subjects Section - Using AsyncSelect */}
+          {/* Subjects Section */}
           <div className="border rounded-lg p-4">
             <Label className="mb-2 block">Subjects</Label>
             <div className="flex gap-2 mb-3">

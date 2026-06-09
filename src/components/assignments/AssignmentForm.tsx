@@ -1,9 +1,10 @@
-// src/components/exams/ExamForm.tsx
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/components/assignments/AssignmentForm.tsx
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/contexts/AppContext';
-import { examService } from '@/services/exam.service';
+import { assignmentService } from '@/services/assignment.service';
 import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,13 +16,13 @@ import FileUploader from '@/components/FileUploader';
 import { Loader2, Sparkles, Save, ChevronLeft, Settings2, Calendar, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface ExamFormProps {
-  examId?: number | null;
+interface AssignmentFormProps {
+  assignmentId?: number | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-interface ExamFormData {
+interface AssignmentFormData {
   title: string;
   title_ar?: string;
   description: string;
@@ -36,13 +37,13 @@ interface ExamFormData {
   time_end: string | null;
 }
 
-export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
+export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, onSuccess, onCancel }) => {
   const { t, lang, user } = useApp();
   const { stages } = useTeacherMeta(user?.id);
   const isRTL = lang === 'ar';
   const [loading, setLoading] = useState(false);
   const [imageId, setImageId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<ExamFormData>({
+  const [formData, setFormData] = useState<AssignmentFormData>({
     title: '',
     title_ar: '',
     description: '',
@@ -57,35 +58,34 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
     time_end: null,
   });
 
-  // Load exam data if editing
   useEffect(() => {
-    if (examId) {
-      loadExamData();
+    if (assignmentId) {
+      loadAssignmentData();
     }
-  }, [examId]);
+  }, [assignmentId]);
 
-  const loadExamData = async () => {
+  const loadAssignmentData = async () => {
     setLoading(true);
     try {
-      const exam = await examService.getExam(examId!);
+      const assignment = await assignmentService.getAssignment(assignmentId!);
       setFormData({
-        title: exam.title || '',
-        title_ar: exam.title_ar || '',
-        description: exam.description || '',
-        description_ar: exam.description_ar || '',
-        total_marks: exam.total_marks || 0,
-        total_marks_pass_marks: exam.total_marks_pass_marks || 0,
-        duration_minutes: exam.duration_minutes || 0,
-        course_detail_id: exam.course_detail_id?.id || exam.course_detail_id || null,
-        stage_id: exam.stage_id?.id || exam.stage_id || null,
-        type_exam: exam.type_exam || '',
-        time_start: exam.time_start || null,
-        time_end: exam.time_end || null,
+        title: assignment.title || '',
+        title_ar: assignment.title_ar || '',
+        description: assignment.description || '',
+        description_ar: assignment.description_ar || '',
+        total_marks: assignment.total_marks || 0,
+        total_marks_pass_marks: assignment.total_marks_pass_marks || 0,
+        duration_minutes: assignment.duration_minutes || 0,
+        course_detail_id: assignment.course_detail_id?.id || assignment.course_detail_id || null,
+        stage_id: assignment.stage_id?.id || assignment.stage_id || null,
+        type_exam: assignment.type_exam || '',
+        time_start: assignment.time_start || null,
+        time_end: assignment.time_end || null,
       });
-      setImageId(exam.image?.id || null);
+      setImageId(assignment.image?.id || null);
     } catch (error) {
-      console.error('Error loading exam:', error);
-      toast.error(lang === 'ar' ? 'حدث خطأ في تحميل بيانات الامتحان' : 'Error loading exam data');
+      console.error('Error loading assignment:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ في تحميل بيانات الواجب' : 'Error loading assignment data');
     } finally {
       setLoading(false);
     }
@@ -95,7 +95,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
     e.preventDefault();
     
     if (!formData.title) {
-      toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الامتحان' : 'Please enter exam title');
+      toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الواجب' : 'Please enter assignment title');
       return;
     }
     if (!formData.stage_id) {
@@ -107,35 +107,25 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
       return;
     }
 
-    // Validate time_start and time_end
-    if (formData.time_start && formData.time_end) {
-      const start = new Date(formData.time_start);
-      const end = new Date(formData.time_end);
-      if (end <= start) {
-        toast.error(lang === 'ar' ? 'وقت النهاية يجب أن يكون بعد وقت البداية' : 'End time must be after start time');
-        return;
-      }
-    }
-
     setLoading(true);
     try {
-      const examData = {
+      const assignmentData = {
         ...formData,
         teacher_id: user?.id || 1,
         image: imageId || undefined,
       };
 
-      if (examId) {
-        await examService.updateExam(examId, examData);
-        toast.success(lang === 'ar' ? 'تم تحديث الامتحان بنجاح' : 'Exam updated successfully');
+      if (assignmentId) {
+        await assignmentService.updateAssignment(assignmentId, assignmentData);
+        toast.success(lang === 'ar' ? 'تم تحديث الواجب بنجاح' : 'Assignment updated successfully');
       } else {
-        await examService.createExam(examData);
-        toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
+        await assignmentService.createAssignment(assignmentData);
+        toast.success(lang === 'ar' ? 'تم إنشاء الواجب بنجاح' : 'Assignment created successfully');
       }
       onSuccess();
     } catch (error) {
-      console.error('Error saving exam:', error);
-      toast.error(lang === 'ar' ? 'حدث خطأ في حفظ الامتحان' : 'Error saving exam');
+      console.error('Error saving assignment:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ في حفظ الواجب' : 'Error saving assignment');
     } finally {
       setLoading(false);
     }
@@ -150,37 +140,23 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
     setImageId(null);
   };
 
-  // Helper function to format datetime-local input value
   const formatDateTimeLocal = (dateTime: string | null) => {
     if (!dateTime) return '';
-    return dateTime.slice(0, 16); // Format: YYYY-MM-DDThh:mm
+    return dateTime.slice(0, 16);
   };
 
-  // Helper function to combine date and time
-  const combineDateTime = (date: string, time: string): string => {
-    if (!date || !time) return '';
-    return `${date}T${time}:00`;
-  };
-
-  // بناء الفلاتر الإضافية لـ AsyncSelect
   const getLessonExtraFilters = () => {
     const filters: Record<string, any> = {};
-    
-    // إضافة teacher_id لجلب دروس المعلم فقط
     if (user?.id) {
       filters.teacher_id = user.id;
     }
-    
-    // إضافة stage_id إذا تم اختياره
     if (formData.stage_id) {
       filters.stage_id = formData.stage_id;
     }
-    
-    console.log('📤 Lesson filters:', filters);
     return filters;
   };
 
-  if (loading && examId) {
+  if (loading && assignmentId) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -203,10 +179,10 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
         </Button>
         <div className="text-end">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            {examId ? (lang === 'ar' ? 'تعديل امتحان' : 'Edit Exam') : t('createNewExam')}
+            {assignmentId ? (lang === 'ar' ? 'تعديل واجب' : 'Edit Assignment') : (lang === 'ar' ? 'إنشاء واجب جديد' : 'Create New Assignment')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {lang === 'ar' ? 'أنشئ امتحان احترافي للطلاب' : 'Create a professional exam for students'}
+            {lang === 'ar' ? 'أنشئ واجب احترافي للطلاب' : 'Create a professional assignment for students'}
           </p>
         </div>
       </div>
@@ -219,8 +195,8 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
               <Settings2 className="w-8 h-8 text-white" />
             </div>
             <div>
-              <CardTitle className="text-2xl font-bold">{lang === 'ar' ? 'بيانات الامتحان' : 'Exam Information'}</CardTitle>
-              <p className="text-muted-foreground text-sm mt-1">{lang === 'ar' ? 'أدخل جميع البيانات المطلوبة' : 'Fill all required exam information'}</p>
+              <CardTitle className="text-2xl font-bold">{lang === 'ar' ? 'بيانات الواجب' : 'Assignment Information'}</CardTitle>
+              <p className="text-muted-foreground text-sm mt-1">{lang === 'ar' ? 'أدخل جميع البيانات المطلوبة' : 'Fill all required assignment information'}</p>
             </div>
           </div>
         </CardHeader>
@@ -229,15 +205,15 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Image Upload */}
             <div className="rounded-2xl border border-dashed p-5 bg-muted/30">
-              <Label className="mb-3 block text-sm font-semibold">{lang === 'ar' ? 'صورة الامتحان' : 'Exam Image'}</Label>
+              <Label className="mb-3 block text-sm font-semibold">{lang === 'ar' ? 'صورة الواجب' : 'Assignment Image'}</Label>
               <FileUploader
-                label={lang === 'ar' ? 'ارفع صورة الامتحان' : 'Upload Exam Image'}
+                label={lang === 'ar' ? 'ارفع صورة الواجب' : 'Upload Assignment Image'}
                 onUploadSuccess={handleImageUpload}
                 onRemoveImage={handleRemoveImage}
                 multiple={false}
                 accept="image/*"
                 preview
-                uniqueId="exam-image-upload"
+                uniqueId="assignment-image-upload"
                 maxFiles={1}
                 defaultImageId={imageId}
               />
@@ -249,22 +225,11 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder={lang === 'ar' ? 'عنوان الامتحان' : 'Exam title'}
+                placeholder={lang === 'ar' ? 'عنوان الواجب' : 'Assignment title'}
                 className="rounded-2xl h-12"
                 required
               />
             </div>
-
-            {/* Arabic Title (optional) */}
-            {/* <div className="space-y-2">
-              <Label>{lang === 'ar' ? 'العنوان بالعربية' : 'Arabic Title'}</Label>
-              <Input
-                value={formData.title_ar}
-                onChange={(e) => setFormData({ ...formData, title_ar: e.target.value })}
-                placeholder={lang === 'ar' ? 'عنوان الامتحان بالعربية (اختياري)' : 'Arabic title (optional)'}
-                className="rounded-2xl h-12"
-              />
-            </div> */}
 
             {/* Description */}
             <div className="space-y-2">
@@ -273,25 +238,13 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={4}
-                placeholder={lang === 'ar' ? 'وصف الامتحان' : 'Exam description'}
+                placeholder={lang === 'ar' ? 'وصف الواجب' : 'Assignment description'}
                 className="rounded-2xl resize-none"
               />
             </div>
 
-            {/* Arabic Description (optional) */}
-            {/* <div className="space-y-2">
-              <Label>{lang === 'ar' ? 'الوصف بالعربية' : 'Arabic Description'}</Label>
-              <Textarea
-                value={formData.description_ar}
-                onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })}
-                rows={4}
-                placeholder={lang === 'ar' ? 'وصف الامتحان بالعربية (اختياري)' : 'Arabic description (optional)'}
-                className="rounded-2xl resize-none"
-              />
-            </div> */}
-
             {/* Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
                 <Label>{t('totalMarks')}</Label>
                 <Input
@@ -302,15 +255,6 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
                   required
                 />
               </div>
-              {/* <div className="space-y-2">
-                <Label>{lang === 'ar' ? 'درجة النجاح' : 'Pass Marks'}</Label>
-                <Input
-                  type="number"
-                  value={formData.total_marks_pass_marks}
-                  onChange={(e) => setFormData({ ...formData, total_marks_pass_marks: parseInt(e.target.value) || 0 })}
-                  className="rounded-xl"
-                />
-              </div> */}
               <div className="space-y-2">
                 <Label>{t('durationMinutes')}</Label>
                 <Input
@@ -327,11 +271,10 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
             <div className="space-y-4">
               <Label className="text-base font-semibold flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
-                {lang === 'ar' ? 'توقيت الامتحان' : 'Exam Schedule'}
+                {lang === 'ar' ? 'توقيت الواجب' : 'Assignment Schedule'}
               </Label>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Start Date and Time */}
                 <div className="space-y-3">
                   <Label className="text-sm font-medium flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
@@ -343,12 +286,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
                     onChange={(e) => setFormData({ ...formData, time_start: e.target.value ? `${e.target.value}:00` : null })}
                     className="rounded-xl"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {lang === 'ar' ? 'اختر التاريخ والوقت لبدء الامتحان' : 'Select date and time for exam start'}
-                  </p>
                 </div>
-
-                {/* End Date and Time */}
                 <div className="space-y-3">
                   <Label className="text-sm font-medium flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
@@ -360,9 +298,6 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
                     onChange={(e) => setFormData({ ...formData, time_end: e.target.value ? `${e.target.value}:00` : null })}
                     className="rounded-xl"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {lang === 'ar' ? 'اختر التاريخ والوقت لانتهاء الامتحان' : 'Select date and time for exam end'}
-                  </p>
                 </div>
               </div>
             </div>
@@ -378,7 +313,6 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
                     setFormData({ 
                       ...formData, 
                       stage_id: newStageId,
-                      // reset lesson when stage changes
                       course_detail_id: null 
                     });
                   }}
@@ -398,29 +332,12 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
                   key={`lesson-${formData.stage_id}-${user?.id}`}
                   configKey="lessons"
                   value={formData.course_detail_id}
-                  onChange={(id, lesson) => {
-                    console.log('📚 Selected lesson:', { id, lesson });
-                    setFormData({ ...formData, course_detail_id: id });
-                  }}
+                  onChange={(id) => setFormData({ ...formData, course_detail_id: id })}
                   extraFilters={getLessonExtraFilters()}
                   placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select Lesson'}
                   required
                 />
               </div>
-            </div>
-
-            {/* Exam Type */}
-            <div className="space-y-2">
-              <Label>{lang === 'ar' ? 'نوع الامتحان' : 'Exam Type'}</Label>
-              <select
-                value={formData.type_exam}
-                onChange={(e) => setFormData({ ...formData, type_exam: e.target.value as any })}
-                className="w-full px-3 py-2 rounded-xl border bg-background"
-              >
-                <option value="">{lang === 'ar' ? 'اختر نوع الامتحان' : 'Select Exam Type'}</option>
-                <option value="center">🏫 {lang === 'ar' ? 'امتحان في المركز' : 'Center Exam'}</option>
-                <option value="online">💻 {lang === 'ar' ? 'امتحان أونلاين' : 'Online Exam'}</option>
-              </select>
             </div>
 
             {/* Submit Button */}
@@ -432,7 +349,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
               {loading ? (
                 <><Loader2 className="h-5 w-5 animate-spin me-2" />{lang === 'ar' ? 'جاري الحفظ...' : 'Saving...'}</>
               ) : (
-                <><Save className="h-5 w-5 me-2" />{examId ? (lang === 'ar' ? 'حفظ التعديلات' : 'Save Changes') : t('createAndAddQuestions')}</>
+                <><Save className="h-5 w-5 me-2" />{assignmentId ? (lang === 'ar' ? 'حفظ التعديلات' : 'Save Changes') : (lang === 'ar' ? 'إنشاء الواجب' : 'Create Assignment')}</>
               )}
             </Button>
           </form>

@@ -22,7 +22,6 @@ class ExamService extends BaseService<Exam> {
     super('exam');
   }
 
-  // ✅ الدالة الأساسية لجلب الامتحانات - مطورة بنفس نظام CourseService
   async getAllExams(
     filters?: Record<string, any>,
     perPage: number = 12,

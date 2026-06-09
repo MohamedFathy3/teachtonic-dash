@@ -18,7 +18,7 @@ export function DashboardLayout({
   onNavigate,
   children,
 }: DashboardLayoutProps) {
-  const [open, setOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(true);
 
@@ -41,7 +41,7 @@ export function DashboardLayout({
     checkTheme();
 
     if (window.innerWidth < 1024) {
-      setOpen(false);
+      setSidebarOpen(false);
     }
 
     const observer = new MutationObserver(checkTheme);
@@ -55,6 +55,16 @@ export function DashboardLayout({
   }, []);
 
   if (!mounted) return null;
+
+  // دالة للتعامل مع الضغط على الروابط
+  const handleNavigate = (to: string) => {
+    console.log("📱 DashboardLayout - Navigating to:", to);
+    onNavigate(to);
+    // غلق السايد بار على الموبايل بعد الضغط
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  };
 
   return (
     <div
@@ -70,7 +80,6 @@ export function DashboardLayout({
     >
       {/* BACKGROUND */}
       <div className="absolute inset-0 overflow-hidden">
-
         {/* GRID */}
         <div
           className={`
@@ -128,12 +137,12 @@ export function DashboardLayout({
 
       {/* MOBILE OVERLAY */}
       <AnimatePresence>
-        {open && (
+        {sidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
+            onClick={() => setSidebarOpen(false)}
             className="
               fixed inset-0 z-40
               bg-black/50 backdrop-blur-sm
@@ -147,7 +156,7 @@ export function DashboardLayout({
       <motion.div
         initial={false}
         animate={{
-          width: open ? 280 : 92,
+          width: sidebarOpen ? 280 : 92,
         }}
         transition={{
           duration: 0.35,
@@ -175,15 +184,15 @@ export function DashboardLayout({
       >
         <Sidebar
           active={active}
-          onNavigate={onNavigate}
-          open={open}
-          onClose={() => setOpen(!open)}
+          onNavigate={handleNavigate}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(!sidebarOpen)}
         />
       </motion.div>
 
       {/* MOBILE SIDEBAR */}
       <AnimatePresence>
-        {open && (
+        {sidebarOpen && (
           <motion.div
             initial={{ x: -320 }}
             animate={{ x: 0 }}
@@ -214,9 +223,9 @@ export function DashboardLayout({
           >
             <Sidebar
               active={active}
-              onNavigate={onNavigate}
+              onNavigate={handleNavigate}
               open={true}
-              onClose={() => setOpen(false)}
+              onClose={() => setSidebarOpen(false)}
             />
           </motion.div>
         )}
@@ -224,7 +233,6 @@ export function DashboardLayout({
 
       {/* MAIN */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-
         {/* TOPBAR */}
         <div
           className={`
@@ -246,12 +254,11 @@ export function DashboardLayout({
             }
           `}
         >
-          <Topbar onToggleSidebar={() => setOpen(!open)} />
+          <Topbar onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
         </div>
 
         {/* PAGE */}
         <main className="relative flex-1 overflow-hidden">
-
           {/* INNER GLOW */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             <motion.div

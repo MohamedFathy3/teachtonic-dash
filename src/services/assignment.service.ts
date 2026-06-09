@@ -2,94 +2,114 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseService } from './base.service';
+import type { Exam, CreateExamDTO, UpdateExamDTO, PaginatedResponse } from '@/types/exam.types';
+import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
-import { Assignment, CreateAssignmentRequest, GetAllAssignmentsParams } from '@/types/assignment.types';
 
-class AssignmentService extends BaseService<Assignment> {
+class AssignmentService extends BaseService<Exam> {
   constructor() {
-    super('exam');
+    super('exam'); // ✅ نفس endpoint بتاع الامتحانات
   }
 
-  // جلب كل الواجبات
-  async getAll(params?: GetAllAssignmentsParams): Promise<any> {
-    const requestBody: any = {
-      filters: {
-        type: 'assignment', // 🔥 مهم: تصفية على الواجبات فقط
-      },
-      orderBy: 'id',
-      orderByDirection: 'desc',
-      perPage: params?.perPage || 10,
-      page: params?.page || 1,
-      paginate: true,
-      delete: false,
-    };
+  async getAllAssignments(
+    filters?: Record<string, any>,
+    perPage: number = 12,
+    page: number = 1,
+    search?: string,
+    showDeleted: boolean = false
+  ): Promise<PaginatedResponse<Exam>> {
+    try {
+      const baseFilters: Record<string, any> = { 
+        ...(filters || {}),
+        type: 'assignment'  // 🔥 فقط الواجبات
+      };      
+      if (search && search.trim()) {
+        baseFilters.title = search.trim();
+      }
+      
+      const requestBody: Record<string, any> = {
+        filters: baseFilters,
+        orderBy: 'created_at',
+        orderByDirection: 'desc',
+        perPage,
+        page,
+        paginate: true,
+        delete: showDeleted,
+      };
 
-    if (params?.teacher_id) {
-      requestBody.filters.teacher_id = params.teacher_id;
+      if (search && search.trim() && !baseFilters.title) {
+        requestBody.search = search.trim();
+        requestBody.searchFields = ['title', 'title_ar', 'description', 'description_ar'];
+      }
+
+      const response = await api.post(`/${this.endpoint}/index`, requestBody);
+
+      return {
+        data: response.data?.data || [],
+        links: response.data?.links || { first: '', last: '', prev: null, next: null },
+        meta: response.data?.meta || {
+          current_page: page,
+          from: 1,
+          last_page: 1,
+          links: [],
+          path: '',
+          per_page: perPage,
+          to: 1,
+          total: 0,
+        },
+        result: response.data?.result || 'Success',
+        message: response.data?.message || 'Success',
+        status: response.data?.status || 200,
+      };
+    } catch (error: any) {
+      console.error('API Error in getAllAssignments:', error);
+      throw error;
     }
-
-    if (params?.stage_id) {
-      requestBody.filters.stage_id = params.stage_id;
-    }
-
-    if (params?.search) {
-      requestBody.search = params.search;
-      requestBody.searchFields = ['title', 'description'];
-    }
-
-    const response = await api.post(`/${this.endpoint}/index`, requestBody);
-    return response.data;
   }
 
-  // إنشاء واجب جديد
-  async create(data: CreateAssignmentRequest): Promise<Assignment> {
-    const response = await api.post(`/${this.endpoint}`, data);
-    return response.data.data;
-  }
-
-  // جلب واجب واحد
-  async getById(id: number): Promise<Assignment> {
+  async getAssignment(id: number): Promise<Exam> {
     const response = await api.get(`/${this.endpoint}/${id}`);
     return response.data.data;
   }
 
-  // تحديث واجب
-  async update(id: number, data: Partial<CreateAssignmentRequest>): Promise<Assignment> {
-    const response = await api.patch(`/${this.endpoint}/${id}`, data);
-    return response.data.data;
+  async createAssignment(data: CreateExamDTO): Promise<Exam> {
+    try {
+      const payload = {
+        ...data,
+        type: 'assignment',
+      };
+      const response = await api.post(`/${this.endpoint}`, payload);
+      toast({ title: "Success", description: "Assignment created successfully" });
+      return response.data.data;
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.message || 'Failed to create assignment', variant: 'destructive' });
+      throw error;
+    }
   }
 
-  // حذف واجب
+  async updateAssignment(id: number, data: UpdateExamDTO): Promise<Exam> {
+    try {
+      const response = await api.patch(`/${this.endpoint}/${id}`, data);
+      toast({ title: "Success", description: "Assignment updated successfully" });
+      return response.data.data;
+    } catch (error: any) {
+      toast({ title: "Error", description: error.response?.data?.message || "Failed to update assignment", variant: "destructive" });
+      throw error;
+    }
+  }
+
   async deleteAssignment(id: number): Promise<void> {
-    await api.delete(`/${this.endpoint}/${id}`);
+    await this.delete(id);
+    toast({ title: "Success", description: "Assignment deleted" });
   }
 
-  // حذف جماعي
-  async bulkDelete(ids: number[]): Promise<void> {
-    await api.delete(`/${this.endpoint}/delete`, { data: { items: ids } });
+  async toggleAssignmentActive(id: number): Promise<{ message: string }> {
+    return await this.toggleActive(id);
   }
 
-  // تبديل حالة التفعيل
-  async toggleActive(id: number): Promise<any> {
-    const response = await api.put(`/${this.endpoint}/${id}/active`);
-    return response.data;
-  }
-
-  // إحصائيات الواجبات
-  async getStatistics(): Promise<any> {
-    const response = await api.post(`/${this.endpoint}/index`, {
-      filters: { type: 'assignment' },
-      perPage: 1,
-      page: 1,
-    });
-    
-    const total = response.data.meta?.total || 0;
-    
-    return {
-      total,
-      active: 0, // حسب الـ API بتاعك
-      inactive: 0,
-    };
+  async addQuestions(assignmentId: number, questions: any[]): Promise<boolean> {
+    const response = await api.post(`/${this.endpoint}/add-questions`, { exam_id: assignmentId, questions });
+    return true;
   }
 }
 

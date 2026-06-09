@@ -1,8 +1,7 @@
-// src/pages/instructor/StudentLearningPage.tsx
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
+import { useNavigate, useParams } from 'react-router-dom';
 import { studentService, StudentLearningData } from '@/services/student.service';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,7 +14,7 @@ import {
   Monitor, Building2, Users, Eye, FileQuestion, FileText,
   Edit3, Save, X, AlertCircle, TrendingUp, Star
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
@@ -32,8 +31,8 @@ import { toast } from 'sonner';
 import api from '@/lib/api';
 
 interface StudentLearningPageProps {
-  studentId: number;
-  onBack: () => void;
+  studentId?: number;
+  onBack?: () => void;
 }
 
 interface ExamQuestion {
@@ -119,7 +118,6 @@ const GradeEssayModal: React.FC<GradeEssayModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* السؤال */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">
               {lang === 'ar' ? 'السؤال' : 'Question'}
@@ -129,7 +127,6 @@ const GradeEssayModal: React.FC<GradeEssayModalProps> = ({
             </div>
           </div>
 
-          {/* إجابة الطالب */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">
               {lang === 'ar' ? 'إجابة الطالب' : 'Student Answer'}
@@ -141,7 +138,6 @@ const GradeEssayModal: React.FC<GradeEssayModalProps> = ({
             </div>
           </div>
 
-          {/* درجة السؤال */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">
               {lang === 'ar' ? 'الدرجة' : 'Mark'} ({lang === 'ar' ? 'الحد الأقصى' : 'Max'}: {maxMark})
@@ -166,7 +162,6 @@ const GradeEssayModal: React.FC<GradeEssayModalProps> = ({
             )}
           </div>
 
-          {/* ملاحظات (اختياري) */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">
               {lang === 'ar' ? 'ملاحظات (اختياري)' : 'Feedback (Optional)'}
@@ -198,37 +193,50 @@ const GradeEssayModal: React.FC<GradeEssayModalProps> = ({
   );
 };
 
-export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studentId, onBack }) => {
+export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studentId: propStudentId, onBack: propOnBack }) => {
   const { t, lang } = useApp();
+  const navigate = useNavigate();
+  const { studentId: paramStudentId } = useParams<{ studentId: string }>();
   const isRTL = lang === 'ar';
+  
+  // استخدام الـ ID من props أو من الرابط
+  const studentId = propStudentId || (paramStudentId ? parseInt(paramStudentId) : null);
   
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<StudentLearningData | null>(null);
   const [activeTab, setActiveTab] = useState('courses');
-  
-  // Grade Essay Modal
   const [gradeModalOpen, setGradeModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<ExamQuestion | null>(null);
   const [selectedExamTitle, setSelectedExamTitle] = useState('');
-  
-  // Refresh trigger
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // دالة الرجوع
+  const handleBack = () => {
+    if (propOnBack) {
+      propOnBack();
+    } else {
+      navigate('/instructor/exams');
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const result = await studentService.getStudentLearning(studentId);
-        setData(result);
-      } catch (error) {
-        console.error('Failed to fetch student learning data:', error);
-        toast.error(lang === 'ar' ? 'فشل في تحميل بيانات الطالب' : 'Failed to load student data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    if (studentId) {
+      fetchData();
+    }
   }, [studentId, refreshKey]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const result = await studentService.getStudentLearning(studentId!);
+      setData(result);
+    } catch (error) {
+      console.error('Failed to fetch student learning data:', error);
+      toast.error(lang === 'ar' ? 'فشل في تحميل بيانات الطالب' : 'Failed to load student data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGradeEssay = async (answerId: number, mark: number) => {
     try {
@@ -236,7 +244,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
         answer_id: answerId,
         mark: mark
       });
-      // Refresh data
       setRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error('Grade essay error:', error);
@@ -252,6 +259,18 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
     }
   };
 
+  // إذا لم يتم تحديد studentId
+  if (!studentId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground">{lang === 'ar' ? 'لم يتم تحديد الطالب' : 'Student not specified'}</p>
+          <Button onClick={handleBack} className="mt-4">{lang === 'ar' ? 'رجوع' : 'Back'}</Button>
+        </Card>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -265,13 +284,12 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">{t('noData') || 'لا توجد بيانات'}</p>
-        <Button onClick={onBack} className="mt-4">{t('back') || 'رجوع'}</Button>
+        <Button onClick={handleBack} className="mt-4">{t('back') || 'رجوع'}</Button>
       </div>
     );
   }
 
   const { student, semesters, courses, lessons, exams, assignments } = data as any;
-  console.log('📊 Student Learning Data:', exams);
   const studentName = isRTL && (student as any).name_ar ? (student as any).name_ar : student.name;
   const stageName = isRTL && student.stage?.name_ar ? student.stage.name_ar : student.stage?.name;
 
@@ -309,7 +327,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
     return <AlertCircle className="h-4 w-4 text-yellow-500" />;
   };
 
-  // إحصائيات
   const stats = {
     totalCourses: courses?.length || 0,
     totalSemesters: semesters?.length || 0,
@@ -318,7 +335,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
     totalAssignments: assignments?.length || 0,
   };
 
-  // حساب متوسط الدرجات
   const calculateAverageScore = (items: StudentExam[]) => {
     if (!items || items.length === 0) return 0;
     const total = items.reduce((sum, item) => sum + (item.student_mark || 0), 0);
@@ -342,7 +358,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
           <Button
             variant="ghost"
             size="sm"
-            onClick={onBack}
+            onClick={handleBack}
             className="gap-2"
           >
             <ArrowLeft className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />
@@ -350,6 +366,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
           </Button>
         </div>
 
+        {/* باقي الكود كما هو بدون تغيير - نفس الـ JSX */}
         {/* Student Profile Card */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -358,11 +375,30 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
         >
           <Card className="relative overflow-hidden rounded-3xl border-0 shadow-xl">
             <div className="relative h-32 bg-gradient-to-r from-blue-600 to-cyan-600">
-              <div className="absolute -bottom-12 left-6">
-                <div className="w-24 h-24 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-xl border-4 border-white dark:border-gray-800">
-                  <span className="text-3xl font-bold text-primary">
-                    {studentName?.charAt(0)?.toUpperCase() || 'S'}
-                  </span>
+              <div className="absolute -bottom-8 left-6">
+                <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800 overflow-hidden">
+                  {(student.imageUrl || student.image) ? (
+                    <img 
+                      src={student.imageUrl || student.image?.file_path || `https://lms.dentin.cloud/storage/${student.image?.file_path}`}
+                      alt={student.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          const fallbackSpan = document.createElement('span');
+                          fallbackSpan.className = 'text-xl font-bold text-primary';
+                          fallbackSpan.textContent = student.name?.charAt(0)?.toUpperCase() || 'S';
+                          parent.appendChild(fallbackSpan);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span className="text-xl font-bold text-primary">
+                      {student.name?.charAt(0)?.toUpperCase() || 'S'}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -424,7 +460,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
           </Card>
         </motion.div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - استمرار نفس الكود */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
           {[
             { label: t('courses') || 'الكورسات', value: stats.totalCourses, icon: BookOpen, color: 'from-blue-500 to-cyan-500' },
@@ -485,7 +521,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
           </div>
         )}
 
-        {/* Learning Content Tabs */}
+        {/* Learning Content Tabs - نفس الكود السابق */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start overflow-x-auto rounded-2xl bg-muted/60 p-1 h-auto flex-nowrap">
             <TabsTrigger value="courses" className="rounded-xl px-4 py-2 gap-2">
@@ -509,6 +545,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
               {t('assignments') || 'الواجبات'} ({stats.totalAssignments})
             </TabsTrigger>
           </TabsList>
+
 
           {/* Courses Tab */}
           <TabsContent value="courses" className="mt-6">

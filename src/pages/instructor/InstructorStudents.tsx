@@ -632,157 +632,178 @@ export const InstructorStudents: React.FC = () => {
         </AnimatePresence>
 
         {/* ✅ Students Grid */}
-        <motion.div variants={containerVariants} className="space-y-4">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-muted-foreground mt-4">{t('loadingStudents') || 'جاري تحميل الطلاب...'}</p>
-            </div>
-          ) : error ? (
-            <Card className="p-12 text-center">
-              <p className="text-red-500">{error}</p>
-            </Card>
-          ) : students.length === 0 ? (
-            <Card className="p-16 text-center">
-              <div className="flex flex-col items-center">
-                <Users className="h-16 w-16 text-muted-foreground/30 mb-4" />
-                <p className="text-muted-foreground text-lg">{t('noStudentsFound') || 'لا يوجد طلاب'}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t('noStudentsDesc') || 'لم يتم تسجيل أي طلاب بعد'}</p>
-              </div>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredStudents.map((student, idx) => (
-                <motion.div
-                  key={student.id}
-                  variants={itemVariants}
-                  whileHover={{ y: -4 }}
-                  className="group"
-                >
-                  <Card className={`relative overflow-hidden rounded-2xl border hover:shadow-xl transition-all duration-300 ${!student.active ? 'opacity-75' : ''}`}>
-                    {/* Card Header with Gradient */}
-                    <div className={`relative h-24 bg-gradient-to-r ${student.active ? 'from-blue-500 to-cyan-500' : 'from-gray-500 to-gray-600'}`}>
-                      <div className="absolute -bottom-8 left-6">
-                        <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800">
-                          <span className="text-xl font-bold text-primary">
-                            {student.name?.charAt(0)?.toUpperCase() || 'S'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="absolute top-3 right-3">
-                        {getAttendanceBadge(student.type_of_attendance)}
-                      </div>
-                    </div>
-
-                    {/* Card Content */}
-                    <div className="p-6 pt-10">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-bold text-lg">{student.name}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            {student.active ? (
-                              <Badge className="bg-green-500 gap-1"><CheckCircle className="h-3 w-3" /> {t('active') || 'نشط'}</Badge>
-                            ) : (
-                              <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t('inactive') || 'غير نشط'}</Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">{student.stage?.name || `Stage ${student.stage_id}`}</p>
-                          <p className="text-xs text-muted-foreground">ID: {student.id}</p>
-                        </div>
-                      </div>
-
-                      {/* Contact Info */}
-                      <div className="mt-4 space-y-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span>{student.phone}</span>
-                        </div>
-                        {student.phone_parent && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            <span>{t('parentPhone') || 'ولي الأمر'}: {student.phone_parent}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>{formatDate(student.created_at)}</span>
-                        </div>
-                        {student.code_parent && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Award className="h-4 w-4 text-muted-foreground" />
-                            <span>{t('parentCode') || 'كود ولي الأمر'}: {student.code_parent}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="mt-4 pt-3 border-t flex flex-wrap justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 rounded-full"
-                          onClick={() => {
-                            setSelectedStudentId(student.id);
-                            setShowLearningPage(true);
-                          }}
-                        >
-                          <Eye className="h-3 w-3" />
-                          {t('viewLearning') || 'عرض التعلم'}
-                        </Button>
-                        
-                        {/* 🔥 Change Password Button */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 rounded-full"
-                          onClick={() => {
-                            setChangePasswordStudent(student);
-                            setNewPassword('');
-                            setConfirmPassword('');
-                            setPasswordError(null);
-                          }}
-                        >
-                          <Key className="h-3 w-3" />
-                          {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
-                        </Button>
-                        
-                        {/* 🔥 Toggle Active Button */}
-                        <Button
-                          size="sm"
-                          variant={student.active ? "destructive" : "default"}
-                          className={`gap-1 rounded-full ${student.active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'}`}
-                          onClick={() => setToggleActiveStudent(student)}
-                        >
-                          {student.active ? (
-                            <>
-                              <XCircle className="h-3 w-3" />
-                              {lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate'}
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="h-3 w-3" />
-                              {lang === 'ar' ? 'تفعيل' : 'Activate'}
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Animated Border on Hover */}
-                    <motion.div
-                      className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      style={{
-                        boxShadow: '0 0 0 2px rgba(59,130,246,0.3), 0 0 0 6px rgba(59,130,246,0.1)'
+       <motion.div variants={containerVariants} className="space-y-4">
+  {loading ? (
+    <div className="flex flex-col items-center justify-center py-20">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="text-muted-foreground mt-4">{t('loadingStudents') || 'جاري تحميل الطلاب...'}</p>
+    </div>
+  ) : error ? (
+    <Card className="p-12 text-center">
+      <p className="text-red-500">{error}</p>
+    </Card>
+  ) : students.length === 0 ? (
+    <Card className="p-16 text-center">
+      <div className="flex flex-col items-center">
+        <Users className="h-16 w-16 text-muted-foreground/30 mb-4" />
+        <p className="text-muted-foreground text-lg">{t('noStudentsFound') || 'لا يوجد طلاب'}</p>
+        <p className="text-sm text-muted-foreground mt-1">{t('noStudentsDesc') || 'لم يتم تسجيل أي طلاب بعد'}</p>
+      </div>
+    </Card>
+  ) : (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {filteredStudents.map((student, idx) => (
+        <motion.div
+          key={student.id}
+          variants={itemVariants}
+          whileHover={{ y: -4 }}
+          className="group"
+        >
+          <Card className={`relative overflow-hidden rounded-2xl border hover:shadow-xl transition-all duration-300 ${!student.active ? 'opacity-75' : ''}`}>
+            {/* Card Header with Gradient */}
+            <div className={`relative h-24 bg-gradient-to-r ${student.active ? 'from-blue-500 to-cyan-500' : 'from-gray-500 to-gray-600'}`}>
+              {/* Student Avatar / Image */}
+              <div className="absolute -bottom-8 left-6">
+                <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800 overflow-hidden">
+                  {(student.imageUrl || student.image) ? (
+                    <img 
+                      src={student.imageUrl || student.image?.file_path || `https://lms.dentin.cloud/storage/${student.image?.file_path}`}
+                      alt={student.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // إذا فشل تحميل الصورة، نعرض الحرف الأول
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          const fallbackSpan = document.createElement('span');
+                          fallbackSpan.className = 'text-xl font-bold text-primary';
+                          fallbackSpan.textContent = student.name?.charAt(0)?.toUpperCase() || 'S';
+                          parent.appendChild(fallbackSpan);
+                        }
                       }}
                     />
-                  </Card>
-                </motion.div>
-              ))}
+                  ) : (
+                    <span className="text-xl font-bold text-primary">
+                      {student.name?.charAt(0)?.toUpperCase() || 'S'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="absolute top-3 right-3">
+                {getAttendanceBadge(student.type_of_attendance)}
+              </div>
             </div>
-          )}
+
+            {/* Card Content */}
+            <div className="p-6 pt-10">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-bold text-lg">{student.name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    {student.active ? (
+                      <Badge className="bg-green-500 gap-1"><CheckCircle className="h-3 w-3" /> {t('active') || 'نشط'}</Badge>
+                    ) : (
+                      <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t('inactive') || 'غير نشط'}</Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">{student.stage?.name || `Stage ${student.stage_id}`}</p>
+                  <p className="text-xs text-muted-foreground">ID: {student.id}</p>
+                </div>
+              </div>
+
+              {/* Contact Info */}
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>{student.phone}</span>
+                </div>
+                {student.phone_parent && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span>{t('parentPhone') || 'ولي الأمر'}: {student.phone_parent}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span>{formatDate(student.created_at)}</span>
+                </div>
+                {student.code_parent && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Award className="h-4 w-4 text-muted-foreground" />
+                    <span>{t('parentCode') || 'كود ولي الأمر'}: {student.code_parent}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="mt-4 pt-3 border-t flex flex-wrap justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 rounded-full"
+                  onClick={() => {
+                    setSelectedStudentId(student.id);
+                    setShowLearningPage(true);
+                  }}
+                >
+                  <Eye className="h-3 w-3" />
+                  {t('viewLearning') || 'عرض التعلم'}
+                </Button>
+                
+                {/* 🔥 Change Password Button */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 rounded-full"
+                  onClick={() => {
+                    setChangePasswordStudent(student);
+                    setNewPassword('');
+                    setConfirmPassword('');
+                    setPasswordError(null);
+                  }}
+                >
+                  <Key className="h-3 w-3" />
+                  {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+                </Button>
+                
+                {/* 🔥 Toggle Active Button */}
+                <Button
+                  size="sm"
+                  variant={student.active ? "destructive" : "default"}
+                  className={`gap-1 rounded-full ${student.active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'}`}
+                  onClick={() => setToggleActiveStudent(student)}
+                >
+                  {student.active ? (
+                    <>
+                      <XCircle className="h-3 w-3" />
+                      {lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate'}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-3 w-3" />
+                      {lang === 'ar' ? 'تفعيل' : 'Activate'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Animated Border on Hover */}
+            <motion.div
+              className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              style={{
+                boxShadow: '0 0 0 2px rgba(59,130,246,0.3), 0 0 0 6px rgba(59,130,246,0.1)'
+              }}
+            />
+          </Card>
         </motion.div>
+      ))}
+    </div>
+  )}
+</motion.div>
 
         {/* ✅ Pagination */}
         {pagination.lastPage > 1 && (

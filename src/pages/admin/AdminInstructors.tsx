@@ -388,11 +388,12 @@ const handleShowClick = (teacherId: number) => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <AvatarBadge 
-                          initials={getInitials(teacher)} 
-                          size="sm" 
-                          variant={showDeleted ? "muted" : "primary"} 
-                        />
+                       <img 
+  src={teacher.imageUrl || '/default-avatar.png'} 
+  alt='teacher' 
+  className='object-cover w-10 h-10 rounded-full'
+ 
+/> 
                         <div>
                           <div className={showDeleted ? 'text-gray-500 line-through' : 'font-medium'}>
                             {getTeacherName(teacher)}
