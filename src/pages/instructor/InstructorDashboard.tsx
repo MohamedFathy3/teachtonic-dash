@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/instructor/InstructorDashboard.tsx
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from "@/contexts/AppContext";
 import { Card } from "@/components/ui/card";
@@ -56,6 +57,37 @@ interface InstructorReport {
   last_month_subscriptions?: { course: number; semester: number; lesson: number };
 }
 
+// ترجمة المحافظات
+const governorateNames: Record<string, { ar: string; en: string }> = {
+  cairo: { ar: "القاهرة", en: "Cairo" },
+  alexandria: { ar: "الإسكندرية", en: "Alexandria" },
+  giza: { ar: "الجيزة", en: "Giza" },
+  sharqia: { ar: "الشرقية", en: "Sharqia" },
+  dakahlia: { ar: "الدقهلية", en: "Dakahlia" },
+  beheira: { ar: "البحيرة", en: "Beheira" },
+  qalyubia: { ar: "القليوبية", en: "Qalyubia" },
+  monufia: { ar: "المنوفية", en: "Monufia" },
+  gharbia: { ar: "الغربية", en: "Gharbia" },
+  sohag: { ar: "سوهاج", en: "Sohag" },
+  asyut: { ar: "أسيوط", en: "Asyut" },
+  minya: { ar: "المنيا", en: "Minya" },
+  qena: { ar: "قنا", en: "Qena" },
+  luxor: { ar: "الأقصر", en: "Luxor" },
+  aswan: { ar: "أسوان", en: "Aswan" },
+  port_said: { ar: "بورسعيد", en: "Port Said" },
+  suez: { ar: "السويس", en: "Suez" },
+  ismailia: { ar: "الإسماعيلية", en: "Ismailia" },
+  damietta: { ar: "دمياط", en: "Damietta" },
+  north_sinai: { ar: "شمال سيناء", en: "North Sinai" },
+  south_sinai: { ar: "جنوب سيناء", en: "South Sinai" },
+  red_sea: { ar: "البحر الأحمر", en: "Red Sea" },
+  new_valley: { ar: "الوادي الجديد", en: "New Valley" },
+  faiyum: { ar: "الفيوم", en: "Faiyum" },
+  beni_suef: { ar: "بني سويف", en: "Beni Suef" },
+  kafr_el_sheikh: { ar: "كفر الشيخ", en: "Kafr El Sheikh" },
+  matrouh: { ar: "مطروح", en: "Matrouh" },
+};
+
 const MONTHS_EG = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -104,8 +136,9 @@ const translations = {
     assignments: "الواجبات",
     male: "ذكر",
     female: "أنثى",
-    studentGrowth: "نمو الطلاب",
+    studentGrowth: "عدد الطلاب",
     studentsByGender: "الطلاب حسب النوع",
+    studentsByGovernorate: "الطلاب حسب المحافظة",
     performanceRadar: "رادار الأداء",
     progressMetrics: "مقاييس التقدم",
     monthlyTrends: "الاتجاهات الشهرية",
@@ -175,6 +208,7 @@ const translations = {
     female: "Female",
     studentGrowth: "Student Growth",
     studentsByGender: "Students by Gender",
+    studentsByGovernorate: "Students by Governorate",
     performanceRadar: "Performance Radar",
     progressMetrics: "Progress Metrics",
     monthlyTrends: "Monthly Trends",
@@ -220,7 +254,6 @@ export function InstructorDashboard() {
   const [downloading, setDownloading] = useState(false);
   const [greeting, setGreeting] = useState("");
   
-  // Use ref to prevent multiple calls
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -236,22 +269,22 @@ export function InstructorDashboard() {
     }
   }, [lang]);
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const fetchInstructorReport = useCallback(async () => {
     try {
       setLoading(true);
       const teacherId = user?.id;
       if (!teacherId) return;
       const response = await api.get(`/teachers/${teacherId}/report`);
+      console.log("📊 Report data:", response.data?.data);
       setReport(response.data?.data);
     } catch (error: any) {
+      console.error("Error fetching report:", error);
       toast.error(t("error") + ": " + (error.message || t("tryAgain")));
     } finally {
       setLoading(false);
     }
   }, [user?.id, t]);
 
-  // Fixed useEffect - only runs once when component mounts
   useEffect(() => {
     if (!fetchedRef.current && user?.id) {
       fetchedRef.current = true;
@@ -277,7 +310,7 @@ export function InstructorDashboard() {
     }
   };
 
-  // حساب البيانات من التقرير الحقيقي
+  // حساب البيانات من التقرير الحقيقي فقط
   const totalCourses = (report?.online_courses || 0) + (report?.center_courses || 0);
   const totalRevenue = report?.profits || 0;
   
@@ -289,7 +322,7 @@ export function InstructorDashboard() {
     ? Math.min(100, Math.round((((report?.exams_count || 0) + (report?.assignments_count || 0)) / (report?.students_count || 1)) * 100))
     : 0;
 
-  // بيانات الرسم البياني الشهري من البيانات الحقيقية
+  // بيانات الرسم البياني الشهري - من البيانات الحقيقية فقط
   const monthlyData = (lang === 'ar' ? MONTHS_EG : MONTHS_EN).map((month, i) => {
     const currentMonth = i + 1;
     const studentData = report?.students_per_month?.find(s => s.month === currentMonth);
@@ -297,9 +330,9 @@ export function InstructorDashboard() {
     
     return {
       month,
-      revenue: totalRevenue > 0 ? Math.round((totalRevenue / 12) * (studentValue > 0 ? 1 + studentValue / 10 : 0.5)) : 0,
-      courses: totalCourses > 0 ? Math.max(0, Math.round((totalCourses / 12) * (0.5 + i * 0.05))) : 0,
       students: studentValue,
+      // الأرباح من البيانات الحقيقية فقط
+      revenue: totalRevenue > 0 ? Math.round(totalRevenue / 12) : 0,
     };
   });
 
@@ -308,6 +341,7 @@ export function InstructorDashboard() {
     { name: t("center"), value: report?.center_courses || 0, color: '#8b5cf6', icon: School },
   ];
 
+  // بيانات الأداء من البيانات الحقيقية
   const performanceData = [
     { name: t("exams"), value: report?.exams_count || 0, color: '#ef4444', icon: FileQuestion, bg: 'bg-red-500/10', text: 'text-red-500' },
     { name: t("assignments"), value: report?.assignments_count || 0, color: '#f59e0b', icon: FileText, bg: 'bg-amber-500/10', text: 'text-amber-500' },
@@ -317,6 +351,7 @@ export function InstructorDashboard() {
     { name: "الطلبات", value: report?.requests_count || 0, color: '#f97316', icon: HelpCircle, bg: 'bg-orange-500/10', text: 'text-orange-500' },
   ];
 
+  // بيانات الرادار من البيانات الحقيقية
   const radarData = [
     { subject: t("myCourses"), A: Math.min(100, (totalCourses / 20) * 100), fullMark: 100 },
     { subject: t("students"), A: Math.min(100, (report?.students_count || 0) / 100 * 100), fullMark: 100 },
@@ -337,6 +372,15 @@ export function InstructorDashboard() {
     value: g.total,
     color: g.gender === 'male' ? '#3b82f6' : '#ec4899'
   })) || []).filter(g => g.value > 0);
+
+  // بيانات المحافظات - مترجمة
+  const governorateData = (report?.students_by_governorate?.map(g => ({
+    name: lang === 'ar' 
+      ? (governorateNames[g.governorate.toLowerCase()]?.ar || g.governorate)
+      : (governorateNames[g.governorate.toLowerCase()]?.en || g.governorate),
+    value: g.total,
+    originalName: g.governorate,
+  })) || []).filter(g => g.value > 0).sort((a, b) => b.value - a.value);
 
   // بيانات المراحل الدراسية من البيانات الحقيقية
   const stageData = report?.students_by_stage?.map(s => ({
@@ -448,7 +492,6 @@ export function InstructorDashboard() {
             </div>
           </div>
 
-          {/* Stats Summary in Hero */}
           <div className="grid grid-cols-3 gap-4 mt-8 sm:grid-cols-5 lg:grid-cols-7">
             <div className="text-center">
               <p className="text-2xl font-bold text-white">{totalCourses}</p>
@@ -514,7 +557,7 @@ export function InstructorDashboard() {
             </Badge>
           </div>
 
-          {/* OVERVIEW TAB - نفس الكود السابق */}
+          {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-6 mt-0">
             {/* Main Metrics Grid */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -551,13 +594,13 @@ export function InstructorDashboard() {
             </div>
 
             {/* Charts Row */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {/* Revenue Chart */}
               <motion.div
                 initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
-                className="lg:col-span-2 overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
+                className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
               >
                 <div className="p-5">
                   <div className={`flex items-center justify-between flex-wrap gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
@@ -575,24 +618,14 @@ export function InstructorDashboard() {
                   </div>
                   <div className="mt-4 h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={monthlyData}>
-                        <defs>
-                          <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
+                      <LineChart data={monthlyData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                         <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                        <Tooltip 
-                          contentStyle={{ borderRadius: "16px", border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.1)", fontSize: "12px" }}
-                          cursor={{ stroke: "#6366f1", strokeWidth: 2 }}
-                        />
-                        <Area yAxisId="left" type="monotone" dataKey="revenue" name={t("earnings")} stroke="#6366f1" strokeWidth={2.5} fill="url(#revenueGradient)" />
-                        <Bar yAxisId="right" dataKey="courses" name={t("myCourses")} fill="#8b5cf6" radius={[6, 6, 0, 0]} barSize={30} />
-                      </ComposedChart>
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={{ borderRadius: "16px", border: "none" }} />
+                        <Line type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} name={t("earnings")} dot={{ r: 4, fill: "#6366f1" }} />
+                        <Line type="monotone" dataKey="students" stroke="#10b981" strokeWidth={2.5} name={t("students")} dot={{ r: 4, fill: "#10b981" }} />
+                      </LineChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
@@ -613,7 +646,7 @@ export function InstructorDashboard() {
                   <div className="h-52">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={courseDistribution} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3}>
+                        <Pie data={courseDistribution} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} label>
                           {courseDistribution.map((entry, idx) => (
                             <Cell key={idx} fill={entry.color} stroke="none" />
                           ))}
@@ -641,7 +674,7 @@ export function InstructorDashboard() {
               </motion.div>
             </div>
 
-            {/* Student Growth Section */}
+            {/* Student Growth & Gender Section */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -695,7 +728,7 @@ export function InstructorDashboard() {
                     {genderData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={genderData} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5}>
+                          <Pie data={genderData} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} label>
                             {genderData.map((entry, idx) => (
                               <Cell key={idx} fill={entry.color} stroke="none" />
                             ))}
@@ -713,6 +746,34 @@ export function InstructorDashboard() {
                 </div>
               </motion.div>
             </div>
+
+            {/* Governorate Distribution - NEW */}
+            {governorateData.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 }}
+                className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
+              >
+                <div className="p-5">
+                  <h3 className={`font-semibold text-lg flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <Building2 className="h-5 w-5 text-cyan-500" />
+                    {t("studentsByGovernorate")}
+                  </h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={governorateData} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} width={100} />
+                        <Tooltip contentStyle={{ borderRadius: "16px", border: "none" }} />
+                        <Bar dataKey="value" name={t("students")} fill="#06b6d4" radius={[0, 6, 6, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {/* Activity Cards */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -752,6 +813,7 @@ export function InstructorDashboard() {
 
           {/* ANALYTICS TAB */}
           <TabsContent value="analytics" className="space-y-6 mt-0">
+            {/* Performance Radar & Progress Metrics */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -821,6 +883,7 @@ export function InstructorDashboard() {
               </motion.div>
             </div>
 
+            {/* Monthly Trends */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -839,8 +902,7 @@ export function InstructorDashboard() {
                       <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                       <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                       <Tooltip contentStyle={{ borderRadius: "16px", border: "none" }} />
-                      <Line type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} name={t("earnings")} dot={{ r: 4, fill: "#6366f1" }} activeDot={{ r: 8 }} />
-                      <Line type="monotone" dataKey="students" stroke="#10b981" strokeWidth={2.5} name={t("students")} dot={{ r: 4, fill: "#10b981" }} activeDot={{ r: 8 }} />
+                      <Line type="monotone" dataKey="students" stroke="#10b981" strokeWidth={2.5} name={t("students")} dot={{ r: 4, fill: "#10b981" }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -879,7 +941,7 @@ export function InstructorDashboard() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.5 }}
               className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
             >
               <div className="p-5">
@@ -987,59 +1049,7 @@ export function InstructorDashboard() {
               </motion.div>
             </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
-            >
-              <div className="p-5">
-                <h3 className={`font-semibold text-lg flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <Gauge className="h-5 w-5 text-indigo-500" />
-                  {t("performanceInsights")}
-                </h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <div className="rounded-xl bg-gradient-to-r from-indigo-500/5 to-indigo-500/10 p-4 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">{t("efficiencyScore")}</p>
-                    <p className="text-2xl font-bold text-indigo-600">{completionRate}%</p>
-                    <div className="mt-2 h-1.5 rounded-full bg-indigo-200 dark:bg-indigo-900">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${completionRate}%` }}
-                        transition={{ delay: 0.5, duration: 0.8 }}
-                        className="h-full rounded-full bg-indigo-500"
-                      />
-                    </div>
-                  </div>
-                  <div className="rounded-xl bg-gradient-to-r from-emerald-500/5 to-emerald-500/10 p-4 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">{t("studentGrowth2")}</p>
-                    <p className="text-2xl font-bold text-emerald-600">+{report?.students_count || 0}</p>
-                    <div className="mt-2 h-1.5 rounded-full bg-emerald-200 dark:bg-emerald-900">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(100, (report?.students_count || 0))}%` }}
-                        transition={{ delay: 0.5, duration: 0.8 }}
-                        className="h-full rounded-full bg-emerald-500"
-                      />
-                    </div>
-                  </div>
-                  <div className="rounded-xl bg-gradient-to-r from-amber-500/5 to-amber-500/10 p-4 text-center">
-                    <p className="text-xs text-muted-foreground mb-1">{t("engagementRate")}</p>
-                    <p className="text-2xl font-bold text-amber-600">{engagementRate}%</p>
-                    <div className="mt-2 h-1.5 rounded-full bg-amber-200 dark:bg-amber-900">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${engagementRate}%` }}
-                        transition={{ delay: 0.5, duration: 0.8 }}
-                        className="h-full rounded-full bg-amber-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-        
+         
           </TabsContent>
         </Tabs>
 

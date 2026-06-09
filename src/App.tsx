@@ -8,22 +8,44 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider } from "@/contexts/AppContext";
 import AdminLoginPage from "./pages/login";
 import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
 import { TeacherProfileView } from "./pages/admin/TeacherProfileView";
 import { AdminCourses } from "@/pages/admin/AdminCourses";
 import { CourseDetails } from "@/pages/admin/CourseDetails";
 import { ExamViewer } from "@/components/exams/ExamViewer";
 import { StudentLearningPage } from "@/pages/instructor/StudentLearningPage";
 import { InstructorExams } from "@/pages/instructor/InstructorExams";
-import { DashboardLayout } from "./components/lms/DashboardLayout";
-import { useState } from "react"; // 🔥 أضف هذا السطر
-import AssignmentViewer from '@/components/assignments/AssignmentViewer';
-import InstructorAssignments from "./pages/instructor/InstructorAssignments";
+import { InstructorAssignments } from "@/pages/instructor/InstructorAssignments";
+import { AssignmentViewer } from "@/components/assignments/AssignmentViewer";
+import { AssistantTeachersPage } from "./pages/admin/AssistantTeachersPage";
+import { SubjectsPage } from "./pages/admin/SubjectsPage";
+import { StagesPage } from "./pages/admin/StagesPage";
+import { AdminUsers } from "./pages/admin/AdminUsers";
+import { AdminOverview } from "./pages/admin/AdminOverview";
+import { TeachersPage } from "./pages/admin/AdminInstructors";
+import { HeroesPage } from "./pages/admin/HeroesPage";
+import { AboutsPage } from "./pages/admin/AboutsPage";
+import { FootersPage } from "./pages/admin/FootersPage";
+import { FeaturesPage } from "./pages/admin/FeaturesPage";
+import { AdminReviews } from "./pages/admin/AdminReviews";
+import { SettingsPage } from "./pages/shared/SettingsPage";
+import { SemestersPage } from "./components/admin/SemestersPage";
+import { BooksPage } from "./components/admin/books/BooksPage";
+import { CenterHoursPage } from "./components/admin/center-hours/CenterHoursPage";
+import { PaymentCodesPage } from "./components/admin/payment-codes/PaymentCodesPage";
+import { InstructorRedeemRequests } from "./components/redeem-requests/RedeemRequestsPage";
+import { InstructorAnalytics } from "./pages/instructor/InstructorAnalytics";
+import { InstructorAssistants } from "./pages/instructor/InstructorAssistants";
+import InstructorBankQuestions from "./pages/instructor/InstructorBankQuestions";
+import { InstructorContent } from "./pages/instructor/InstructorContent";
+import { InstructorCourses } from "./pages/instructor/InstructorCourses";
+import { InstructorDashboard } from "./pages/instructor/InstructorDashboard";
+import { InstructorEarnings } from "./pages/instructor/InstructorEarnings";
+import InstructorStudents from "./pages/instructor/InstructorStudents";
+import { InstructorWebsite } from "./pages/instructor/InstructorWebsite";
+
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [active, setActive] = useState("dashboard");
-
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>
@@ -32,42 +54,56 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Login - بدون layout */}
+              {/* Login */}
               <Route path="/login" element={<AdminLoginPage />} />
 
-              {/* Admin Routes - مع DashboardLayout */}
-              <Route
-                path="/admin/*"
-                element={
-                  <Routes>
-                    <Route path="teachers/profile" element={<TeacherProfileView />} />
-                    <Route path="courses" element={<AdminCourses />} />
-                    <Route path="courses/:id" element={<CourseDetails />} />
-                    <Route path="*" element={<Index />} />
-                  </Routes>
-                }
-              />
+              {/* Admin Routes - داخل Layout */}
+              <Route path="/admin" element={<Index />}>
+                <Route index element={<AdminOverview />} />
+                <Route path="dashboard" element={<AdminOverview />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="stage" element={<StagesPage />} />
+                <Route path="subject" element={<SubjectsPage />} />
+                <Route path="instructors" element={<TeachersPage />} />
+                <Route path="AssistantInstructors" element={<AssistantTeachersPage />} />
+                <Route path="hero" element={<HeroesPage />} />
+                <Route path="about" element={<AboutsPage />} />
+                <Route path="footer" element={<FootersPage />} />
+                <Route path="features" element={<FeaturesPage />} />
+                <Route path="courses" element={<AdminCourses />} />
+                <Route path="courses/:id" element={<CourseDetails />} />
+                <Route path="reviews" element={<AdminReviews />} />
+                <Route path="teachers/profile" element={<TeacherProfileView />} />
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
 
-              {/* Instructor Routes - مع DashboardLayout */}
-              <Route
-                path="/instructor/*"
-                element={
-                  <Routes>
-                    {/* <Route path="exams" element={<InstructorExams />} /> */}
-                    <Route path="exam/:examId" element={<ExamViewer />} />
+              {/* Instructor Routes - داخل Layout */}
+              <Route path="/instructor" element={<Index />}>
+                <Route index element={<InstructorDashboard />} />
+                <Route path="dashboard" element={<InstructorDashboard />} />
+                <Route path="my-courses" element={<InstructorCourses />} />
+                <Route path="students" element={<InstructorStudents />} />
+                <Route path="exams" element={<InstructorExams />} />
+                <Route path="exam/:examId" element={<ExamViewer />} />
+                <Route path="assignments" element={<InstructorAssignments />} />
+               <Route path="/instructor/assignments/:assignmentId" element={<AssignmentViewer />} />
+                <Route path="student/:studentId" element={<StudentLearningPage />} />
+                <Route path="bank-questions" element={<InstructorBankQuestions />} />
+                <Route path="content" element={<InstructorContent />} />
+                <Route path="analytics" element={<InstructorAnalytics />} />
+                <Route path="earnings" element={<InstructorEarnings />} />
+                <Route path="assistants" element={<InstructorAssistants />} />
+                <Route path="website" element={<InstructorWebsite />} />
+                <Route path="payment-codes" element={<PaymentCodesPage />} />
+                <Route path="books" element={<BooksPage />} />
+                <Route path="redeem-requests" element={<InstructorRedeemRequests />} />
+                <Route path="semesters" element={<SemestersPage />} />
+                <Route path="center-hours" element={<CenterHoursPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
 
-                    <Route path="assignments">
-                      <Route index element={<InstructorAssignments />} />
-                      <Route path=":assignmentId" element={<AssignmentViewer />} />
-                    </Route>
-                    <Route path="student/:studentId" element={<StudentLearningPage />} />
-                    <Route path="*" element={<Index />} />
-                  </Routes>
-                }
-              />
-
-              {/* Default Route */}
-              <Route path="/*" element={<Index />} />
+              {/* Fallback */}
+              <Route path="*" element={<Index />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
