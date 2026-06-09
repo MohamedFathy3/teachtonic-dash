@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useApp } from "@/contexts/AppContext";
+import { useNavigate } from 'react-router-dom';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,154 +92,157 @@ const governorateNames: Record<string, { ar: string; en: string }> = {
 const MONTHS_EG = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const translations = {
-  ar: {
-    welcomeBack: "مرحباً بعودتك",
-    dashboardSubtitle: "تابع أدائك وأدر كورساتك",
-    myCourses: "كورساتي",
-    students: "الطلاب",
-    earnings: "الأرباح",
-    exams: "الامتحانات",
-    books: "الكتب",
-    semesters: "الفصول الدراسية",
-    onlineCourses: "أونلاين",
-    centerCourses: "سنتر",
-    totalCourses: "إجمالي الكورسات",
-    totalStudents: "إجمالي الطلاب",
-    totalRevenue: "إجمالي الأرباح",
-    completionRate: "نسبة الإنجاز",
-    engagementRate: "نسبة التفاعل",
-    revenueOverview: "نظرة عامة على الأرباح",
-    courseDistribution: "توزيع الكورسات",
-    platformActivity: "نشاط المنصة",
-    refresh: "تحديث",
-    downloadReport: "تحميل التقرير",
-    fromDate: "من تاريخ",
-    toDate: "إلى تاريخ",
-    cancel: "إلغاء",
-    downloading: "جاري التحميل...",
-    downloadPDF: "تحميل PDF",
-    error: "خطأ",
-    tryAgain: "حاول مرة أخرى",
-    pleaseSelectDates: "الرجاء تحديد نطاق التواريخ",
-    reportDownloaded: "تم تحميل التقرير بنجاح",
-    loading: "جاري تحميل لوحة التحكم...",
-    overview: "نظرة عامة",
-    analytics: "تحليلات",
-    performance: "الأداء",
-    newCourse: "كورس جديد",
-    createExam: "إنشاء امتحان",
-    inviteStudents: "دعوة طلاب",
-    createCoupon: "إنشاء كوبون",
-    online: "أونلاين",
-    center: "سنتر",
-    examsTaken: "الامتحانات المأخوذة",
-    assignments: "الواجبات",
-    male: "ذكر",
-    female: "أنثى",
-    studentGrowth: "عدد الطلاب",
-    studentsByGender: "الطلاب حسب النوع",
-    studentsByGovernorate: "الطلاب حسب المحافظة",
-    performanceRadar: "رادار الأداء",
-    progressMetrics: "مقاييس التقدم",
-    monthlyTrends: "الاتجاهات الشهرية",
-    detailedStats: "إحصائيات مفصلة",
-    achievements: "الإنجازات",
-    earningsSummary: "ملخص الأرباح",
-    lifetimeEarnings: "إجمالي الأرباح مدى الحياة",
-    activeCourses: "الكورسات النشطة",
-    avgPerCourse: "متوسط لكل كورس",
-    efficiencyScore: "نسبة الكفاءة",
-    studentGrowth2: "عدد الطلاب",
-    overallRating: "تقييم الأداء العام",
-    topCreator: "أفضل منشئ",
-    popularMentor: "مرشد شعبي",
-    examMaster: "خبير امتحانات",
-    risingStar: "نجم صاعد",
-    reqCourses: "10+ كورسات",
-    reqStudents: "50+ طالب",
-    reqExams: "20+ امتحان",
-    reqActive: "نشط لمدة 30 يوم",
-    lastUpdated: "آخر تحديث: اليوم",
-    performanceInsights: "رؤى الأداء",
-  },
-  en: {
-    welcomeBack: "Welcome back",
-    dashboardSubtitle: "Track your performance and manage your courses",
-    myCourses: "My Courses",
-    students: "Students",
-    earnings: "Earnings",
-    exams: "Exams",
-    books: "Books",
-    semesters: "Semesters",
-    onlineCourses: "Online",
-    centerCourses: "Center",
-    totalCourses: "Total Courses",
-    totalStudents: "Total Students",
-    totalRevenue: "Total Revenue",
-    completionRate: "Completion Rate",
-    engagementRate: "Engagement Rate",
-    revenueOverview: "Revenue Overview",
-    courseDistribution: "Course Distribution",
-    platformActivity: "Platform Activity",
-    refresh: "Refresh",
-    downloadReport: "Download Report",
-    fromDate: "From Date",
-    toDate: "To Date",
-    cancel: "Cancel",
-    downloading: "Downloading...",
-    downloadPDF: "Download PDF",
-    error: "Error",
-    tryAgain: "Try again",
-    pleaseSelectDates: "Please select date range",
-    reportDownloaded: "Report downloaded successfully",
-    loading: "Loading dashboard...",
-    overview: "Overview",
-    analytics: "Analytics",
-    performance: "Performance",
-    newCourse: "New Course",
-    createExam: "Create Exam",
-    inviteStudents: "Invite Students",
-    createCoupon: "Create Coupon",
-    online: "Online",
-    center: "Center",
-    examsTaken: "Exams Taken",
-    assignments: "Assignments",
-    male: "Male",
-    female: "Female",
-    studentGrowth: "Student Growth",
-    studentsByGender: "Students by Gender",
-    studentsByGovernorate: "Students by Governorate",
-    performanceRadar: "Performance Radar",
-    progressMetrics: "Progress Metrics",
-    monthlyTrends: "Monthly Trends",
-    detailedStats: "Detailed Statistics",
-    achievements: "Achievements",
-    earningsSummary: "Earnings Summary",
-    lifetimeEarnings: "Total Lifetime Earnings",
-    activeCourses: "Active Courses",
-    avgPerCourse: "Avg per Course",
-    efficiencyScore: "Efficiency Score",
-    studentGrowth2: "Student Growth",
-    overallRating: "Overall Performance Rating",
-    topCreator: "Top Creator",
-    popularMentor: "Popular Mentor",
-    examMaster: "Exam Master",
-    risingStar: "Rising Star",
-    reqCourses: "10+ Courses",
-    reqStudents: "50+ Students",
-    reqExams: "20+ Exams",
-    reqActive: "Active for 30 days",
-    lastUpdated: "Last updated: Today",
-    performanceInsights: "Performance Insights",
-  }
-};
-
 export function InstructorDashboard() {
   const { t: tOriginal, user, dir, lang } = useApp();
-  const t = (key: string) => {
+  const navigate = useNavigate();
+  
+  // دالة الترجمة المحسنة
+  const t = (key: string): string => {
+    const translations: Record<string, Record<string, string>> = {
+      ar: {
+        welcomeBack: "مرحباً بعودتك",
+        dashboardSubtitle: "تابع أدائك وأدر كورساتك",
+        myCourses: "كورساتي",
+        students: "الطلاب",
+        earnings: "الأرباح",
+        exams: "الامتحانات",
+        books: "الكتب",
+        semesters: "الفصول الدراسية",
+        onlineCourses: "أونلاين",
+        centerCourses: "سنتر",
+        totalCourses: "إجمالي الكورسات",
+        totalStudents: "إجمالي الطلاب",
+        totalRevenue: "إجمالي الأرباح",
+        completionRate: "نسبة الإنجاز",
+        engagementRate: "نسبة التفاعل",
+        revenueOverview: "نظرة عامة على الأرباح",
+        courseDistribution: "توزيع الكورسات",
+        platformActivity: "نشاط المنصة",
+        refresh: "تحديث",
+        downloadReport: "تحميل التقرير",
+        fromDate: "من تاريخ",
+        toDate: "إلى تاريخ",
+        cancel: "إلغاء",
+        downloading: "جاري التحميل...",
+        downloadPDF: "تحميل PDF",
+        error: "خطأ",
+        tryAgain: "حاول مرة أخرى",
+        pleaseSelectDates: "الرجاء تحديد نطاق التواريخ",
+        reportDownloaded: "تم تحميل التقرير بنجاح",
+        loading: "جاري تحميل لوحة التحكم...",
+        overview: "نظرة عامة",
+        analytics: "تحليلات",
+        performance: "الأداء",
+        newCourse: "كورس جديد",
+        createExam: "إنشاء امتحان",
+        inviteStudents: " الطلاب",
+        createCoupon: "إنشاء اكواد",
+        online: "أونلاين",
+        center: "سنتر",
+        examsTaken: "الامتحانات المأخوذة",
+        assignments: "الواجبات",
+        male: "ذكر",
+        female: "أنثى",
+        studentGrowth: "عدد الطلاب",
+        studentsByGender: "الطلاب حسب النوع",
+        studentsByGovernorate: "الطلاب حسب المحافظة",
+        performanceRadar: "رادار الأداء",
+        progressMetrics: "مقاييس التقدم",
+        monthlyTrends: "الاتجاهات الشهرية",
+        detailedStats: "إحصائيات مفصلة",
+        achievements: "الإنجازات",
+        earningsSummary: "ملخص الأرباح",
+        lifetimeEarnings: "إجمالي الأرباح مدى الحياة",
+        activeCourses: "الكورسات النشطة",
+        avgPerCourse: "متوسط لكل كورس",
+        efficiencyScore: "نسبة الكفاءة",
+        studentGrowth2: "عدد الطلاب",
+        overallRating: "تقييم الأداء العام",
+        topCreator: "أفضل منشئ",
+        popularMentor: "مرشد شعبي",
+        examMaster: "خبير امتحانات",
+        risingStar: "نجم صاعد",
+        reqCourses: "10+ كورسات",
+        reqStudents: "50+ طالب",
+        reqExams: "20+ امتحان",
+        reqActive: "نشط لمدة 30 يوم",
+        lastUpdated: "آخر تحديث: اليوم",
+        performanceInsights: "رؤى الأداء",
+      },
+      en: {
+        welcomeBack: "Welcome back",
+        dashboardSubtitle: "Track your performance and manage your courses",
+        myCourses: "My Courses",
+        students: "Students",
+        earnings: "Earnings",
+        exams: "Exams",
+        books: "Books",
+        semesters: "Semesters",
+        onlineCourses: "Online",
+        centerCourses: "Center",
+        totalCourses: "Total Courses",
+        totalStudents: "Total Students",
+        totalRevenue: "Total Revenue",
+        completionRate: "Completion Rate",
+        engagementRate: "Engagement Rate",
+        revenueOverview: "Revenue Overview",
+        courseDistribution: "Course Distribution",
+        platformActivity: "Platform Activity",
+        refresh: "Refresh",
+        downloadReport: "Download Report",
+        fromDate: "From Date",
+        toDate: "To Date",
+        cancel: "Cancel",
+        downloading: "Downloading...",
+        downloadPDF: "Download PDF",
+        error: "Error",
+        tryAgain: "Try again",
+        pleaseSelectDates: "Please select date range",
+        reportDownloaded: "Report downloaded successfully",
+        loading: "Loading dashboard...",
+        overview: "Overview",
+        analytics: "Analytics",
+        performance: "Performance",
+        newCourse: "New Course",
+        createExam: "Create Exam",
+        inviteStudents: " Students",
+        createCoupon: "Create code",
+        online: "Online",
+        center: "Center",
+        examsTaken: "Exams Taken",
+        assignments: "Assignments",
+        male: "Male",
+        female: "Female",
+        studentGrowth: "Student Growth",
+        studentsByGender: "Students by Gender",
+        studentsByGovernorate: "Students by Governorate",
+        performanceRadar: "Performance Radar",
+        progressMetrics: "Progress Metrics",
+        monthlyTrends: "Monthly Trends",
+        detailedStats: "Detailed Statistics",
+        achievements: "Achievements",
+        earningsSummary: "Earnings Summary",
+        lifetimeEarnings: "Total Lifetime Earnings",
+        activeCourses: "Active Courses",
+        avgPerCourse: "Avg per Course",
+        efficiencyScore: "Efficiency Score",
+        studentGrowth2: "Student Growth",
+        overallRating: "Overall Performance Rating",
+        topCreator: "Top Creator",
+        popularMentor: "Popular Mentor",
+        examMaster: "Exam Master",
+        risingStar: "Rising Star",
+        reqCourses: "10+ Courses",
+        reqStudents: "50+ Students",
+        reqExams: "20+ Exams",
+        reqActive: "Active for 30 days",
+        lastUpdated: "Last updated: Today",
+        performanceInsights: "Performance Insights",
+      }
+    };
+    
     const langCode = lang === 'ar' ? 'ar' : 'en';
-    return translations[langCode][key as keyof typeof translations['en']] || tOriginal(key) || key;
+    return translations[langCode][key] || tOriginal(key) || key;
   };
   
   const [report, setReport] = useState<InstructorReport | null>(null);
@@ -331,14 +335,13 @@ export function InstructorDashboard() {
     return {
       month,
       students: studentValue,
-      // الأرباح من البيانات الحقيقية فقط
       revenue: totalRevenue > 0 ? Math.round(totalRevenue / 12) : 0,
     };
   });
 
   const courseDistribution = [
-    { name: t("online"), value: report?.online_courses || 0, color: '#3b82f6', icon: MonitorPlay },
-    { name: t("center"), value: report?.center_courses || 0, color: '#8b5cf6', icon: School },
+    { name: t("online"), value: report?.online_courses || 0, color: '#3b82f6' },
+    { name: t("center"), value: report?.center_courses || 0, color: '#8b5cf6' },
   ];
 
   // بيانات الأداء من البيانات الحقيقية
@@ -389,11 +392,36 @@ export function InstructorDashboard() {
     color: `hsl(${Math.random() * 360}, 70%, 50%)`
   })) || [];
 
+  // 🔥 QUICK ACTIONS مع لينكات حقيقية
   const QUICK_ACTIONS = [
-    { icon: BookOpen, label: t("newCourse"), color: "from-blue-500 to-cyan-500", bg: "bg-blue-50 dark:bg-blue-950/20" },
-    { icon: FileQuestion, label: t("createExam"), color: "from-red-500 to-rose-500", bg: "bg-red-50 dark:bg-red-950/20" },
-    { icon: Users, label: t("inviteStudents"), color: "from-green-500 to-emerald-500", bg: "bg-green-50 dark:bg-green-950/20" },
-    { icon: Ticket, label: t("createCoupon"), color: "from-purple-500 to-pink-500", bg: "bg-purple-50 dark:bg-purple-950/20" },
+    { 
+      icon: BookOpen, 
+      label: t("newCourse"), 
+      color: "from-blue-500 to-cyan-500", 
+      bg: "bg-blue-50 dark:bg-blue-950/20",
+      onClick: () => navigate('/instructor/my-courses')
+    },
+    { 
+      icon: FileQuestion, 
+      label: t("createExam"), 
+      color: "from-red-500 to-rose-500", 
+      bg: "bg-red-50 dark:bg-red-950/20",
+      onClick: () => navigate('/instructor/exams')
+    },
+    { 
+      icon: Users, 
+      label: t("inviteStudents"), 
+      color: "from-green-500 to-emerald-500", 
+      bg: "bg-green-50 dark:bg-green-950/20",
+      onClick: () => navigate('/instructor/students')
+    },
+    { 
+      icon: Ticket, 
+      label: t("createCoupon"), 
+      color: "from-purple-500 to-pink-500", 
+      bg: "bg-purple-50 dark:bg-purple-950/20",
+      onClick: () => navigate('/instructor/payment-codes')
+    },
   ];
 
   const ACHIEVEMENTS = [
@@ -516,7 +544,7 @@ export function InstructorDashboard() {
           </div>
         </motion.div>
 
-        {/* Quick Actions Row */}
+        {/* Quick Actions Row - مع لينكات */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {QUICK_ACTIONS.map((action, idx) => (
             <motion.button
@@ -526,6 +554,7 @@ export function InstructorDashboard() {
               transition={{ delay: idx * 0.05 }}
               whileHover={{ y: -4, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              onClick={action.onClick}
               className={`group flex flex-col items-center gap-2 rounded-2xl ${action.bg} p-4 text-center transition-all duration-300 hover:shadow-lg cursor-pointer`}
             >
               <div className={`rounded-xl bg-gradient-to-r ${action.color} p-2.5 shadow-md transition-all duration-300 group-hover:shadow-lg group-hover:scale-110`}>
@@ -536,6 +565,8 @@ export function InstructorDashboard() {
           ))}
         </div>
 
+        {/* باقي الكود كما هو (نفس الـ JSX السابق لكن مع استخدام دالة الترجمة الصحيحة) */}
+        
         {/* Main Tabs Section */}
         <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
           <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
@@ -557,7 +588,7 @@ export function InstructorDashboard() {
             </Badge>
           </div>
 
-          {/* OVERVIEW TAB */}
+          {/* OVERVIEW TAB - نفس الكود السابق */}
           <TabsContent value="overview" className="space-y-6 mt-0">
             {/* Main Metrics Grid */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -747,7 +778,7 @@ export function InstructorDashboard() {
               </motion.div>
             </div>
 
-            {/* Governorate Distribution - NEW */}
+            {/* Governorate Distribution */}
             {governorateData.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -813,7 +844,6 @@ export function InstructorDashboard() {
 
           {/* ANALYTICS TAB */}
           <TabsContent value="analytics" className="space-y-6 mt-0">
-            {/* Performance Radar & Progress Metrics */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -883,7 +913,6 @@ export function InstructorDashboard() {
               </motion.div>
             </div>
 
-            {/* Monthly Trends */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -909,7 +938,6 @@ export function InstructorDashboard() {
               </div>
             </motion.div>
 
-            {/* Stage Distribution */}
             {stageData.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -937,7 +965,6 @@ export function InstructorDashboard() {
               </motion.div>
             )}
 
-            {/* Detailed Stats Table */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1049,7 +1076,57 @@ export function InstructorDashboard() {
               </motion.div>
             </div>
 
-         
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
+            >
+              <div className="p-5">
+                <h3 className={`font-semibold text-lg flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <Gauge className="h-5 w-5 text-indigo-500" />
+                  {t("performanceInsights")}
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="rounded-xl bg-gradient-to-r from-indigo-500/5 to-indigo-500/10 p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">{t("efficiencyScore")}</p>
+                    <p className="text-2xl font-bold text-indigo-600">{completionRate}%</p>
+                    <div className="mt-2 h-1.5 rounded-full bg-indigo-200 dark:bg-indigo-900">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${completionRate}%` }}
+                        transition={{ delay: 0.5, duration: 0.8 }}
+                        className="h-full rounded-full bg-indigo-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-gradient-to-r from-emerald-500/5 to-emerald-500/10 p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">{t("studentGrowth2")}</p>
+                    <p className="text-2xl font-bold text-emerald-600">+{report?.students_count || 0}</p>
+                    <div className="mt-2 h-1.5 rounded-full bg-emerald-200 dark:bg-emerald-900">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, (report?.students_count || 0))}%` }}
+                        transition={{ delay: 0.5, duration: 0.8 }}
+                        className="h-full rounded-full bg-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-gradient-to-r from-amber-500/5 to-amber-500/10 p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">{t("engagementRate")}</p>
+                    <p className="text-2xl font-bold text-amber-600">{engagementRate}%</p>
+                    <div className="mt-2 h-1.5 rounded-full bg-amber-200 dark:bg-amber-900">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${engagementRate}%` }}
+                        transition={{ delay: 0.5, duration: 0.8 }}
+                        className="h-full rounded-full bg-amber-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </TabsContent>
         </Tabs>
 
