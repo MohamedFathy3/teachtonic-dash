@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/assignments/AssignmentViewer.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate, useParams } from 'react-router-dom'; 
 import { assignmentService } from '@/services/assignment.service';
@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import {
   Users, FileQuestion, CheckCircle, XCircle, AlertCircle,
   Edit3, Save, Loader2, Eye, Search, ChevronLeft,
-  Trophy, Clock, Sparkles, TrendingUp, Star, ArrowLeft
+  Trophy, Clock, Sparkles, TrendingUp, Star, ArrowLeft,
+  Download, X, Phone, User as UserIcon, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -27,6 +28,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { StudentLearningPage } from '@/pages/instructor/StudentLearningPage';
+import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 
 const staggerContainer = {
   animate: { transition: { staggerChildren: 0.1 } }
@@ -273,14 +275,20 @@ export const AssignmentViewer: React.FC = () => {
   const { t, lang } = useApp();
   const navigate = useNavigate();
   const { assignmentId } = useParams();
+  
+  // ✅ جميع الـ Hooks في البداية
   const [loading, setLoading] = useState(true);
   const [assignment, setAssignment] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('questions');
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [viewingProfile, setViewingProfile] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // ✅ فلاتر بحث الطلاب
+  const [searchQuery, setSearchQuery] = useState('');
+  const [studentSearchCode, setStudentSearchCode] = useState('');
+  const [studentSearchPhone, setStudentSearchPhone] = useState('');
 
   useEffect(() => {
     if (assignmentId) {
@@ -294,8 +302,6 @@ export const AssignmentViewer: React.FC = () => {
     try {
       const res = await assignmentService.getAssignment(Number(assignmentId));
       console.log("📦 Assignment data:", res);
-      console.log("📊 Questions:", res?.questions);
-      console.log("👥 Students:", res?.students);
       setAssignment(res);
     } catch (error) {
       console.error("❌ Error fetching assignment:", error);
@@ -314,6 +320,88 @@ export const AssignmentViewer: React.FC = () => {
     navigate('/instructor/assignments');
   };
 
+  // ✅ الـ useMemo بعد الـ Hooks
+  const questions = assignment?.questions || [];
+  const students = assignment?.students || [];
+
+  const filteredStudents = useMemo(() => {
+    let filtered = [...students];
+
+    if (searchQuery) {
+      filtered = filtered.filter((s: any) =>
+        s.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (studentSearchCode) {
+      filtered = filtered.filter((s: any) =>
+        s.code_parent?.toLowerCase().includes(studentSearchCode.toLowerCase())
+      );
+    }
+
+    if (studentSearchPhone) {
+      filtered = filtered.filter((s: any) =>
+        s.phone?.includes(studentSearchPhone)
+      );
+    }
+
+    return filtered;
+  }, [students, searchQuery, studentSearchCode, studentSearchPhone]);
+
+  // ✅ بيانات التصدير
+  const exportData = useMemo(() => {
+    if (!questions.length || !filteredStudents.length) return [];
+    
+    return filteredStudents.map((student: any) => {
+      const score = questions.reduce((total: number, q: any) => {
+        const answer = student.answers?.find((a: any) => a.question_id === q.id);
+        return total + (answer?.mark ? parseFloat(answer.mark) : 0);
+      }, 0);
+      const percentage = (score / (assignment?.total_marks || 1)) * 100;
+      
+      return {
+        [lang === 'ar' ? 'الرقم' : 'ID']: student.id,
+        [lang === 'ar' ? 'الاسم' : 'Name']: student.name,
+        [lang === 'ar' ? 'الهاتف' : 'Phone']: student.phone,
+        [lang === 'ar' ? 'هاتف ولي الأمر' : 'Parent Phone']: student.phone_parent || '-',
+        [lang === 'ar' ? 'كود  الطالب' : 'student Code']: student.id || '-',
+        [lang === 'ar' ? 'نوع الحضور' : 'Attendance Type']: student.type_of_attendance === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'سنتر' : 'Center'),
+        [lang === 'ar' ? 'الحالة' : 'Status']: student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
+        [lang === 'ar' ? 'الدرجة' : 'Score']: `${score}/${assignment?.total_marks}`,
+        [lang === 'ar' ? 'النسبة' : 'Percentage']: `${percentage.toFixed(1)}%`,
+        [lang === 'ar' ? 'تاريخ التسجيل' : 'Registered']: new Date(student.created_at || student.createdAt).toLocaleDateString(),
+      };
+    });
+  }, [filteredStudents, questions, assignment?.total_marks, lang]);
+
+  const passRate = useMemo(() => {
+    if (students.length === 0) return 0;
+    return Math.round(students.filter(s => {
+      const score = questions.reduce((total, q) => {
+        const a = s.answers?.find((ans: any) => ans.question_id === q.id);
+        return total + (a?.mark ? parseFloat(a.mark) : 0);
+      }, 0);
+      const percentage = (score / (assignment?.total_marks || 1)) * 100;
+      return percentage >= 50;
+    }).length / students.length * 100);
+  }, [students, questions, assignment?.total_marks]);
+
+  const clearStudentFilters = () => {
+    setSearchQuery('');
+    setStudentSearchCode('');
+    setStudentSearchPhone('');
+  };
+
+  const getTypeLabel = (type: string) => {
+    const types: any = {
+      true_false: lang === 'ar' ? 'صح/خطأ' : 'True/False',
+      multiple_choice: lang === 'ar' ? 'اختيار من متعدد' : 'Multiple Choice',
+      essay: lang === 'ar' ? 'مقالي' : 'Essay',
+    };
+    return types[type] || type;
+  };
+
+  // ✅ Conditional Returns
   if (viewingProfile) {
     return <StudentLearningPage studentId={viewingProfile} onBack={() => setViewingProfile(null)} />;
   }
@@ -346,30 +434,6 @@ export const AssignmentViewer: React.FC = () => {
       </div>
     );
   }
-
-  const questions = assignment?.questions || [];
-  const students = assignment?.students || [];
-  const filteredStudents = students.filter((s: any) => s.name?.toLowerCase().includes(searchQuery.toLowerCase()));
-
-  const getTypeLabel = (type: string) => {
-    const types: any = {
-      true_false: lang === 'ar' ? 'صح/خطأ' : 'True/False',
-      multiple_choice: lang === 'ar' ? 'اختيار من متعدد' : 'Multiple Choice',
-      essay: lang === 'ar' ? 'مقالي' : 'Essay',
-    };
-    return types[type] || type;
-  };
-
-  const passRate = students.length > 0
-    ? Math.round(students.filter(s => {
-        const score = questions.reduce((total, q) => {
-          const a = s.answers?.find((ans: any) => ans.question_id === q.id);
-          return total + (a?.mark ? parseFloat(a.mark) : 0);
-        }, 0);
-        const percentage = (score / (assignment?.total_marks || 1)) * 100;
-        return percentage >= 50;
-      }).length / students.length * 100)
-    : 0;
 
   return (
     <motion.div
@@ -532,7 +596,7 @@ export const AssignmentViewer: React.FC = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* Questions Tab */}
+            {/* Questions Tab - كما هو */}
             <TabsContent value="questions" className="mt-6 space-y-4">
               {questions.length === 0 ? (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
@@ -564,9 +628,7 @@ export const AssignmentViewer: React.FC = () => {
                           </Badge>
                         </div>
                         <p className="font-medium mb-3">{q.question}</p>
-                        {q.image?.fullUrl && (
-                          <img src={q.image.fullUrl} alt="Question" className="max-h-48 rounded-lg mt-2 mb-3" />
-                        )}
+                        {q.image?.fullUrl && <img src={q.image.fullUrl} alt="Question" className="max-h-48 rounded-lg mt-2 mb-3" />}
                         {q.correct_answer && (
                           <div className="mt-2 text-sm bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 p-2 rounded-lg">
                             <span className="font-medium">{lang === 'ar' ? '✓ الإجابة الصحيحة:' : '✓ Correct:'}</span> {q.correct_answer === 'true' ? (lang === 'ar' ? 'صحيح' : 'True') : q.correct_answer === 'false' ? (lang === 'ar' ? 'خطأ' : 'False') : q.correct_answer}
@@ -591,16 +653,72 @@ export const AssignmentViewer: React.FC = () => {
               )}
             </TabsContent>
 
-            {/* Students Tab */}
+            {/* Students Tab مع بحث متقدم وتصدير */}
             <TabsContent value="students" className="mt-6">
-              <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={lang === 'ar' ? 'ابحث عن طالب...' : 'Search for a student...'}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 rounded-xl h-11 border-slate-200 dark:border-slate-700"
-                />
+              {/* رأس البحث مع أزرار التصدير */}
+              <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
+                <div className="flex gap-2 flex-wrap">
+                  <ExportExcelButton
+                    data={exportData}
+                    fileName={`assignment_${assignmentId}_students`}
+                    label={lang === 'ar' ? '📊 تصدير Excel' : '📊 Export Excel'}
+                    disabled={filteredStudents.length === 0}
+                  />
+                  {(searchQuery || studentSearchCode || studentSearchPhone) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearStudentFilters}
+                      className="gap-1"
+                    >
+                      <X className="h-4 w-4" />
+                      {lang === 'ar' ? 'مسح الكل' : 'Clear All'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* حقول البحث المتقدمة */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={lang === 'ar' ? 'بحث بالاسم...' : 'Search by name...'}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 rounded-xl"
+                  />
+                </div>
+
+                {/* 🔥 كود ولي الأمر بدل رقم الطالب */}
+                <div className="relative">
+                  <Award className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={lang === 'ar' ? 'بحث بكود الطالب ...' : 'Search by student code...'}
+                    value={studentSearchCode}
+                    onChange={(e) => setStudentSearchCode(e.target.value)}
+                    className="pl-10 rounded-xl"
+                  />
+                </div>
+
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={lang === 'ar' ? 'بحث برقم الهاتف...' : 'Search by phone...'}
+                    value={studentSearchPhone}
+                    onChange={(e) => setStudentSearchPhone(e.target.value)}
+                    className="pl-10 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* عرض عدد النتائج */}
+              <div className="flex justify-between items-center mb-4">
+                <p className="text-sm text-muted-foreground">
+                  {lang === 'ar' 
+                    ? `عرض ${filteredStudents.length} من ${students.length} طالب`
+                    : `Showing ${filteredStudents.length} of ${students.length} students`}
+                </p>
               </div>
 
               {filteredStudents.length === 0 ? (
@@ -645,7 +763,7 @@ export const AssignmentViewer: React.FC = () => {
                               <div className="absolute top-3 right-3">
                                 <Badge className="bg-amber-500 text-white gap-1">
                                   <AlertCircle className="h-3 w-3" />
-                                  {lang === 'ar' ? 'بانتظار التصحيح' : 'Pending'}
+                                  {lang === 'ar' ? 'بانتظار' : 'Pending'}
                                 </Badge>
                               </div>
                             )}
@@ -669,6 +787,20 @@ export const AssignmentViewer: React.FC = () => {
                                   </div>
                                   <span className="text-xs text-muted-foreground">{percentage.toFixed(0)}%</span>
                                 </div>
+                              </div>
+                            </div>
+                            <div className="mt-2 text-xs text-muted-foreground space-y-1">
+                              <div className="flex items-center gap-1">
+                                <UserIcon className="h-3 w-3" />
+                                <span>ID: {student.id}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Award className="h-3 w-3" />
+                                <span>{lang === 'ar' ? 'الكود:' : 'Code:'} {student.code_parent || '-'}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                <span>{student.phone}</span>
                               </div>
                             </div>
                           </div>

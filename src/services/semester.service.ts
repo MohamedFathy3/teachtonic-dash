@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/services/semester.service.ts
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseService } from './base.service';
 import api from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
@@ -58,7 +58,7 @@ class SemesterService extends BaseService<Semester> {
     page: number = 1,
     search?: string,
     teacherId?: number,
-    lang?: string // 🔥 أضف lang لتحديد اللغة
+    lang?: string
   ) {
     try {
       const baseFilters: Record<string, any> = { ...filters };
@@ -71,10 +71,8 @@ class SemesterService extends BaseService<Semester> {
       // 🔥 البحث الذكي حسب اللغة
       if (search?.trim()) {
         if (lang === 'ar') {
-          // في الوضع العربي - بحث في name_ar
           baseFilters.name_ar = search.trim();
         } else {
-          // في الوضع الإنجليزي - بحث في name
           baseFilters.name = search.trim();
         }
       }
@@ -87,7 +85,6 @@ class SemesterService extends BaseService<Semester> {
         }
       });
 
-      // معالجة الفلاتر الإضافية
       if (baseFilters.active === '') delete baseFilters.active;
       if (baseFilters.price === null || baseFilters.price === undefined || baseFilters.price === '') delete baseFilters.price;
       if (baseFilters.discount === null || baseFilters.discount === undefined || baseFilters.discount === '') delete baseFilters.discount;
@@ -118,7 +115,6 @@ class SemesterService extends BaseService<Semester> {
     }
   }
 
-  // باقي الدوال كما هي...
   async getSemester(id: number): Promise<Semester> {
     const response = await api.get(`/${this.endpoint}/${id}`);
     return response.data?.data;
@@ -166,11 +162,12 @@ class SemesterService extends BaseService<Semester> {
     }
   }
 
-  async toggleActive(id: number): Promise<{ message: string }> {
+  // ✅ تصحيح دالة toggleActive
+  async toggleActiveStatus(id: number): Promise<{ message: string }> {
     try {
-      const result = await this.toggleActive(id);
-      toast({ title: "Success", description: result.message || "Status changed" });
-      return result;
+      const response = await api.put(`/${this.endpoint}/${id}/active`);
+      toast({ title: "Success", description: response.data?.message || "Status changed successfully" });
+      return response.data;
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.message || "Failed to toggle status", variant: "destructive" });
       throw error;

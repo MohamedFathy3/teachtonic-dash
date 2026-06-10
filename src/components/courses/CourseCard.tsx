@@ -182,10 +182,10 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                 <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
                 <span className="font-semibold">4.5</span>
               </span> */}
-              <span className="flex items-center gap-0.5">
+              {/* <span className="flex items-center gap-0.5">
                 <Users className="h-3 w-3" />
                 {course.count_student}
-              </span>
+              </span> */}
             </div>
             <span className="flex items-center gap-0.5 font-bold text-primary">
               EGP {course.price}

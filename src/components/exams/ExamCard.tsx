@@ -101,7 +101,7 @@ export const ExamCard: React.FC<ExamCardProps> = ({
             </div>
             {exam.type_exam && (
               <Badge variant="outline" className="text-xs">
-                {exam.type_exam === 'center' ? '🏫 مركز' : '💻 أونلاين'}
+                {exam.type_exam === 'center' ? '🏫 سنتر' : '💻 أونلاين'}
               </Badge>
             )}
           </div>

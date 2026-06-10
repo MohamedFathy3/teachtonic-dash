@@ -24,6 +24,7 @@ import type { CourseDetail } from '@/types/course-detail.types';
 import FileUploader from '@/components/FileUploader';
 import { Switch } from '@/components/ui/switch';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
+import { useNavigate } from 'react-router-dom';
 
 interface CourseDetailsProps {
   courseId: number;
@@ -36,7 +37,6 @@ interface StudentFilters {
   search: string;
   typeOfAttendance: string;
   active: string;
-  phone: string;
 }
 
 // ✅ أنيميشن
@@ -157,6 +157,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isLiked, setIsLiked] = useState(false);
+const navigate = useNavigate();
 
   // 🔥 State للدروس
   const [lessons, setLessons] = useState<CourseDetail[]>([]);
@@ -176,20 +177,23 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const [selectedPdfId, setSelectedPdfId] = useState<number | null>(null);
   const [selectedPdfUrl, setSelectedPdfUrl] = useState<string | null>(null);
   
+  // 🔥 State لعرض طلاب الدرس
+  const [showLessonStudentsModal, setShowLessonStudentsModal] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState<any>(null);
+  
   // ✅ State للفلتر في الطلاب
   const [studentFilters, setStudentFilters] = useState<StudentFilters>({
     search: '',
     typeOfAttendance: '',
     active: '',
-    phone: '',
   });
   const [showStudentFilters, setShowStudentFilters] = useState(false);
 
-  // ✅ فرم الدرس — titles و titles_ar و link_video كلها arrays
+  // ✅ فرم الدرس
   const [lessonForm, setLessonForm] = useState({
-    titles: [''],           // array of EN titles
-    titles_ar: [''],        // array of AR titles
-    link_video: [''],       // array of video links
+    titles: [''],
+    titles_ar: [''],
+    link_video: [''],
     description: '',
     description_ar: '',
     content_link: '',
@@ -266,12 +270,11 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     }
   };
 
-  // ✅ دالة لفلترة الطلاب
+  // ✅ دالة لفلترة الطلاب في الكورس
   const filteredStudents = useMemo(() => {
     const students = (course as any)?.students || [];
     let filtered = [...students];
 
-    // بحث بالاسم أو المعرف
     if (studentFilters.search) {
       const searchTerm = studentFilters.search.toLowerCase();
       filtered = filtered.filter(s => 
@@ -280,19 +283,12 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       );
     }
 
-    // فلتر نوع الحضور
     if (studentFilters.typeOfAttendance) {
       filtered = filtered.filter(s => s.type_of_attendance === studentFilters.typeOfAttendance);
     }
 
-    // فلتر الحالة
     if (studentFilters.active !== '') {
       filtered = filtered.filter(s => s.active === (studentFilters.active === 'active'));
-    }
-
-    // فلتر رقم الهاتف
-    if (studentFilters.phone) {
-      filtered = filtered.filter(s => s.phone?.includes(studentFilters.phone));
     }
 
     return filtered;
@@ -304,9 +300,22 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       search: '',
       typeOfAttendance: '',
       active: '',
-      phone: '',
     });
     setShowStudentFilters(false);
+  };
+
+  // 🔥 فتح Modal طلاب الدرس (يستخدم نفس طلاب الكورس)
+  const openLessonStudentsModal = (lesson: any) => {
+    setSelectedLesson(lesson);
+    setShowLessonStudentsModal(true);
+  };
+
+  // 🔥 الحصول على طلاب الدرس (من طلاب الكورس مع فلتر اختياري)
+  const getLessonStudents = () => {
+    const allStudents = (course as any)?.students || [];
+    // يمكن إضافة فلتر حسب الدرس إذا كان في API
+    // حالياً نرجع كل طلاب الكورس
+    return allStudents;
   };
 
   useEffect(() => {
@@ -339,7 +348,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     return formattedDate;
   };
 
-  // 🔥 معالج رفع الصورة
   const handleImageUpload = (imageId: number) => {
     setSelectedImageId(imageId);
     setLessonForm(prev => ({ ...prev, image_id: imageId }));
@@ -352,11 +360,9 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     setLessonForm(prev => ({ ...prev, image_id: null }));
   };
 
-  // ✅ معالج حفظ الدرس — يبعت titles و titles_ar و link_video كـ arrays
   const handleSaveLesson = async () => {
     if (!courseId) return;
 
-    // تنظيف الـ arrays من القيم الفارغة
     const cleanTitles = lessonForm.titles.filter(t => t.trim() !== '');
     const cleanTitlesAr = lessonForm.titles_ar.filter(t => t.trim() !== '');
     const cleanLinkVideo = lessonForm.link_video.filter(l => l.trim() !== '');
@@ -380,10 +386,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       pdf_id: lessonForm.pdf_id,
     };
 
-    if (lessonForm.pdf_id) {
-      payload.pdf = lessonForm.pdf_id;
-    }
-
     if (selectedImageId) {
       payload.image = selectedImageId;
     } else if (lessonForm.image_id) {
@@ -392,10 +394,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
 
     try {
       if (editingLesson) {
-        const result = await courseDetailService.update(editingLesson.id, payload);
-        await fetchLessons(1);
-        console.log('payload sent:', payload);
-        console.log('result:', result);
+        await courseDetailService.update(editingLesson.id, payload);
         toast.success(lang === 'ar' ? 'تم تحديث الدرس بنجاح' : 'Lesson updated successfully');
       } else {
         await courseDetailService.create(payload);
@@ -411,7 +410,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     }
   };
 
-  // معالج حذف درس
   const handleDeleteLesson = async () => {
     if (!deletingLesson) return;
     try {
@@ -425,7 +423,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     }
   };
 
-  // ✅ reset الفرم
   const resetLessonForm = () => {
     setLessonForm({
       titles: [''],
@@ -447,11 +444,9 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     setEditingLesson(null);
   };
 
-  // ✅ فتح modal التعديل — يملأ الـ arrays صح
   const openEditLesson = async (lesson: CourseDetail) => {
     setEditingLesson(lesson);
 
-    // titles: لو array خده زي ما هو، لو مش array حوله لـ array
     const titlesArr = Array.isArray(lesson.titles)
       ? (lesson.titles.length > 0 ? lesson.titles : [''])
       : [lesson.titles ?? ''];
@@ -460,7 +455,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       ? (lesson.titles_ar.length > 0 ? lesson.titles_ar : [''])
       : [lesson.titles_ar ?? ''];
 
-    // link_video: لو موجود في الـ lesson
     const linkVideoArr = Array.isArray((lesson as any).link_video)
       ? ((lesson as any).link_video.length > 0 ? (lesson as any).link_video : [''])
       : (lesson.content_link ? [lesson.content_link] : ['']);
@@ -479,7 +473,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       pdf_id: lesson.pdf?.id ?? null,
     });
 
-    // ✅ Image
     if (lesson.image?.fullUrl) {
       setSelectedImageUrl(lesson.image.fullUrl);
       setSelectedImageId(lesson.image.id);
@@ -488,7 +481,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       setSelectedImageId(null);
     }
 
-    // ✅ PDF
     const pdfUrl = lesson.pdf?.fullUrl || lesson.pdfUrl || null;
     const pdfId = lesson.pdf?.id ?? null;
     setSelectedPdfId(pdfId);
@@ -538,6 +530,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const teacherEmail = course.teacher?.email;
   const teacherPhone = course.teacher?.phone;
   const students = (course as any)?.students || [];
+  const lessonStudentsList = students;
 
   return (
     <motion.div
@@ -605,7 +598,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="bg-white/20 text-white backdrop-blur-sm">
               {course.type === 'online' ? <Globe className="h-3 w-3 mr-1" /> : <MapPin className="h-3 w-3 mr-1" />}
-              {t(course.type)}
+              {course.type === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'سنتر' : 'Center')}
             </Badge>
             <Badge variant={course.active === 1 ? "default" : "destructive"} className="backdrop-blur-sm">
               {course.active === 1 ? t('active') : t('inactive')}
@@ -628,7 +621,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
         </motion.div>
         <motion.div variants={fadeIn} whileHover={{ y: -3 }} className="text-center p-4 rounded-xl bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-200/50">
           <DollarSign className="h-6 w-6 text-green-500 mx-auto mb-2" />
-          <p className="text-2xl font-bold">${course.price}</p>
+          <p className="text-2xl font-bold">EGP {course.price}</p>
           <p className="text-xs text-muted-foreground">{t('price')}</p>
         </motion.div>
         <motion.div variants={fadeIn} whileHover={{ y: -3 }} className="text-center p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-200/50">
@@ -684,9 +677,9 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             <InfoCard icon={Calendar} label={t('endDate')} value={formatDate(course.end_date)} />
             <InfoCard icon={Clock} label={t('duration')} value={course.hour_time_course || '—'} />
             <InfoCard icon={Users} label={t('maxStudents')} value={course.count_student} />
-            <InfoCard icon={DollarSign} label={t('price')} value={`$${course.price}`} color="yellow" />
+            <InfoCard icon={DollarSign} label={t('price')} value={`EGP ${course.price}`} color="yellow" />
             {course.discount !== '0.00' && (
-              <InfoCard icon={DollarSign} label={t('discount')} value={`$${course.discount}`} color="red" />
+              <InfoCard icon={DollarSign} label={t('discount')} value={`EGP ${course.discount}`} color="red" />
             )}
           </motion.div>
         </TabsContent>
@@ -748,8 +741,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                           </span>
                           {parseFloat(lesson.price as any) > 0 && (
                             <Badge variant="secondary" className="text-xs gap-1">
-                              <DollarSign className="h-3 w-3" />
-                              {lesson.price}
+                              EGP {lesson.price}
                             </Badge>
                           )}
                           {lesson.must_pass_to_unlock && (
@@ -765,8 +757,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                             </Badge>
                           )}
                         </div>
-
-                        {/* عرض الـ titles كـ array */}
+       
                         <div className="space-y-0.5">
                           {Array.isArray(isRTL ? lesson.titles_ar : lesson.titles)
                             ? (isRTL ? lesson.titles_ar : lesson.titles).map((t: string, i: number) => (
@@ -776,13 +767,13 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                             ))
                             : <h4 className="font-semibold text-base">{(isRTL ? lesson.titles_ar : lesson.titles) || '—'}</h4>
                           }
+               
                         </div>
 
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                           {isRTL && lesson.description_ar ? lesson.description_ar : lesson.description}
                         </p>
 
-                        {/* عرض روابط الفيديو */}
                         {Array.isArray(lesson.link_video) && lesson.link_video.filter(Boolean).length > 0 ? (
                           <div className="flex flex-wrap gap-2 mt-2">
                             {lesson.link_video.filter(Boolean).map((link: string, i: number) => (
@@ -813,6 +804,18 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                             className="data-[state=checked]:bg-amber-500 scale-75"
                           />
                         </div>
+
+                        {/* 🔥 زر عرض طلاب الدرس */}
+                           <Button 
+  size="icon" 
+  variant="ghost"
+  className="h-8 w-8 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/20 text-blue-500"
+onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلام، دلوقتي الـ Route موجود
+  title={lang === 'ar' ? 'عرض تفاصيل الدرس' : 'View Lesson Details'}
+>
+  <Eye className="h-4 w-4" />
+</Button>
+
                         <Button size="icon" variant="ghost"
                           className="h-8 w-8 rounded-full hover:bg-primary/10"
                           onClick={() => openEditLesson(lesson)}>
@@ -850,51 +853,49 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
           )}
         </TabsContent>
 
-        {/* Students Tab with Filters and Export */}
+        {/* Students Tab */}
         <TabsContent value="students" className="mt-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <h3 className="font-semibold flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
-              {t('enrolledStudents') || 'الطلاب المسجلين'} ({filteredStudents.length} / {students.length})
+              {lang === 'ar' ? 'الطلاب المسجلين في هذا الكورس' : 'Students Enrolled in This Course'} ({students.length})
             </h3>
             
             <div className="flex gap-2">
-              {/* زر الفلتر */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowStudentFilters(!showStudentFilters)}
-                className="gap-1"
+                className="gap-1 rounded-xl"
               >
                 <Filter className="h-4 w-4" />
                 {lang === 'ar' ? 'فلتر' : 'Filter'}
-                {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active || studentFilters.phone) && (
+                {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active) && (
                   <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center rounded-full ml-1">
-                    {[studentFilters.search, studentFilters.typeOfAttendance, studentFilters.active, studentFilters.phone].filter(Boolean).length}
+                    {[studentFilters.search, studentFilters.typeOfAttendance, studentFilters.active].filter(Boolean).length}
                   </Badge>
                 )}
               </Button>
               
-              {/* زر التصدير */}
               <ExportExcelButton
                 data={filteredStudents.map((s: any) => ({
                   id: s.id,
                   name: s.name,
                   phone: s.phone,
-                  type_of_attendance: s.type_of_attendance === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'مركز' : 'Center'),
+                  type_of_attendance: s.type_of_attendance === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'سنتر' : 'Center'),
                   active: s.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
                   created_at: new Date(s.created_at || s.createdAt).toLocaleDateString(),
                   code_parent: s.code_parent || '—',
                   phone_parent: s.phone_parent || '—',
                 }))}
                 fileName={`course_${courseId}_students`}
-                label={lang === 'ar' ? 'تصدير Excel' : 'Export Excel'}
+                label={lang === 'ar' ? '📊 تصدير Excel' : '📊 Export Excel'}
                 disabled={filteredStudents.length === 0}
               />
             </div>
           </div>
 
-          {/* فلتر الطلاب */}
+          {/* Student Filters Panel */}
           <AnimatePresence>
             {showStudentFilters && (
               <motion.div
@@ -904,11 +905,10 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                 className="mb-4 overflow-hidden"
               >
                 <Card className="p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* بحث بالاسم */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground mb-1">
-                        {lang === 'ar' ? 'بحث بالاسم أو المعرف' : 'Search by name or ID'}
+                        {lang === 'ar' ? 'بحث بالاسم أو كود الطالب' : 'Search by name or ID'}
                       </label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -921,7 +921,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                       </div>
                     </div>
 
-                    {/* فلتر نوع الحضور */}
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground mb-1">
                         {lang === 'ar' ? 'نوع الحضور' : 'Attendance Type'}
@@ -933,11 +932,10 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                       >
                         <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
                         <option value="online">🖥️ {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
-                        <option value="center">🏢 {lang === 'ar' ? 'مركز' : 'Center'}</option>
+                        <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
                       </select>
                     </div>
 
-                    {/* فلتر الحالة */}
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground mb-1">
                         {lang === 'ar' ? 'الحالة' : 'Status'}
@@ -952,35 +950,20 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                         <option value="inactive">❌ {lang === 'ar' ? 'غير نشط' : 'Inactive'}</option>
                       </select>
                     </div>
-
-                    {/* فلتر رقم الهاتف */}
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1">
-                        {lang === 'ar' ? 'رقم الهاتف' : 'Phone Number'}
-                      </label>
-                      <Input
-                        value={studentFilters.phone}
-                        onChange={(e) => setStudentFilters(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder={lang === 'ar' ? 'رقم الهاتف...' : 'Phone number...'}
-                        className="rounded-xl"
-                      />
-                    </div>
                   </div>
 
-                  {/* أزرار الفلتر */}
                   <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
-                    <Button variant="outline" size="sm" onClick={clearStudentFilters} className="gap-1">
+                    <Button variant="outline" size="sm" onClick={clearStudentFilters} className="gap-1 rounded-xl">
                       <X className="h-3 w-3" />
                       {lang === 'ar' ? 'مسح الكل' : 'Clear All'}
                     </Button>
-                    <Button size="sm" onClick={() => setShowStudentFilters(false)} className="gap-1 bg-gradient-to-r from-primary to-secondary">
+                    <Button size="sm" onClick={() => setShowStudentFilters(false)} className="gap-1 rounded-xl bg-gradient-to-r from-primary to-secondary">
                       <Search className="h-3 w-3" />
                       {lang === 'ar' ? 'تطبيق' : 'Apply'}
                     </Button>
                   </div>
 
-                  {/* عرض الفلاتر النشطة */}
-                  {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active || studentFilters.phone) && (
+                  {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active) && (
                     <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t">
                       <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
                       {studentFilters.search && (
@@ -991,7 +974,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                       )}
                       {studentFilters.typeOfAttendance && (
                         <Badge variant="secondary" className="text-xs gap-1">
-                          {studentFilters.typeOfAttendance === 'online' ? '🖥️ أونلاين' : '🏢 مركز'}
+                          {studentFilters.typeOfAttendance === 'online' ? '🖥️ أونلاين' : '🏢 سنتر'}
                           <X className="h-3 w-3 cursor-pointer" onClick={() => setStudentFilters(prev => ({ ...prev, typeOfAttendance: '' }))} />
                         </Badge>
                       )}
@@ -1001,12 +984,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                           <X className="h-3 w-3 cursor-pointer" onClick={() => setStudentFilters(prev => ({ ...prev, active: '' }))} />
                         </Badge>
                       )}
-                      {studentFilters.phone && (
-                        <Badge variant="secondary" className="text-xs gap-1">
-                          📞 {studentFilters.phone}
-                          <X className="h-3 w-3 cursor-pointer" onClick={() => setStudentFilters(prev => ({ ...prev, phone: '' }))} />
-                        </Badge>
-                      )}
                     </div>
                   )}
                 </Card>
@@ -1014,11 +991,10 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             )}
           </AnimatePresence>
 
-          {/* قائمة الطلاب */}
           {students.length === 0 ? (
             <div className="text-center py-12 bg-muted/30 rounded-xl">
-              <User className="h-16 w-16 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground">{t('noStudentsYet') || 'لا يوجد طلاب مسجلين بعد'}</p>
+              <Users className="h-16 w-16 mx-auto text-muted-foreground/30 mb-3" />
+              <p className="text-muted-foreground">{lang === 'ar' ? 'لا يوجد طلاب مسجلين في هذا الكورس بعد' : 'No students enrolled in this course yet'}</p>
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="text-center py-12 bg-muted/30 rounded-xl">
@@ -1041,8 +1017,11 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                 >
                   <div className="flex items-start gap-3">
                     <Avatar className="h-12 w-12 border-2 border-primary/20">
-                      <AvatarFallback className="bg-gradient-to-r from-primary/20 to-secondary/20">
-                        {student.name?.charAt(0) || 'S'}
+                      {student.imageUrl || student.image?.fullUrl ? (
+                        <AvatarImage src={student.imageUrl || student.image?.fullUrl} alt={student.name} />
+                      ) : null}
+                      <AvatarFallback className="bg-gradient-to-r from-primary/20 to-secondary/20 text-lg font-bold">
+                        {student.name?.charAt(0)?.toUpperCase() || 'S'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
@@ -1082,8 +1061,12 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                           <span>
                             {student.type_of_attendance === 'online' 
                               ? (lang === 'ar' ? 'أونلاين' : 'Online')
-                              : (lang === 'ar' ? 'مركز' : 'Center')}
+                              : (lang === 'ar' ? 'سنتر' : 'Center')}
                           </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          <span>{lang === 'ar' ? 'تاريخ التسجيل:' : 'Joined:'} {new Date(student.created_at || student.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                     </div>
@@ -1093,7 +1076,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             </div>
           )}
           
-          {/* إحصائيات سريعة */}
           {students.length > 0 && (
             <div className="mt-4 p-3 rounded-xl bg-muted/30 text-sm text-muted-foreground flex justify-between items-center flex-wrap gap-2">
               <span>{lang === 'ar' ? '📊 إجمالي الطلاب' : '📊 Total Students'}: {students.length}</span>
@@ -1112,7 +1094,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3 w-3 text-green-500" />
-                  {lang === 'ar' ? 'مركز' : 'Center'}: {students.filter((s: any) => s.type_of_attendance === 'center').length}
+                  {lang === 'ar' ? 'سنتر' : 'Center'}: {students.filter((s: any) => s.type_of_attendance === 'center').length}
                 </span>
               </div>
             </div>
@@ -1177,7 +1159,129 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
         </TabsContent>
       </Tabs>
 
-      {/* ✅ Modal إضافة/تعديل درس — بـ arrays */}
+      {/* ✅ Modal عرض طلاب الدرس */}
+      <Dialog open={showLessonStudentsModal} onOpenChange={setShowLessonStudentsModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              {lang === 'ar' ? 'طلاب الدرس' : 'Lesson Students'} : {selectedLesson && (isRTL ? selectedLesson.titles_ar?.[0] : selectedLesson.titles?.[0])}
+            </DialogTitle>
+          </DialogHeader>
+
+          {lessonStudentsList.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="h-16 w-16 mx-auto text-muted-foreground/30 mb-3" />
+              <p className="text-muted-foreground">
+                {lang === 'ar' ? 'لا يوجد طلاب في هذا الدرس بعد' : 'No students in this lesson yet'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 mt-4">
+              {/* إحصائيات سريعة */}
+              <div className="p-3 rounded-xl bg-muted/30 text-sm text-muted-foreground flex justify-between items-center flex-wrap gap-2">
+                <span>{lang === 'ar' ? '📊 إجمالي الطلاب' : '📊 Total Students'}: {lessonStudentsList.length}</span>
+                <div className="flex gap-4 flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    {lang === 'ar' ? 'نشط' : 'Active'}: {lessonStudentsList.filter((s: any) => s.active).length}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                    {lang === 'ar' ? 'غير نشط' : 'Inactive'}: {lessonStudentsList.filter((s: any) => !s.active).length}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Globe className="h-3 w-3 text-blue-500" />
+                    {lang === 'ar' ? 'أونلاين' : 'Online'}: {lessonStudentsList.filter((s: any) => s.type_of_attendance === 'online').length}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-green-500" />
+                    {lang === 'ar' ? 'سنتر' : 'Center'}: {lessonStudentsList.filter((s: any) => s.type_of_attendance === 'center').length}
+                  </span>
+                </div>
+              </div>
+
+              {/* قائمة الطلاب */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {lessonStudentsList.map((student: any, idx: number) => (
+                  <motion.div
+                    key={student.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.05 }}
+                    whileHover={{ y: -2 }}
+                    className="p-3 rounded-xl bg-gradient-to-r from-card to-muted/20 border shadow-sm"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-10 w-10 border-2 border-primary/20">
+                        <AvatarFallback className="bg-gradient-to-r from-primary/20 to-secondary/20">
+                          {student.name?.charAt(0)?.toUpperCase() || 'S'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-semibold text-sm">{student.name}</p>
+                            <p className="text-xs text-muted-foreground">ID: {student.id}</p>
+                          </div>
+                          <Badge variant={student.active ? "default" : "secondary"} className="text-[10px]">
+                            {student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
+                          </Badge>
+                        </div>
+                        
+                        <div className="mt-1 space-y-0.5">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Phone className="h-3 w-3" />
+                            <span>{student.phone}</span>
+                          </div>
+                          {student.phone_parent && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <User className="h-3 w-3" />
+                              <span>{lang === 'ar' ? 'ولي الأمر:' : 'Parent:'} {student.phone_parent}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {student.type_of_attendance === 'online' ? (
+                              <Globe className="h-3 w-3 text-blue-500" />
+                            ) : (
+                              <MapPin className="h-3 w-3 text-green-500" />
+                            )}
+                            <span>
+                              {student.type_of_attendance === 'online' 
+                                ? (lang === 'ar' ? 'أونلاين' : 'Online')
+                                : (lang === 'ar' ? 'سنتر' : 'Center')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 mt-4 pt-3 border-t">
+            <Button variant="outline" onClick={() => setShowLessonStudentsModal(false)} className="rounded-xl">
+              {lang === 'ar' ? 'إغلاق' : 'Close'}
+            </Button>
+            <ExportExcelButton
+              data={lessonStudentsList.map((s: any) => ({
+                id: s.id,
+                name: s.name,
+                phone: s.phone,
+                type_of_attendance: s.type_of_attendance === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'سنتر' : 'Center'),
+                active: s.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
+              }))}
+              fileName={`lesson_${selectedLesson?.id}_students`}
+              label={lang === 'ar' ? '📊 تصدير Excel' : '📊 Export Excel'}
+              disabled={lessonStudentsList.length === 0}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ Modal إضافة/تعديل درس */}
       <Dialog open={showLessonModal} onOpenChange={setShowLessonModal}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl">
           <DialogHeader>
@@ -1187,8 +1291,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
           </DialogHeader>
 
           <div className="space-y-5 mt-4">
-
-            {/* ✅ Titles EN — array */}
             <ArrayFieldManager
               label={`${t('title')} (EN)`}
               values={lessonForm.titles}
@@ -1197,7 +1299,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               dir="ltr"
             />
 
-            {/* ✅ Titles AR — array */}
             <ArrayFieldManager
               label={`${t('title')} (AR)`}
               values={lessonForm.titles_ar}
@@ -1206,7 +1307,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               dir="rtl"
             />
 
-            {/* Description */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">{t('description')} (EN)</label>
@@ -1231,7 +1331,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               </div>
             </div>
 
-            {/* ✅ link_video — array */}
             <ArrayFieldManager
               label={t('videoLink') || 'روابط الفيديو'}
               values={lessonForm.link_video}
@@ -1241,7 +1340,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               icon={LinkIcon}
             />
 
-            {/* content_link (رابط خارجي عام) */}
             <div>
               <label className="block text-sm font-medium mb-1">{t('contentLink') || 'رابط المحتوى'}</label>
               <Input
@@ -1252,7 +1350,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               />
             </div>
 
-            {/* Image uploader */}
             <FileUploader
               label={t('lessonImage') || 'صورة الدرس (اختياري)'}
               onUploadSuccess={handleImageUpload}
@@ -1265,7 +1362,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               onRemoveImage={handleRemoveImage}
             />
 
-            {/* PDF uploader */}
             <FileUploader
               label={t('lessonPdf')}
               onUploadSuccess={(pdfId: number) => {
@@ -1285,7 +1381,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               }}
             />
 
-            {/* Date / Time / Price */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">{t('date') || 'التاريخ'}</label>

@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/components/admin/payment-codes/GenerateCodesModal.tsx (المعدل بالكامل مع Excel و Dark Mode و type_code)
+// src/components/admin/payment-codes/GenerateCodesModal.tsx
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
@@ -46,7 +46,6 @@ const codeTypes = [
   { value: 'lesson', label: 'درس', labelEn: 'Lesson', icon: '📖', color: 'from-orange-500 to-amber-500', bg: 'bg-orange-50 dark:bg-orange-950/30', textColor: 'text-orange-700 dark:text-orange-400' },
 ];
 
-// خيارات نوع الاستخدام
 const usageTypeOptions = [
   { value: 'online', label: 'أونلاين', labelEn: 'Online', icon: Wifi, color: 'from-blue-500 to-cyan-500', bg: 'bg-blue-50 dark:bg-blue-950/30', textColor: 'text-blue-700 dark:text-blue-400' },
   { value: 'center', label: 'مركز', labelEn: 'Center', icon: Building, color: 'from-purple-500 to-violet-500', bg: 'bg-purple-50 dark:bg-purple-950/30', textColor: 'text-purple-700 dark:text-purple-400' },
@@ -62,7 +61,7 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
   const generateCodes = useGenerateCodes();
   const [formData, setFormData] = useState<any>({
     type: 'wallet',
-    type_code: 'online', // القيمة الافتراضية: أونلاين
+    type_code: 'online',
     count: 1,
     amount: 60,
   });
@@ -78,139 +77,135 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
     return () => clearTimeout(timer);
   }, [formData.type]);
 
-const exportToExcel = (codes: GeneratedCode[]) => {
-  try {
-    if (!codes || codes.length === 0) {
-      toast.error(lang === 'ar' ? 'لا توجد أكواد للتصدير' : 'No codes to export');
-      return;
+  // ✅ دالة إغلاق المودال بشكل صحيح
+  const handleCloseModal = () => {
+    setShowResults(false);
+    setGeneratedCodes([]);
+    setFormData({ type: 'wallet', type_code: 'online', count: 1, amount: 60 });
+    setSelectedCourse(null);
+    onClose(); // استدعاء onClose من props
+  };
+
+  // ✅ دالة إلغاء (لزر الإلغاء)
+  const handleCancel = () => {
+    handleCloseModal();
+  };
+
+  const exportToExcel = (codes: GeneratedCode[]) => {
+    try {
+      if (!codes || codes.length === 0) {
+        toast.error(lang === 'ar' ? 'لا توجد أكواد للتصدير' : 'No codes to export');
+        return;
+      }
+
+      const isArabic = lang === 'ar';
+      
+      const excelData = codes.map((code, index) => {
+        const row: any = {
+          [isArabic ? '#' : 'No']: index + 1,
+          [isArabic ? 'الكود' : 'Code']: code.code,
+          [isArabic ? 'النوع' : 'Type']: getTypeLabel(code.type),
+          [isArabic ? 'نوع الاستخدام' : 'Usage Type']: getUsageTypeLabel(code.type_code),
+          [isArabic ? 'القيمة (ج.م)' : 'Value (EGP)']: code.amount || '—',
+          [isArabic ? 'تاريخ الإنشاء' : 'Created At']: new Date(code.created_at).toLocaleString(isArabic ? 'ar-EG' : 'en-US'),
+        };
+        return row;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const colWidths = [{ wch: 8 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 20 }];
+      worksheet['!cols'] = colWidths;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, isArabic ? 'أكواد الدفع' : 'Payment Codes');
+      
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const fileName = `payment_codes_${new Date().toISOString().split('T')[0]}.xlsx`;
+      saveAs(blob, fileName);
+      
+      toast.success(isArabic ? 'تم تصدير الأكواد بنجاح' : 'Codes exported successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ أثناء تصدير الأكواد' : 'Error exporting codes');
     }
+  };
 
-    const isArabic = lang === 'ar';
-    
-    // تحويل البيانات إلى الصيغة المناسبة لـ Excel
-    const excelData = codes.map((code, index) => {
-      const row: any = {
-        [isArabic ? '#' : 'No']: index + 1,
-        [isArabic ? 'الكود' : 'Code']: code.code,
-        [isArabic ? 'النوع' : 'Type']: getTypeLabel(code.type),
-        [isArabic ? 'نوع الاستخدام' : 'Usage Type']: getUsageTypeLabel(code.type_code),
-        [isArabic ? 'القيمة (ج.م)' : 'Value (EGP)']: code.amount || '—',
-        [isArabic ? 'تاريخ الإنشاء' : 'Created At']: new Date(code.created_at).toLocaleString(isArabic ? 'ar-EG' : 'en-US'),
-      };
-
-      return row;
-    });
-
-    // إنشاء ورقة عمل
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    
-    // تعيين عرض الأعمدة
-    const colWidths = [{ wch: 8 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 20 }];
-    worksheet['!cols'] = colWidths;
-
-    // إنشاء مصنف وحفظ الملف
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, isArabic ? 'أكواد الدفع' : 'Payment Codes');
-    
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    
-    const fileName = `payment_codes_${new Date().toISOString().split('T')[0]}.xlsx`;
-    saveAs(blob, fileName);
-    
-    toast.success(isArabic ? 'تم تصدير الأكواد بنجاح' : 'Codes exported successfully');
-  } catch (error) {
-    console.error('Export error:', error);
-    toast.error(lang === 'ar' ? 'حدث خطأ أثناء تصدير الأكواد' : 'Error exporting codes');
-  }
-};
-
-  // دالة نسخ جميع الأكواد
   const copyAllCodes = () => {
     const codesText = generatedCodes.map(c => c.code).join('\n');
     navigator.clipboard.writeText(codesText);
     toast.success(lang === 'ar' ? 'تم نسخ جميع الأكواد' : 'All codes copied');
   };
 
-  // دالة نسخ كود فردي
   const copySingleCode = (code: string) => {
     navigator.clipboard.writeText(code);
     toast.success(lang === 'ar' ? 'تم نسخ الكود' : 'Code copied');
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  const payload: any = {
-    type: formData.type,
-    type_code: formData.type_code,
-    count: formData.count,
-  };
-
-  switch (formData.type) {
-    case 'wallet':
-      payload.amount = formData.amount;
-      break;
-    case 'course':
-      payload.course_id = formData.course_id;
-      break;
-    case 'semester':
-      payload.semester_id = formData.semester_id;
-      break;
-    case 'lesson':
-      payload.course_detail_id = formData.course_detail_id;
-      break;
-  }
-
-  try {
-    const result = await generateCodes.mutateAsync(payload);
-    console.log('API Response:', result);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    // استخراج الأكواد المولدة من الاستجابة - التعديل هنا
-    let codes: GeneratedCode[] = [];
-    
-    // شكل الـ response بتاعك: { status: true, message: "...", count: 1, data: [...] }
-    if (result?.data && Array.isArray(result.data)) {
-      // البيانات موجودة في result.data كمصفوفة
-      codes = result.data.map((item: any) => ({
-        code: item.code,
-        type: item.type,
-        type_code: item.type_code,
-        amount: item.amount,
-        course_id: item.course_id,
-        semester_id: item.semester_id,
-        course_detail_id: item.course_detail_id,
-        created_at: item.created_at,
-        status: 'active',
-      }));
-    } else if (result?.codes && Array.isArray(result.codes)) {
-      codes = result.codes;
-    } else if (Array.isArray(result)) {
-      codes = result;
-    } else if (result?.data?.codes && Array.isArray(result.data.codes)) {
-      codes = result.data.codes;
+    const payload: any = {
+      type: formData.type,
+      type_code: formData.type_code,
+      count: formData.count,
+    };
+
+    switch (formData.type) {
+      case 'wallet':
+        payload.amount = formData.amount;
+        break;
+      case 'course':
+        payload.course_id = formData.course_id;
+        break;
+      case 'semester':
+        payload.semester_id = formData.semester_id;
+        break;
+      case 'lesson':
+        payload.course_detail_id = formData.course_detail_id;
+        break;
     }
-    
-    console.log('Extracted codes:', codes);
-    setGeneratedCodes(codes);
-    setShowResults(true);
-    
-    toast.success(lang === 'ar' 
-      ? `تم إنشاء ${codes.length} كود بنجاح` 
-      : `${codes.length} codes generated successfully`);
-    
-    onSuccess();
-  } catch (error: any) {
-    console.error('Generate error:', error);
-    toast.error(error?.response?.data?.message || (lang === 'ar' ? 'حدث خطأ أثناء إنشاء الأكواد' : 'Error generating codes'));
-  }
-};
-  const handleClose = () => {
-    setShowResults(false);
-    setGeneratedCodes([]);
-    setFormData({ type: 'wallet', type_code: 'online', count: 1, amount: 60 });
-    setSelectedCourse(null);
-    onClose();
+
+    try {
+      const result = await generateCodes.mutateAsync(payload);
+      console.log('API Response:', result);
+      
+      let codes: GeneratedCode[] = [];
+      
+      if (result?.data && Array.isArray(result.data)) {
+        codes = result.data.map((item: any) => ({
+          code: item.code,
+          type: item.type,
+          type_code: item.type_code,
+          amount: item.amount,
+          course_id: item.course_id,
+          semester_id: item.semester_id,
+          course_detail_id: item.course_detail_id,
+          created_at: item.created_at,
+          status: 'active',
+        }));
+      } else if (result?.codes && Array.isArray(result.codes)) {
+        codes = result.codes;
+      } else if (Array.isArray(result)) {
+        codes = result;
+      } else if (result?.data?.codes && Array.isArray(result.data.codes)) {
+        codes = result.data.codes;
+      }
+      
+      console.log('Extracted codes:', codes);
+      setGeneratedCodes(codes);
+      setShowResults(true);
+      
+      toast.success(lang === 'ar' 
+        ? `تم إنشاء ${codes.length} كود بنجاح` 
+        : `${codes.length} codes generated successfully`);
+      
+      onSuccess();
+    } catch (error: any) {
+      console.error('Generate error:', error);
+      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'حدث خطأ أثناء إنشاء الأكواد' : 'Error generating codes'));
+    }
   };
 
   const getTypeLabel = (type: string) => {
@@ -348,7 +343,6 @@ const handleSubmit = async (e: React.FormEvent) => {
         </p>
       </div>
 
-      {/* إجراءات التصدير */}
       <div className="flex gap-3 pt-2">
         <motion.button
           whileHover={{ scale: 1.02 }}
@@ -370,7 +364,6 @@ const handleSubmit = async (e: React.FormEvent) => {
         </motion.button>
       </div>
 
-      {/* قائمة الأكواد */}
       <div className="max-h-80 overflow-y-auto space-y-2 border-t dark:border-gray-700 pt-4">
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {lang === 'ar' ? 'الأكواد المُنشأة:' : 'Generated Codes:'}
@@ -412,7 +405,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={handleClose}
+          onClick={handleCloseModal}
           className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
         >
           {lang === 'ar' ? 'إغلاق' : 'Close'}
@@ -424,6 +417,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             setShowResults(false);
             setGeneratedCodes([]);
             setFormData({ type: 'wallet', type_code: 'online', count: 1, amount: 60 });
+            setSelectedCourse(null);
           }}
           className="flex-1 px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all"
         >
@@ -435,7 +429,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={handleClose}>
+      <Dialog as="div" className="relative z-50" onClose={handleCloseModal}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -462,18 +456,20 @@ const handleSubmit = async (e: React.FormEvent) => {
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-900 shadow-xl transition-all">
                 <AnimatePresence mode="wait">
                   {!showResults ? (
-                    // نموذج إنشاء الأكواد
                     <motion.div
                       key="form"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                     >
-                      {/* Header with gradient */}
+                      {/* Header with close button */}
                       <div className={`relative bg-gradient-to-r ${getCurrentTypeConfig().color} p-6 text-white`}>
+                        {/* ✅ زر الإغلاق في الزاوية */}
                         <button
-                          onClick={handleClose}
+                          type="button"
+                          onClick={handleCancel}
                           className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+                          aria-label="Close"
                         >
                           <X size={20} />
                         </button>
@@ -541,7 +537,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                           </div>
                         </div>
 
-                        {/* Usage Type Selection (NEW) */}
+                        {/* Usage Type Selection */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                             {lang === 'ar' ? 'نوع الاستخدام' : 'Usage Type'}
@@ -617,12 +613,10 @@ const handleSubmit = async (e: React.FormEvent) => {
                           </p>
                         </div>
 
-                        {/* Dynamic Fields with Animation */}
                         <AnimatePresence mode="wait">
                           {renderDynamicFields()}
                         </AnimatePresence>
 
-                        {/* Info Box */}
                         <div className={`p-3 rounded-lg ${getCurrentUsageConfig().bg} border border-gray-200 dark:border-gray-700`}>
                           <div className="flex items-center gap-2">
                             {React.createElement(getCurrentUsageConfig().icon, { size: 16, className: getCurrentUsageConfig().textColor })}
@@ -634,13 +628,12 @@ const handleSubmit = async (e: React.FormEvent) => {
                           </div>
                         </div>
 
-                        {/* Actions */}
                         <div className="flex gap-3 pt-4">
                           <motion.button
                             type="button"
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={handleClose}
+                            onClick={handleCancel}
                             className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                           >
                             {lang === 'ar' ? 'إلغاء' : 'Cancel'}

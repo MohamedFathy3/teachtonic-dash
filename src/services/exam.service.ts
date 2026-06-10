@@ -438,7 +438,25 @@ async toggleShowResult(id: number): Promise<Exam> {
       throw error;
     }
   }
-
+async getExamById(id: number): Promise<any> {
+  try {
+    const response = await api.get(`/${this.endpoint}/${id}`);
+    console.log('📚 Exam API Response:', response);
+    
+    if (response.data && response.data.data) {
+      return response.data.data;
+    }
+    throw new Error('Invalid response structure');
+  } catch (error: any) {
+    console.error('Error fetching exam:', error);
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Failed to fetch exam details",
+      variant: "destructive"
+    });
+    throw error;
+  }
+}
   // ✅ الحصول على نتيجة امتحان الطالب
   async getExamResult(examId: number, studentId?: number): Promise<ExamResult> {
     const params = studentId ? { student_id: studentId } : {};
@@ -461,6 +479,7 @@ async toggleShowResult(id: number): Promise<Exam> {
     await this.bulkRestore(ids);
     toast({ title: "Success", description: `${ids.length} exams restored` });
   }
+ 
 }
 
 export const examService = new ExamService();

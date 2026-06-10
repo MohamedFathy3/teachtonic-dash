@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/instructor/InstructorAssignments.tsx
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { useTeacherMeta } from '@/hooks/useTeacherMeta';
@@ -12,13 +12,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Search, Filter, Plus, Grid3x3, List, RefreshCw, Sparkles, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Search, Filter, Plus, Grid3x3, List, RefreshCw, Sparkles, FileText, ChevronLeft, ChevronRight, Clock, FileCheck, X } from 'lucide-react';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { AssignmentCard } from '@/components/assignments/AssignmentCard';
 import { AssignmentForm } from '@/components/assignments/AssignmentForm';
 import { AssignmentFiltersPanel } from '@/components/assignments/AssignmentFiltersPanel';
 import { QuestionBuilder } from '@/components/exams/QuestionBuilder';
 import { StatsCards } from '@/components/exams/StatsCards';
+import { Label } from '@/components/ui/label';
+import api from '@/lib/api';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle, XCircle, Eye, Settings2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+
+// Interface for Center Hour
+interface CenterHour {
+  id: number;
+  title: string;
+  date: string;
+  hours_start: string;
+  hours_end: string;
+  address: string;
+  phone: string;
+  note: string;
+  teacher_id: number;
+  createdAt: string;
+}
 
 const containerVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -42,9 +61,64 @@ export const InstructorAssignments: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'assignments' | 'questions' | 'form'>('assignments');
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
 
+  // ✅ State للساعات المركزية ونوع الواجب
+  const [centerHours, setCenterHours] = useState<CenterHour[]>([]);
+  const [filterCenterHourId, setFilterCenterHourId] = useState<string>('');
+  const [filterAssignmentType, setFilterAssignmentType] = useState<string>(''); // 'center' or 'online'
+
   const { stages } = useTeacherMeta(user?.id);
-  const { assignments, loading, error, pagination, fetchAssignments, deleteAssignment } = useAssignments(user?.id || 0, 12);
+  const { assignments, loading, error, pagination, fetchAssignments, deleteAssignment,setAssignments } = useAssignments(user?.id || 0, 12);
   const { filters, setFilters, savedFilters, applyFilters, clearFilters, loadSavedFilters } = useAssignmentFilters(fetchAssignments);
+
+  // ✅ جلب الساعات المركزية
+  const fetchCenterHours = useCallback(async () => {
+    try {
+      const response = await api.post('/center-hour/index', {});
+      if (response.data?.data) {
+        setCenterHours(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch center hours:', error);
+    }
+  }, []);
+
+
+const toggleMustSolveAssignment = async (assignmentId: number, value: boolean) => {
+  try {
+    const response = await api.put(`/course-detail/${assignmentId}/must_solve_assignment_to_unlock`, {
+      active: value
+    });
+    
+    // ✅ التحقق من نجاح العملية
+    if (response.data?.message === "Status Changed successfully") {
+      toast.success(
+        value 
+          ? (lang === 'ar' ? '🔒 تم تفعيل شرط حل الواجب' : '🔒 Assignment requirement enabled')
+          : (lang === 'ar' ? '🔓 تم إلغاء شرط حل الواجب' : '🔓 Assignment requirement disabled')
+      );
+      
+      // ✅ تحديث البيانات محلياً
+      setAssignments(prevAssignments => 
+        prevAssignments.map(assignment =>
+          assignment.id === assignmentId
+            ? { ...assignment, must_solve_assignment_to_unlock: value }
+            : assignment
+        )
+      );
+    } else {
+      toast.error(response.data?.message || (lang === 'ar' ? 'حدث خطأ غير متوقع' : 'Unexpected error'));
+    }
+  } catch (error: any) {
+    console.error('Toggle assignment error:', error);
+    toast.error(
+      error.response?.data?.message || 
+      (lang === 'ar' ? '❌ حدث خطأ أثناء تغيير الإعداد' : '❌ Error changing setting')
+    );
+  }
+};
+  useEffect(() => {
+    fetchCenterHours();
+  }, [fetchCenterHours]);
 
   const stats = useMemo(() => ({
     total: pagination.total || 0,
@@ -64,13 +138,51 @@ export const InstructorAssignments: React.FC = () => {
     if (filters.lessonId) apiFilters.course_detail_id = filters.lessonId;
     if (filters.marksMin) apiFilters.total_marks = filters.marksMin;
     if (filters.active !== null) apiFilters.active = filters.active ? 1 : 0;
+    if (filterAssignmentType) apiFilters.type_exam = filterAssignmentType;
+    if (filterAssignmentType === 'center' && filterCenterHourId) {
+      apiFilters.center_hour_id = Number(filterCenterHourId);
+    }
     fetchAssignments(1, apiFilters, debouncedSearch);
-  }, [fetchAssignments, filters, debouncedSearch]);
+  }, [fetchAssignments, filters, debouncedSearch, filterAssignmentType, filterCenterHourId]);
 
   const handleViewAssignment = (assignment: any) => {
     console.log("VIEW CLICKED", assignment.id);
     navigate(`/instructor/assignments/${assignment.id}`);
   };
+
+
+
+// ✅ Handlers لإعدادات الواجب
+const handleToggleRandomQuestions = async (assignmentId: number, currentValue: boolean) => {
+  try {
+    await assignmentService.toggleRandomQuestions?.(assignmentId, !currentValue);
+    await fetchAssignments(pagination.currentPage);
+    toast.success(lang === 'ar' ? 'تم تغيير ترتيب الأسئلة' : 'Random questions toggled');
+  } catch (error) {
+    toast.error(lang === 'ar' ? 'حدث خطأ' : 'Error occurred');
+  }
+};
+
+const handleToggleRandomAnswers = async (assignmentId: number, currentValue: boolean) => {
+  try {
+    await assignmentService.toggleRandomAnswers?.(assignmentId, !currentValue);
+    await fetchAssignments(pagination.currentPage);
+    toast.success(lang === 'ar' ? 'تم تغيير ترتيب الإجابات' : 'Random answers toggled');
+  } catch (error) {
+    toast.error(lang === 'ar' ? 'حدث خطأ' : 'Error occurred');
+  }
+};
+
+const handleToggleShowResult = async (assignmentId: number, currentValue: boolean) => {
+  try {
+    await assignmentService.toggleShowResult?.(assignmentId, !currentValue);
+    await fetchAssignments(pagination.currentPage);
+    toast.success(lang === 'ar' ? 'تم تغيير إظهار النتيجة' : 'Show result toggled');
+  } catch (error) {
+    toast.error(lang === 'ar' ? 'حدث خطأ' : 'Error occurred');
+  }
+};
+
 
   const handleEditAssignment = (assignment: any) => {
     setSelectedAssignmentId(assignment.id);
@@ -89,6 +201,12 @@ export const InstructorAssignments: React.FC = () => {
   const handleBack = () => {
     setActiveTab('assignments');
     setSelectedAssignmentId(null);
+  };
+
+  // إعادة تعيين فلاتر الساعات المركزية
+  const clearCenterHourFilters = () => {
+    setFilterAssignmentType('');
+    setFilterCenterHourId('');
   };
 
   if (activeTab === 'form') {
@@ -146,7 +264,7 @@ export const InstructorAssignments: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Stats Cards - using existing StatsCards component which supports dark mode */}
+        {/* Stats Cards */}
         <StatsCards stats={stats} />
 
         {/* Search & Filters */}
@@ -178,6 +296,7 @@ export const InstructorAssignments: React.FC = () => {
               }
             </div>
           </div>
+          
           <AssignmentFiltersPanel 
             show={showFilters} 
             filters={filters} 
@@ -186,6 +305,81 @@ export const InstructorAssignments: React.FC = () => {
             onApply={applyFilters} 
             onClear={clearFilters} 
           />
+
+          {/* 🔹 فلتر إضافي لنوع الواجب والساعات المركزية */}
+          {showFilters && (
+            <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                {/* نوع الواجب */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
+                    <FileCheck className="h-4 w-4 text-primary" />
+                    {lang === 'ar' ? 'نوع الواجب' : 'Assignment Type'}
+                  </Label>
+                  <select
+                    value={filterAssignmentType}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFilterAssignmentType(value);
+                      if (value !== 'center') {
+                        setFilterCenterHourId('');
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                  >
+                    <option value="">{lang === 'ar' ? 'جميع الأنواع' : 'All Types'}</option>
+                    <option value="online">💻 {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
+                    <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
+                  </select>
+                </div>
+
+                {/* الساعة المركزية - تظهر فقط لو اختار سنتر */}
+                {filterAssignmentType === 'center' && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1 text-sm font-medium">
+                      <Clock className="h-4 w-4 text-primary" />
+                      {lang === 'ar' ? 'الساعة المركزية' : 'Center Hour'}
+                    </Label>
+                    <select
+                      value={filterCenterHourId}
+                      onChange={(e) => setFilterCenterHourId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                    >
+                      <option value="">
+                        {lang === 'ar' ? 'جميع الساعات المركزية' : 'All Center Hours'}
+                      </option>
+                      {centerHours.map((hour) => (
+                        <option key={hour.id} value={String(hour.id)}>
+                          {hour.title} - {hour.date} ({hour.hours_start} to {hour.hours_end})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* عرض الفلاتر النشطة */}
+              {(filterAssignmentType || filterCenterHourId) && (
+                <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
+                  {filterAssignmentType && (
+                    <Badge variant="secondary" className="text-xs gap-1">
+                      {filterAssignmentType === 'online' ? '💻 أونلاين' : '🏢 سنتر'}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterAssignmentType('')} />
+                    </Badge>
+                  )}
+                  {filterCenterHourId && filterAssignmentType === 'center' && (
+                    <Badge variant="secondary" className="text-xs gap-1">
+                      <Clock className="h-3 w-3" />
+                      {centerHours.find(h => h.id === Number(filterCenterHourId))?.title || filterCenterHourId}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterCenterHourId('')} />
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </Card>
+          )}
         </motion.div>
 
         {/* Loading State */}
@@ -221,21 +415,25 @@ export const InstructorAssignments: React.FC = () => {
 
         {/* Grid View */}
         {!loading && !error && assignments.length > 0 && viewMode === 'grid' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-5">
             {assignments.map((assignment) => (
-              <AssignmentCard
-                key={assignment.id}
-                assignment={assignment}
-                onView={handleViewAssignment}
-                onEdit={handleEditAssignment}
-                onDelete={handleDeleteAssignment}
-                onAddQuestions={handleAddQuestions}
-              />
+            <AssignmentCard
+  key={assignment.id}
+  assignment={assignment}
+  onView={handleViewAssignment}
+  onEdit={handleEditAssignment}
+  onDelete={handleDeleteAssignment}
+  onAddQuestions={handleAddQuestions}
+  onToggleRandomQuestions={handleToggleRandomQuestions}
+  onToggleRandomAnswers={handleToggleRandomAnswers}
+  onToggleShowResult={handleToggleShowResult}
+  onToggleMustSolve={toggleMustSolveAssignment}
+/>
             ))}
           </div>
         )}
 
-        {/* Table View - TODO: Add table view component with dark mode support */}
+        {/* Table View */}
         {!loading && !error && assignments.length > 0 && viewMode === 'table' && (
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
             <div className="overflow-x-auto">
@@ -246,6 +444,7 @@ export const InstructorAssignments: React.FC = () => {
                     <th className="text-left p-4 text-sm font-medium text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'الدرجة' : 'Marks'}</th>
                     <th className="text-left p-4 text-sm font-medium text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'المدة' : 'Duration'}</th>
                     <th className="text-left p-4 text-sm font-medium text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'الحالة' : 'Status'}</th>
+                    <th className="text-left p-4 text-sm font-medium text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'النوع' : 'Type'}</th>
                     <th className="text-right p-4 text-sm font-medium text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجراءات' : 'Actions'}</th>
                   </tr>
                 </thead>
@@ -269,6 +468,11 @@ export const InstructorAssignments: React.FC = () => {
                           ) : (
                             <><XCircle className="h-3 w-3" /> {lang === 'ar' ? 'غير نشط' : 'Inactive'}</>
                           )}
+                        </Badge>
+                      </td>
+                      <td className="p-4">
+                        <Badge variant={assignment.type_exam === 'online' ? "default" : "secondary"} className="gap-1">
+                          {assignment.type_exam === 'online' ? '💻 أونلاين' : '🏢 سنتر'}
                         </Badge>
                       </td>
                       <td className="p-4 text-right">

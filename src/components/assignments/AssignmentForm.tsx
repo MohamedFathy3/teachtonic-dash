@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import FileUploader from '@/components/FileUploader';
-import { Loader2, Sparkles, Save, ChevronLeft, Settings2, Calendar, Clock } from 'lucide-react';
+import { Loader2, Sparkles, Save, ChevronLeft, Settings2, Calendar, Clock, Monitor, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AssignmentFormProps {
@@ -231,6 +231,17 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
               />
             </div>
 
+            {/* Arabic Title (optional) */}
+            <div className="space-y-2">
+              <Label>{lang === 'ar' ? 'العنوان بالعربية' : 'Arabic Title'}</Label>
+              <Input
+                value={formData.title_ar}
+                onChange={(e) => setFormData({ ...formData, title_ar: e.target.value })}
+                placeholder={lang === 'ar' ? 'عنوان الواجب بالعربية (اختياري)' : 'Arabic title (optional)'}
+                className="rounded-2xl h-12"
+              />
+            </div>
+
             {/* Description */}
             <div className="space-y-2">
               <Label>{t('description')}</Label>
@@ -243,8 +254,20 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
               />
             </div>
 
+            {/* Arabic Description (optional) */}
+            <div className="space-y-2">
+              <Label>{lang === 'ar' ? 'الوصف بالعربية' : 'Arabic Description'}</Label>
+              <Textarea
+                value={formData.description_ar}
+                onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })}
+                rows={4}
+                placeholder={lang === 'ar' ? 'وصف الواجب بالعربية (اختياري)' : 'Arabic description (optional)'}
+                className="rounded-2xl resize-none"
+              />
+            </div>
+
             {/* Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="space-y-2">
                 <Label>{t('totalMarks')}</Label>
                 <Input
@@ -302,6 +325,79 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
               </div>
             </div>
 
+            {/* 🔥 Exam Type - أونلاين / سنتر */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <Monitor className="h-5 w-5 text-primary" />
+                {lang === 'ar' ? 'نوع الواجب' : 'Assignment Type'}
+              </Label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, type_exam: 'online' })}
+                  className={`relative p-4 rounded-xl border-2 transition-all duration-300 ${
+                    formData.type_exam === 'online'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 shadow-md'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <div className={`p-3 rounded-full ${
+                      formData.type_exam === 'online'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+                    }`}>
+                      <Monitor className="h-6 w-6" />
+                    </div>
+                    <span className="font-semibold">💻 {lang === 'ar' ? 'أونلاين' : 'Online'}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {lang === 'ar' ? 'واجب يتم عبر الإنترنت' : 'Assignment done online'}
+                    </span>
+                  </div>
+                  {formData.type_exam === 'online' && (
+                    <motion.div
+                      layoutId="activeType"
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs"
+                    >
+                      ✓
+                    </motion.div>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, type_exam: 'center' })}
+                  className={`relative p-4 rounded-xl border-2 transition-all duration-300 ${
+                    formData.type_exam === 'center'
+                      ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/20 shadow-md'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <div className={`p-3 rounded-full ${
+                      formData.type_exam === 'center'
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+                    }`}>
+                      <Building2 className="h-6 w-6" />
+                    </div>
+                    <span className="font-semibold">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {lang === 'ar' ? 'واجب يتم في المركز' : 'Assignment done at center'}
+                    </span>
+                  </div>
+                  {formData.type_exam === 'center' && (
+                    <motion.div
+                      layoutId="activeType"
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs"
+                    >
+                      ✓
+                    </motion.div>
+                  )}
+                </button>
+              </div>
+            </div>
+
             {/* Stage & Lesson */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -339,6 +435,32 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
                 />
               </div>
             </div>
+
+            {/* Info Box */}
+            {formData.type_exam && (
+              <div className={`p-4 rounded-xl ${
+                formData.type_exam === 'online'
+                  ? 'bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800'
+                  : 'bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {formData.type_exam === 'online' ? (
+                    <Monitor className="h-5 w-5 text-blue-500" />
+                  ) : (
+                    <Building2 className="h-5 w-5 text-purple-500" />
+                  )}
+                  <p className={`text-sm ${
+                    formData.type_exam === 'online'
+                      ? 'text-blue-700 dark:text-blue-400'
+                      : 'text-purple-700 dark:text-purple-400'
+                  }`}>
+                    {formData.type_exam === 'online'
+                      ? (lang === 'ar' ? '📱 هذا الواجب مخصص للطلاب أونلاين' : '📱 This assignment is for online students')
+                      : (lang === 'ar' ? '🏢 هذا الواجب مخصص لطلاب السنتر' : '🏢 This assignment is for center students')}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <Button

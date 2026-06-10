@@ -79,9 +79,10 @@ function LMSApp() {
       setActive("assistants");
     } else if (path.includes("/instructor/website")) {
       setActive("website");
-    } else if (path.includes("/instructor/payment-codes")) {
-      setActive("payment-codes");
-    } else if (path.includes("/instructor/books")) {
+    // } else if (path.includes("/instructor/payment-codes")) {
+    //   setActive("payment-codes");
+    } 
+    else if (path.includes("/instructor/books")) {
       setActive("books");
     } else if (path.includes("/instructor/redeem-requests")) {
       setActive("redeem-requests");

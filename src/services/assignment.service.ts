@@ -111,6 +111,21 @@ class AssignmentService extends BaseService<Exam> {
     const response = await api.post(`/${this.endpoint}/add-questions`, { exam_id: assignmentId, questions });
     return true;
   }
+
+  async toggleRandomQuestions(id: number, value: boolean): Promise<Exam> {
+  const response = await api.patch(`/${this.endpoint}/${id}`, { random_questions: value });
+  return response.data.data;
+}
+
+async toggleRandomAnswers(id: number, value: boolean): Promise<Exam> {
+  const response = await api.patch(`/${this.endpoint}/${id}`, { random_answers: value });
+  return response.data.data;
+}
+
+async toggleShowResult(id: number, value: boolean): Promise<Exam> {
+  const response = await api.patch(`/${this.endpoint}/${id}`, { show_result: value });
+  return response.data.data;
+}
 }
 
 export const assignmentService = new AssignmentService();

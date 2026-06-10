@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import FileUploader from '@/components/FileUploader';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -202,6 +203,18 @@ export const SemestersPage: React.FC = () => {
     }
   };
 
+  // 🔥 دالة تبديل الحالة باستخدام Switch
+  const handleToggleActive = async (semester: Semester) => {
+    try {
+      await semesterService.toggleActiveStatus(semester.id);
+      toast.success(isRTL ? 'تم تغيير حالة الترم' : 'Semester status updated');
+      fetchSemesters(pagination.currentPage);
+    } catch (error) {
+      console.error(error);
+      toast.error(isRTL ? 'فشل في تغيير الحالة' : 'Failed to update status');
+    }
+  };
+
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (confirm(isRTL ? `حذف ${selectedIds.size} ترم؟` : `Delete ${selectedIds.size} semesters?`)) {
@@ -323,11 +336,12 @@ export const SemestersPage: React.FC = () => {
   };
 
   // Stats
-  const stats = {
-    total: pagination.total,
-    active: semesters.filter(s => s.active).length,
-    totalPrice: semesters.reduce((sum, s) => sum + parseFloat(s.price), 0),
-  };
+const stats = {
+  total: pagination.total,
+  active: semesters.filter(s => s.active).length,
+  inactive: semesters.filter(s => !s.active).length, // 🔥 أضف هذا
+  totalPrice: semesters.reduce((sum, s) => sum + parseFloat(s.price), 0),
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
@@ -348,7 +362,7 @@ export const SemestersPage: React.FC = () => {
               </h1>
               <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                 <Tag className="h-3 w-3" />
-                {stats.total} {isRTL ? 'ترم' : 'semesters'} • {stats.totalPrice.toFixed(2)} EGP
+                {stats.total} {isRTL ? 'ترم' : 'semesters'} • {stats.totalPrice.toFixed(2)} {isRTL ? 'جنيه' : 'EGP'}
               </p>
             </div>
           </div>
@@ -384,13 +398,14 @@ export const SemestersPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - غيرنا العملة لـ EGP */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: isRTL ? 'إجمالي الترمات' : 'Total Semesters', value: stats.total, icon: Calendar, color: 'from-purple-500 to-pink-500' },
             { label: isRTL ? 'الترمات النشطة' : 'Active Semesters', value: stats.active, icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
-            { label: isRTL ? 'إجمالي السعر' : 'Total Price', value: `${stats.totalPrice.toFixed(2)} EGP`, icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
-            { label: isRTL ? 'متوسط السعر' : 'Average Price', value: `${(stats.totalPrice / (stats.total || 1)).toFixed(2)} EGP`, icon: Tag, color: 'from-blue-500 to-cyan-500' },
+{ label: isRTL ? 'الترمات الغير نشطة' : 'Inactive Semesters', value: stats.inactive, icon: XCircle, color: 'from-red-500 to-rose-500' }, 
+ { label: isRTL ? 'إجمالي السعر' : 'Total Price', value: `${stats.totalPrice.toFixed(2)} ${isRTL ? 'جنيه' : 'EGP'}`, icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
+            { label: isRTL ? 'متوسط السعر' : 'Average Price', value: `${(stats.totalPrice / (stats.total || 1)).toFixed(2)} ${isRTL ? 'جنيه' : 'EGP'}`, icon: Tag, color: 'from-blue-500 to-cyan-500' },
           ].map((stat, idx) => (
             <motion.div
               key={idx}
@@ -653,8 +668,7 @@ export const SemestersPage: React.FC = () => {
                         </TableCell>
                         <TableCell className="text-center">
                           <span className="inline-flex items-center gap-1 text-sm font-semibold text-green-600">
-                            <DollarSign className="h-3 w-3" />
-                            {parseFloat(semester.price).toFixed(2)}
+                            {parseFloat(semester.price).toFixed(2)} {isRTL ? 'جنيه' : 'EGP'}
                           </span>
                         </TableCell>
                         <TableCell className="text-center">
@@ -663,46 +677,20 @@ export const SemestersPage: React.FC = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-center">
-                          <button
-                            onClick={async () => {
-                              const ok = confirm(
-                                isRTL
-                                  ? semester.active
-                                    ? 'تأكيد إيقاف الترم؟'
-                                    : 'تأكيد تفعيل الترم؟'
-                                  : semester.active
-                                    ? 'Confirm deactivate this semester?'
-                                    : 'Confirm activate this semester?'
-                              );
-                              if (!ok) return;
-
-                              try {
-                                await semesterService.toggleActive(semester.id);
-                                fetchSemesters(pagination.currentPage);
-                                toast.success(isRTL ? 'تم تغيير حالة الترم' : 'Semester status updated');
-                              } catch (e) {
-                                console.error(e);
-                                toast.error(isRTL ? 'فشل في تغيير الحالة' : 'Failed to update status');
-                              }
-                            }}
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm transition-colors ${
-                              semester.active
-                                ? 'text-green-600 bg-green-50 dark:bg-green-950/20 hover:bg-green-100'
-                                : 'text-red-500 bg-red-50 dark:bg-red-950/20 hover:bg-red-100'
-                            }`}
-                          >
-                            {semester.active ? (
-                              <>
-                                <CheckCircle className="h-3.5 w-3.5" />
-                                {isRTL ? 'نشط' : 'Active'}
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="h-3.5 w-3.5" />
-                                {isRTL ? 'غير نشط' : 'Inactive'}
-                              </>
-                            )}
-                          </button>
+                          <div className="flex justify-center">
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={semester.active}
+                                onCheckedChange={() => handleToggleActive(semester)}
+                                className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-red-500"
+                              />
+                              <span className={`text-sm ${semester.active ? 'text-green-600' : 'text-red-500'}`}>
+                                {semester.active 
+                                  ? (isRTL ? 'نشط' : 'Active')
+                                  : (isRTL ? 'غير نشط' : 'Inactive')}
+                              </span>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex justify-center gap-1">

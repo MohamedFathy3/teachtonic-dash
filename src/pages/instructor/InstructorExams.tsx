@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Search, Filter, Plus, Grid3x3, List, RefreshCw, Sparkles, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Search, Filter, Plus, Grid3x3, List, RefreshCw, Sparkles, FileText, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
+import { Label } from '@/components/ui/label';
+import api from '@/lib/api';
 
 // Components
 import { StatsCards } from '@/components/exams/StatsCards';
@@ -22,7 +24,7 @@ import { ExamForm } from '@/components/exams/ExamForm';
 import { QuestionBuilder } from '@/components/exams/QuestionBuilder';
 import { ExamViewer } from '@/components/exams/ExamViewer';
 import { FiltersPanel } from '@/components/exams/FiltersPanel';
-import  ExamsTable from '@/components/exams/ExamsTable';
+import ExamsTable from '@/components/exams/ExamsTable';
 
 // Hooks
 import { useExams } from '@/hooks/useExams';
@@ -30,6 +32,20 @@ import { useExamFilters } from '@/hooks/useExamFilters';
 
 // Types
 import type { ExamFilters } from '@/types/exam.types';
+
+// Interface for Center Hour
+interface CenterHour {
+  id: number;
+  title: string;
+  date: string;
+  hours_start: string;
+  hours_end: string;
+  address: string;
+  phone: string;
+  note: string;
+  teacher_id: number;
+  createdAt: string;
+}
 
 // Animations
 const containerVariants = {
@@ -69,10 +85,32 @@ export const InstructorExams: React.FC = () => {
   const [result, setResult] = useState<any | null>(null);
   const [showResult, setShowResult] = useState(false);
 
+  // ✅ State للساعات المركزية
+  const [centerHours, setCenterHours] = useState<CenterHour[]>([]);
+  const [filterCenterHourId, setFilterCenterHourId] = useState<string>('');
+  const [filterExamType, setFilterExamType] = useState<string>(''); // 'center' or 'online'
+
   // Hooks
   const { stages } = useTeacherMeta(user?.id);
   const { exams, loading, error, pagination, fetchExams, deleteExam, toggleRandomQuestions, toggleRandomAnswers, setExams, toggleShowResult } = useExams(user?.id || 0, 12);
   const { filters, setFilters, savedFilters, applyFilters, clearFilters, loadSavedFilters } = useExamFilters(fetchExams);
+
+  // ✅ جلب الساعات المركزية
+  const fetchCenterHours = useCallback(async () => {
+    try {
+      const response = await api.post('/center-hour/index', {});
+      if (response.data?.data) {
+        setCenterHours(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch center hours:', error);
+    }
+  }, []);
+
+  // ✅ جلب الساعات المركزية عند تحميل الصفحة
+  useEffect(() => {
+    fetchCenterHours();
+  }, [fetchCenterHours]);
 
   // Stats
   const stats = useMemo(() => ({
@@ -94,9 +132,13 @@ export const InstructorExams: React.FC = () => {
     if (filters.stageId) apiFilters.stage_id = filters.stageId;
     if (filters.lessonId) apiFilters.course_detail_id = filters.lessonId;
     if (filters.marksMin) apiFilters.total_marks = filters.marksMin;
+    if (filterExamType) apiFilters.type_exam = filterExamType;
+    if (filterExamType === 'center' && filterCenterHourId) {
+      apiFilters.center_hour_id = Number(filterCenterHourId);
+    }
     
     fetchExams(1, apiFilters, debouncedSearch);
-  }, [fetchExams, filters, debouncedSearch]);
+  }, [fetchExams, filters, debouncedSearch, filterExamType, filterCenterHourId]);
 
   // Check URL param for exam ID
   useEffect(() => {
@@ -106,7 +148,6 @@ export const InstructorExams: React.FC = () => {
         setSelectedExam(exam);
         setActiveTab('view');
       } else if (!loading) {
-        // Fetch exam directly if not in list
         examService.getExam(Number(examIdFromUrl)).then(response => {
           setSelectedExam(response);
           setActiveTab('view');
@@ -118,7 +159,7 @@ export const InstructorExams: React.FC = () => {
   }, [examIdFromUrl, exams, loading, navigate]);
 
   const handleViewExam = (exam: any) => {
- navigate(`/instructor/exam/${exam.id}`);
+    navigate(`/instructor/exam/${exam.id}`);
   };
 
   const handleEditExam = (exam: any) => {
@@ -144,6 +185,12 @@ export const InstructorExams: React.FC = () => {
     setSelectedExam(null);
     setSelectedExamId(null);
     navigate('/instructor/exams');
+  };
+
+  // إعادة تعيين فلاتر الساعات المركزية
+  const clearCenterHourFilters = () => {
+    setFilterExamType('');
+    setFilterCenterHourId('');
   };
 
   // Render different views based on activeTab
@@ -270,7 +317,7 @@ export const InstructorExams: React.FC = () => {
             </div>
           </div>
 
-          {/* Filters Panel */}
+          {/* Filters Panel - متسلسل مع الساعات المركزية */}
           <FiltersPanel
             show={showFilters}
             filters={filters}
@@ -279,6 +326,61 @@ export const InstructorExams: React.FC = () => {
             onApply={applyFilters}
             onClear={clearFilters}
           />
+
+          {/* 🔹 فلتر إضافي لنوع الامتحان والساعات المركزية */}
+          {showFilters && (
+            <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                {/* نوع الامتحان */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1 text-sm font-medium">
+                    <FileText className="h-4 w-4 text-primary" />
+                    {lang === 'ar' ? 'نوع الامتحان' : 'Exam Type'}
+                  </Label>
+                  <select
+                    value={filterExamType}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFilterExamType(value);
+                      if (value !== 'center') {
+                        setFilterCenterHourId('');
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                  >
+                    <option value="">{lang === 'ar' ? 'جميع الأنواع' : 'All Types'}</option>
+                    <option value="online">💻 {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
+                    <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
+                  </select>
+                </div>
+
+                {/* الساعة المركزية - تظهر فقط لو اختار سنتر */}
+                {filterExamType === 'center' && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1 text-sm font-medium">
+                      <Clock className="h-4 w-4 text-primary" />
+                      {lang === 'ar' ? 'الساعة المركزية' : 'Center Hour'}
+                    </Label>
+                    <select
+                      value={filterCenterHourId}
+                      onChange={(e) => setFilterCenterHourId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                    >
+                      <option value="">
+                        {lang === 'ar' ? 'جميع الساعات المركزية' : 'All Center Hours'}
+                      </option>
+                      {centerHours.map((hour) => (
+                        <option key={hour.id} value={String(hour.id)}>
+                          {hour.title} - {hour.date} ({hour.hours_start} to {hour.hours_end})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
         </motion.div>
 
         {/* Loading & Error & Empty States */}

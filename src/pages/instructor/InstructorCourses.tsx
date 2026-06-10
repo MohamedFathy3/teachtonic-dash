@@ -121,62 +121,82 @@ export const InstructorCourses: React.FC = () => {
 
 
 
+const fetchCourses = useCallback(async (page = 1) => {
+  if (!activeTab) return;
 
-  const fetchCourses = useCallback(async (page = 1) => {
-    if (!activeTab) return;
+  setLoading(true);
+  setError(null);
 
-    setLoading(true);
-    setError(null);
+  const filters: Record<string, any> = {
+    teacher_id: user?.id,
+    stage_id: filterStageId,
+    subject_id: filterSubjectId,
+    semester_id: filterSemesterId,
+    price: price ?? undefined,
+    type: courseType || undefined,
+    start_date: startDate,
+    end_date: endDate,
+  };
 
-    const filters: Record<string, any> = {
-      teacher_id: user?.id,
-      stage_id: filterStageId,
-      subject_id: filterSubjectId,
-      semester_id: filterSemesterId,
-      price: price ?? undefined,
-      type: courseType || undefined,
-      start_date: startDate,
-      end_date: endDate,
-    };
-
-    try {
-      const response = await courseService.getAllCourses(
-        filters,
-        12,
-        page,
-        searchQuery,
-        activeTab === 'deleted'
-      );
-
-      if (activeTab === 'active') {
-        setCourses(response.data || []);
-      } else {
-        setDeletedCourses(response.data || []);
-      }
-
-      setPagination({
-        currentPage: response.meta?.current_page || 1,
-        lastPage: response.meta?.last_page || 1,
-        total: response.meta?.total || 0,
-        perPage: response.meta?.per_page || 12,
-      });
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch courses');
-    } finally {
-      setLoading(false);
+  // 🔥 البحث الذكي حسب اللغة
+  let searchField = searchQuery;
+  let searchType = 'default';
+  
+  if (searchQuery?.trim()) {
+    if (lang === 'ar') {
+      // في الوضع العربي - بحث في title_ar
+      filters.title_ar = searchQuery.trim();
+      searchField = searchQuery.trim();
+      searchType = 'arabic';
+    } else {
+      // في الوضع الإنجليزي - بحث في title
+      filters.title = searchQuery.trim();
+      searchField = searchQuery.trim();
+      searchType = 'english';
     }
-  }, [
-    activeTab,
-    searchQuery,
-    filterStageId,
-    filterSubjectId,
-    filterSemesterId
-    ,
-    price,
-    courseType,
-    startDate,
-    endDate
-  ]);
+  }
+
+  console.log(`🔍 Searching in ${searchType} mode with:`, searchField);
+
+  try {
+    const response = await courseService.getAllCourses(
+      filters,
+      12,
+      page,
+      '', // 🔥 ما نمررش search تاني عشان ما يضربش الفلتر
+      activeTab === 'deleted'
+    );
+
+    if (activeTab === 'active') {
+      setCourses(response.data || []);
+    } else {
+      setDeletedCourses(response.data || []);
+    }
+
+    setPagination({
+      currentPage: response.meta?.current_page || 1,
+      lastPage: response.meta?.last_page || 1,
+      total: response.meta?.total || 0,
+      perPage: response.meta?.per_page || 12,
+    });
+  } catch (err: any) {
+    setError(err.message || 'Failed to fetch courses');
+  } finally {
+    setLoading(false);
+  }
+}, [
+  activeTab,
+  searchQuery,
+  lang, // 🔥 أضف lang للـ dependencies
+  filterStageId,
+  filterSubjectId,
+  filterSemesterId,
+  price,
+  courseType,
+  startDate,
+  endDate,
+  user?.id
+]);
 
 
 
@@ -323,7 +343,7 @@ export const InstructorCourses: React.FC = () => {
                 </h1>
                 <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                   <Sparkles className="h-3 w-3" />
-                  {pagination.total} {t('courses')} • {stats.totalStudents} {t('students')}
+                  {pagination.total} {t('courses')} 
                 </p>
               </div>
             </div>
@@ -392,12 +412,12 @@ export const InstructorCourses: React.FC = () => {
         </motion.div>
 
         {/* ✅ Stats Cards */}
-        <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {[
             { label: t('totalCourses'), value: stats.total, icon: BookOpen, color: 'from-blue-500 to-cyan-500', delay: 0 },
             { label: t('activeCourses'), value: stats.active, icon: Eye, color: 'from-green-500 to-emerald-500', delay: 0.1 },
             { label: t('inactiveCourses'), value: stats.inactive, icon: Power, color: 'from-orange-500 to-red-500', delay: 0.2 },
-            { label: t('totalStudents'), value: stats.totalStudents, icon: Users, color: 'from-purple-500 to-pink-500', delay: 0.3 },
+            // { label: t('totalStudents'), value: stats.totalStudents, icon: Users, color: 'from-purple-500 to-pink-500', delay: 0.3 },
           ].map((stat, idx) => (
             <motion.div
               key={idx}
@@ -432,13 +452,7 @@ export const InstructorCourses: React.FC = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <div className="flex flex-col sm:flex-row justify-between gap-4">
               <TabsList className="bg-muted/50 p-1 rounded-xl">
-                <TabsTrigger value="active" className="rounded-lg gap-2 px-4">
-                  <Eye className="h-4 w-4" />
-                  {t('activeCourses')}
-                  <span className="ml-1 text-xs bg-primary/20 px-1.5 py-0.5 rounded-full">
-                    {pagination.total}
-                  </span>
-                </TabsTrigger>
+             
 
               </TabsList>
 
@@ -483,30 +497,7 @@ export const InstructorCourses: React.FC = () => {
                     {/* 🔹 Filters Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-                      {/* Stage */}
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1 text-sm font-medium">
-                          <GraduationCap className="h-4 w-4 text-primary" />
-                          {t('stage') || 'المرحلة'}
-                        </Label>
-
-
-                        <Select value={filterStageId?.toString()} onValueChange={(val) => setFilterStageId(Number(val))}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="All Stages" />
-                          </SelectTrigger>
-
-                          <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-
-                            {stages.map((stage) => (
-                              <SelectItem key={stage.id} value={stage.id.toString()}>
-                                {isRTL ? stage.name_ar : stage.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    
 
                       {/* Subject */}
                       <div className="space-y-2">
@@ -531,7 +522,30 @@ export const InstructorCourses: React.FC = () => {
                           </SelectContent>
                         </Select>
                       </div>
+  {/* Stage */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1 text-sm font-medium">
+                          <GraduationCap className="h-4 w-4 text-primary" />
+                          {t('stage') || 'المرحلة'}
+                        </Label>
 
+
+                        <Select value={filterStageId?.toString()} onValueChange={(val) => setFilterStageId(Number(val))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Stages" />
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+
+                            {stages.map((stage) => (
+                              <SelectItem key={stage.id} value={stage.id.toString()}>
+                                {isRTL ? stage.name_ar : stage.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       {/* Semester */}
                       <div className="space-y-2">
                         <Label className="flex items-center gap-1 text-sm font-medium">

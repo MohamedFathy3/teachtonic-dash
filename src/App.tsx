@@ -42,6 +42,8 @@ import { InstructorDashboard } from "./pages/instructor/InstructorDashboard";
 import { InstructorEarnings } from "./pages/instructor/InstructorEarnings";
 import InstructorStudents from "./pages/instructor/InstructorStudents";
 import { InstructorWebsite } from "./pages/instructor/InstructorWebsite";
+import { LessonDetailsPage } from "./pages/instructor/LessonDetailsPage";
+import { BookDetailsPage } from "./pages/instructor/BookDetailsPage";
 
 const queryClient = new QueryClient();
 
@@ -100,6 +102,9 @@ const App = () => {
                 <Route path="semesters" element={<SemestersPage />} />
                 <Route path="center-hours" element={<CenterHoursPage />} />
                 <Route path="settings" element={<SettingsPage />} />
+               <Route path="lesson/:lessonId" element={<LessonDetailsPage />} />
+               <Route path="books/:id" element={<BookDetailsPage />} />
+
               </Route>
 
               {/* Fallback */}

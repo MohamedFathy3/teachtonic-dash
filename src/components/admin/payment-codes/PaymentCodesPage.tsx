@@ -145,7 +145,7 @@ const UsageTypeBadge: React.FC<{ typeCode: string; lang: string }> = ({ typeCode
         : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
     }`}>
       {isOnline ? <Wifi size={12} /> : <Building size={12} />}
-      {isOnline ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'مركز' : 'Center')}
+      {isOnline ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'سنتر' : 'Center')}
     </span>
   );
 };
@@ -428,13 +428,13 @@ export const PaymentCodesPage: React.FC = () => {
 
   const usageLocationData = [
     { name: lang === 'ar' ? 'أونلاين' : 'Online', value: reportStatistics.online_used, color: '#3b82f6' },
-    { name: lang === 'ar' ? 'مركز' : 'Center', value: reportStatistics.center_used, color: '#8b5cf6' },
+    { name: lang === 'ar' ? 'سنتر' : 'Center', value: reportStatistics.center_used, color: '#8b5cf6' },
     { name: lang === 'ar' ? 'غير مستخدم' : 'Unused', value: reportStatistics.total_unused, color: '#9ca3af' },
   ];
 
   const typeCodeData = [
     { name: lang === 'ar' ? 'أونلاين' : 'Online', value: statsData.online_codes, color: '#3b82f6' },
-    { name: lang === 'ar' ? 'مركز' : 'Center', value: statsData.center_codes, color: '#8b5cf6' },
+    { name: lang === 'ar' ? 'سنتر' : 'Center', value: statsData.center_codes, color: '#8b5cf6' },
   ];
 
   const statsCards = [
@@ -734,7 +734,7 @@ export const PaymentCodesPage: React.FC = () => {
                         >
                           <option value="">{lang === 'ar' ? '🌐 كل طرق الاستخدام' : '🌐 All Usage Types'}</option>
                           <option value="online">📱 {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
-                          <option value="center">🏢 {lang === 'ar' ? 'مركز' : 'Center'}</option>
+                          <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
                         </select>
 
                         {/* فلتر الحالة */}
@@ -849,6 +849,9 @@ export const PaymentCodesPage: React.FC = () => {
                             <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
                               {lang === 'ar' ? '👤 الطالب' : '👤 Student'}
                             </th>
+                             <th className="px-5 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              {lang === 'ar' ? '👤 كود الطالب' : '👤 Student code'}
+                            </th>
                              <th className="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300">
                     {lang === 'ar' ?  'تاريخ الاستخدام 📅' : 'used_at 📅'}
                   </th>
@@ -905,6 +908,13 @@ export const PaymentCodesPage: React.FC = () => {
                                 <td className="px-5 py-4">
                                   <StudentNameDisplay 
                                     studentName={code.student_name} 
+                                    studentId={code.student_id} 
+                                    lang={lang} 
+                                  />
+                                </td>
+                                  <td className="px-5 py-4">
+                                  <StudentNameDisplay 
+                                    // studentName={code} 
                                     studentId={code.student_id} 
                                     lang={lang} 
                                   />

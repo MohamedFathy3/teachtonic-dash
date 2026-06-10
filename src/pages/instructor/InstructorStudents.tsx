@@ -17,7 +17,9 @@ import {
   Loader2, Search, Users, User, Phone, Calendar,
   Monitor, Building2, CheckCircle, XCircle, Filter, X,
   ChevronLeft, ChevronRight, Award, Sparkles, Eye, Clock,
-  Key, Lock, Save, AlertCircle
+  Key, Lock, Save, AlertCircle,
+  GraduationCap,
+  EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
@@ -79,7 +81,8 @@ export const InstructorStudents: React.FC = () => {
   const { t, lang, user } = useApp();
   const { stages } = useTeacherMeta(user?.id);
   const isRTL = lang === 'ar';
-
+const [showNewPassword, setShowNewPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   // ✅ State
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,7 +90,11 @@ export const InstructorStudents: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // ✅ فلتر المرحلة - المستوى الأول
   const [filterStageId, setFilterStageId] = useState<number | null>(null);
+  // ✅ خيارات الساعات المركزية حسب المرحلة
+  const [filteredCenterHours, setFilteredCenterHours] = useState<CenterHour[]>([]);
   const [filterAttendance, setFilterAttendance] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterId, setFilterId] = useState<string>('');
@@ -95,8 +102,8 @@ export const InstructorStudents: React.FC = () => {
   const [filterCodeParent, setFilterCodeParent] = useState('');
   const [filterCenterHourId, setFilterCenterHourId] = useState<string>('');
   
-  // ✅ State for Center Hours list
-  const [centerHours, setCenterHours] = useState<CenterHour[]>([]);
+  // ✅ State for Center Hours list (all)
+  const [allCenterHours, setAllCenterHours] = useState<CenterHour[]>([]);
   const [loadingCenterHours, setLoadingCenterHours] = useState(false);
 
   // ✅ Selected student for learning page
@@ -122,13 +129,31 @@ export const InstructorStudents: React.FC = () => {
     perPage: 10,
   });
 
+  // ✅ فلترة الساعات المركزية حسب المرحلة
+  useEffect(() => {
+    if (filterStageId) {
+      // فلترة الساعات المركزية اللي مرتبطة بالمرحلة المختارة
+      const filtered = allCenterHours.filter(hour => {
+        // هنا المفروض يكون عندك علاقة بين center_hour والمرحلة
+        // لو في الـ API رابط بينهم، استخدمه. حالياً بنعرض الكل
+        return true;
+      });
+      setFilteredCenterHours(filtered);
+    } else {
+      setFilteredCenterHours(allCenterHours);
+    }
+    // إعادة تعيين الساعة المركزية عند تغيير المرحلة
+    setFilterCenterHourId('');
+  }, [filterStageId, allCenterHours]);
+
   // ✅ Fetch Center Hours for filter
   const fetchCenterHours = useCallback(async () => {
     setLoadingCenterHours(true);
     try {
       const response = await api.post('/center-hour/index', {});
       if (response.data?.data) {
-        setCenterHours(response.data.data);
+        setAllCenterHours(response.data.data);
+        setFilteredCenterHours(response.data.data);
       }
     } catch (error) {
       console.error('Failed to fetch center hours:', error);
@@ -288,7 +313,6 @@ export const InstructorStudents: React.FC = () => {
   const handleChangePassword = async () => {
     if (!changePasswordStudent) return;
     
-    // Validation
     if (!newPassword || newPassword.length < 6) {
       setPasswordError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters');
       return;
@@ -345,7 +369,6 @@ export const InstructorStudents: React.FC = () => {
           ? `${toggleActiveStudent.name} ${newStatus ? 'تم تفعيله' : 'تم إلغاء تفعيله'} بنجاح` 
           : `${toggleActiveStudent.name} has been ${newStatus ? 'activated' : 'deactivated'} successfully`
         );
-        // Refresh students list
         fetchStudents(pagination.currentPage);
         setToggleActiveStudent(null);
       } else {
@@ -414,12 +437,6 @@ export const InstructorStudents: React.FC = () => {
 
         {/* ✅ Header */}
         <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <ExportExcelButton
-            data={students}
-            fileName="students-list"
-            label={lang === 'ar' ? 'تصدير' : 'Export'}
-            disabled={loading || students.length === 0}
-          />
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl blur-xl opacity-60" />
@@ -437,6 +454,13 @@ export const InstructorStudents: React.FC = () => {
               </p>
             </div>
           </div>
+
+          <ExportExcelButton
+            data={students}
+            fileName="students-list"
+            label={lang === 'ar' ? 'تصدير' : 'Export'}
+            disabled={loading || students.length === 0}
+          />
         </motion.div>
 
         {/* ✅ Stats Cards */}
@@ -500,310 +524,403 @@ export const InstructorStudents: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 w-64 rounded-xl"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2"
+              >
+                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+              </button>
+            )}
           </div>
         </motion.div>
 
-        {/* ✅ Filters Panel */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, y: -20 }}
-              animate={{ opacity: 1, height: 'auto', y: 0 }}
-              exit={{ opacity: 0, height: 0, y: -20 }}
-              className="overflow-hidden"
+<AnimatePresence>
+  {showFilters && (
+    <motion.div
+      initial={{ opacity: 0, height: 0, y: -20 }}
+      animate={{ opacity: 1, height: 'auto', y: 0 }}
+      exit={{ opacity: 0, height: 0, y: -20 }}
+      className="overflow-hidden"
+    >
+      <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          
+          {/* 🔹 Stage (المرحلة) - المستوى الأول */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1 text-sm font-medium">
+              <GraduationCap className="h-4 w-4 text-primary" />
+              {t('stage') || 'المرحلة'}
+            </Label>
+            <select
+              value={filterStageId || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFilterStageId(value ? Number(value) : null);
+                // إعادة تعيين الساعة المركزية عند تغيير المرحلة
+                setFilterCenterHourId('');
+              }}
+              className="w-full px-3 py-2 rounded-xl border bg-background"
             >
-              <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                  
-                  {/* Center Hour Filter */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {lang === 'ar' ? 'الساعة المركزية' : 'Center Hour'}
-                    </Label>
-                    <select
-                      value={filterCenterHourId}
-                      onChange={(e) => setFilterCenterHourId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border bg-background"
-                      disabled={loadingCenterHours}
-                    >
-                      <option value="">
-                        {lang === 'ar' ? 'جميع الساعات المركزية' : 'All Center Hours'}
-                      </option>
-                      {centerHours.map((hour) => (
-                        <option key={hour.id} value={String(hour.id)}>
-                          {getCenterHourDisplay(hour)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              <option value="">
+                {lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
+              </option>
+              {stages.map((stage: any) => (
+                <option key={stage.id} value={stage.id}>
+                  {isRTL ? stage.name_ar : stage.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">{lang === 'ar' ? 'الهاتف' : 'Phone'}</Label>
-                    <Input
-                      value={filterPhone}
-                      onChange={(e) => setFilterPhone(e.target.value)}
-                      placeholder={lang === 'ar' ? 'اكتب رقم الهاتف' : 'Enter phone'}
-                      className="w-full px-3 py-2 rounded-xl border bg-background"
-                    />
-                  </div>
+          {/* 🔹 نوع الحضور - المستوى الثاني */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-1">
+              <Monitor className="h-4 w-4" />
+              {t('attendanceType') || 'نوع الحضور'}
+            </Label>
+            <select
+              value={filterAttendance}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setFilterAttendance(newValue);
+                // إعادة تعيين الساعة المركزية عند تغيير نوع الحضور
+                if (newValue !== 'center') {
+                  setFilterCenterHourId('');
+                }
+              }}
+              className="w-full px-3 py-2 rounded-xl border bg-background"
+            >
+              <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+              <option value="online">🖥️ {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
+              <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
+            </select>
+          </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">{lang === 'ar' ? 'كود ولي الأمر' : 'Parent Code'}</Label>
-                    <Input
-                      value={filterCodeParent}
-                      onChange={(e) => setFilterCodeParent(e.target.value)}
-                      placeholder={lang === 'ar' ? 'اكتب كود ولي الأمر' : 'Enter parent code'}
-                      className="w-full px-3 py-2 rounded-xl border bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">{t('stage') || 'المرحلة'}</Label>
-                    <select
-                      value={filterStageId || ''}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setFilterStageId(value ? Number(value) : null);
-                      }}
-                      className="w-full px-3 py-2 rounded-xl border bg-background"
-                    >
-                      <option value="">
-                        {lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
-                      </option>
-                      {stages.map((stage: any) => (
-                        <option key={stage.id} value={stage.id}>
-                          {stage.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">{t('attendanceType') || 'نوع الحضور'}</Label>
-                    <select
-                      value={filterAttendance}
-                      onChange={(e) => setFilterAttendance(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border bg-background"
-                    >
-                      <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
-                      <option value="online">🖥️ {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
-                      <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">{t('status') || 'الحالة'}</Label>
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border bg-background"
-                    >
-                      <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
-                      <option value="active">✅ {lang === 'ar' ? 'نشط' : 'Active'}</option>
-                      <option value="inactive">❌ {lang === 'ar' ? 'غير نشط' : 'Inactive'}</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">{t('studentId') || 'رقم الطالب'}</Label>
-                    <Input
-                      type="number"
-                      value={filterId}
-                      onChange={(e) => setFilterId(e.target.value)}
-                      placeholder={lang === 'ar' ? 'رقم الطالب' : 'Student ID'}
-                      className="w-full px-3 py-2 rounded-xl border bg-background"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 mt-5 pt-3 border-t">
-                  <Button variant="outline" size="sm" onClick={clearFilters}>
-                    {t('reset') || 'إعادة تعيين'}
-                  </Button>
-                  <Button size="sm" onClick={applyFilters} className="gap-2">
-                    <Search className="h-4 w-4" />
-                    {t('applyFilters') || 'تطبيق'}
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
+          {/* 🔹 الساعة المركزية - يظهر فقط لو اختار سنتر */}
+          {filterAttendance === 'center' && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1 text-sm font-medium">
+                <Clock className="h-4 w-4 text-primary" />
+                {lang === 'ar' ? ' مواعيد السناتر' : 'Center Hour'}
+              </Label>
+              <select
+                value={filterCenterHourId}
+                onChange={(e) => setFilterCenterHourId(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border bg-background"
+                disabled={loadingCenterHours}
+              >
+                <option value="">
+                  {lang === 'ar' ? 'جميع  موعيد السناتر' : 'All Center Hours'}
+                </option>
+                {filteredCenterHours.map((hour) => (
+                  <option key={hour.id} value={String(hour.id)}>
+                    {getCenterHourDisplay(hour)}
+                  </option>
+                ))}
+              </select>
+              {filteredCenterHours.length === 0 && (
+                <p className="text-xs text-amber-500 mt-1">
+                  {lang === 'ar' ? '⚠️ لا توجد ساعات مركزية لهذه المرحلة' : '⚠️ No center hours for this stage'}
+                </p>
+              )}
+            </div>
           )}
-        </AnimatePresence>
+
+          {/* 🔹 باقي الفلاتر */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-1">
+              <CheckCircle className="h-4 w-4" />
+              {t('status') || 'الحالة'}
+            </Label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border bg-background"
+            >
+              <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+              <option value="active">✅ {lang === 'ar' ? 'نشط' : 'Active'}</option>
+              <option value="inactive">❌ {lang === 'ar' ? 'غير نشط' : 'Inactive'}</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-1">
+              <Phone className="h-4 w-4" />
+              {lang === 'ar' ? 'الهاتف' : 'Phone'}
+            </Label>
+            <Input
+              value={filterPhone}
+              onChange={(e) => setFilterPhone(e.target.value)}
+              placeholder={lang === 'ar' ? 'اكتب رقم الهاتف' : 'Enter phone'}
+              className="rounded-xl"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-1">
+              <Award className="h-4 w-4" />
+              {lang === 'ar' ? 'كود ولي الأمر' : 'Parent Code'}
+            </Label>
+            <Input
+              value={filterCodeParent}
+              onChange={(e) => setFilterCodeParent(e.target.value)}
+              placeholder={lang === 'ar' ? 'اكتب الكود' : 'Enter code'}
+              className="rounded-xl"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-1">
+              <User className="h-4 w-4" />
+              {t('studentId') || 'رقم الطالب'}
+            </Label>
+            <Input
+              type="number"
+              value={filterId}
+              onChange={(e) => setFilterId(e.target.value)}
+              placeholder={lang === 'ar' ? 'رقم الطالب' : 'Student ID'}
+              className="rounded-xl"
+            />
+          </div>
+        </div>
+
+        {/* 🔹 Actions */}
+        <div className="flex justify-end gap-3 mt-5 pt-3 border-t">
+          <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2">
+            <X className="h-4 w-4" />
+            {t('reset') || 'إعادة تعيين'}
+          </Button>
+          <Button size="sm" onClick={applyFilters} className="gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
+            <Search className="h-4 w-4" />
+            {t('applyFilters') || 'تطبيق'}
+          </Button>
+        </div>
+
+        {/* عرض الفلاتر النشطة */}
+        {(filterStageId || filterAttendance || filterStatus || filterCenterHourId || filterPhone || filterCodeParent || filterId) && (
+          <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
+            <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
+            {filterStageId && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                <GraduationCap className="h-3 w-3" />
+                {stages.find(s => s.id === filterStageId)?.name || filterStageId}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterStageId(null)} />
+              </Badge>
+            )}
+            {filterAttendance && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                {filterAttendance === 'online' ? '🖥️ أونلاين' : '🏢 سنتر'}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterAttendance('')} />
+              </Badge>
+            )}
+            {filterCenterHourId && filterAttendance === 'center' && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                <Clock className="h-3 w-3" />
+                {allCenterHours.find(h => h.id === Number(filterCenterHourId))?.title || filterCenterHourId}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterCenterHourId('')} />
+              </Badge>
+            )}
+            {filterStatus && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                {filterStatus === 'active' ? '✅ نشط' : '❌ غير نشط'}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterStatus('')} />
+              </Badge>
+            )}
+            {filterPhone && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                📞 {filterPhone}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterPhone('')} />
+              </Badge>
+            )}
+            {filterCodeParent && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                🎫 {filterCodeParent}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterCodeParent('')} />
+              </Badge>
+            )}
+            {filterId && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                🆔 {filterId}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterId('')} />
+              </Badge>
+            )}
+          </div>
+        )}
+      </Card>
+    </motion.div>
+  )}
+</AnimatePresence>
 
         {/* ✅ Students Grid */}
-       <motion.div variants={containerVariants} className="space-y-4">
-  {loading ? (
-    <div className="flex flex-col items-center justify-center py-20">
-      <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="text-muted-foreground mt-4">{t('loadingStudents') || 'جاري تحميل الطلاب...'}</p>
-    </div>
-  ) : error ? (
-    <Card className="p-12 text-center">
-      <p className="text-red-500">{error}</p>
-    </Card>
-  ) : students.length === 0 ? (
-    <Card className="p-16 text-center">
-      <div className="flex flex-col items-center">
-        <Users className="h-16 w-16 text-muted-foreground/30 mb-4" />
-        <p className="text-muted-foreground text-lg">{t('noStudentsFound') || 'لا يوجد طلاب'}</p>
-        <p className="text-sm text-muted-foreground mt-1">{t('noStudentsDesc') || 'لم يتم تسجيل أي طلاب بعد'}</p>
-      </div>
-    </Card>
-  ) : (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      {filteredStudents.map((student, idx) => (
-        <motion.div
-          key={student.id}
-          variants={itemVariants}
-          whileHover={{ y: -4 }}
-          className="group"
-        >
-          <Card className={`relative overflow-hidden rounded-2xl border hover:shadow-xl transition-all duration-300 ${!student.active ? 'opacity-75' : ''}`}>
-            {/* Card Header with Gradient */}
-            <div className={`relative h-24 bg-gradient-to-r ${student.active ? 'from-blue-500 to-cyan-500' : 'from-gray-500 to-gray-600'}`}>
-              {/* Student Avatar / Image */}
-              <div className="absolute -bottom-8 left-6">
-                <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800 overflow-hidden">
-                  {(student.imageUrl || student.image) ? (
-                    <img 
-                      src={student.imageUrl || student.image?.file_path || `https://lms.dentin.cloud/storage/${student.image?.file_path}`}
-                      alt={student.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // إذا فشل تحميل الصورة، نعرض الحرف الأول
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent) {
-                          const fallbackSpan = document.createElement('span');
-                          fallbackSpan.className = 'text-xl font-bold text-primary';
-                          fallbackSpan.textContent = student.name?.charAt(0)?.toUpperCase() || 'S';
-                          parent.appendChild(fallbackSpan);
-                        }
+        <motion.div variants={containerVariants} className="space-y-4">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-muted-foreground mt-4">{t('loadingStudents') || 'جاري تحميل الطلاب...'}</p>
+            </div>
+          ) : error ? (
+            <Card className="p-12 text-center">
+              <p className="text-red-500">{error}</p>
+            </Card>
+          ) : students.length === 0 ? (
+            <Card className="p-16 text-center">
+              <div className="flex flex-col items-center">
+                <Users className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                <p className="text-muted-foreground text-lg">{t('noStudentsFound') || 'لا يوجد طلاب'}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('noStudentsDesc') || 'لم يتم تسجيل أي طلاب بعد'}</p>
+              </div>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredStudents.map((student, idx) => (
+                <motion.div
+                  key={student.id}
+                  variants={itemVariants}
+                  whileHover={{ y: -4 }}
+                  className="group"
+                >
+                  <Card className={`relative overflow-hidden rounded-2xl border hover:shadow-xl transition-all duration-300 ${!student.active ? 'opacity-75' : ''}`}>
+                    {/* Card Header with Gradient */}
+                    <div className={`relative h-24 bg-gradient-to-r ${student.active ? 'from-blue-500 to-cyan-500' : 'from-gray-500 to-gray-600'}`}>
+                      <div className="absolute -bottom-8 left-6">
+                        <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800 overflow-hidden">
+                          {(student.imageUrl || student.image) ? (
+                            <img 
+                              src={student.imageUrl || student.image?.file_path || `https://lms.dentin.cloud/storage/${student.image?.file_path}`}
+                              alt={student.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  const fallbackSpan = document.createElement('span');
+                                  fallbackSpan.className = 'text-xl font-bold text-primary';
+                                  fallbackSpan.textContent = student.name?.charAt(0)?.toUpperCase() || 'S';
+                                  parent.appendChild(fallbackSpan);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <span className="text-xl font-bold text-primary">
+                              {student.name?.charAt(0)?.toUpperCase() || 'S'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="absolute top-3 right-3">
+                        {getAttendanceBadge(student.type_of_attendance)}
+                      </div>
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="p-6 pt-10">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-bold text-lg">{student.name}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            {student.active ? (
+                              <Badge className="bg-green-500 gap-1"><CheckCircle className="h-3 w-3" /> {t('active') || 'نشط'}</Badge>
+                            ) : (
+                              <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t('inactive') || 'غير نشط'}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">{student.stage?.name || `Stage ${student.stage_id}`}</p>
+                          <p className="text-xs text-muted-foreground">ID: {student.id}</p>
+                        </div>
+                      </div>
+
+                      {/* Contact Info */}
+                      <div className="mt-4 space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span>{student.phone}</span>
+                        </div>
+                        {student.phone_parent && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span>{t('parentPhone') || 'ولي الأمر'}: {student.phone_parent}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>{formatDate(student.created_at)}</span>
+                        </div>
+                        {student.code_parent && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Award className="h-4 w-4 text-muted-foreground" />
+                            <span>{t('parentCode') || 'كود ولي الأمر'}: {student.code_parent}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="mt-4 pt-3 border-t flex flex-wrap justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 rounded-full"
+                          onClick={() => {
+                            setSelectedStudentId(student.id);
+                            setShowLearningPage(true);
+                          }}
+                        >
+                          <Eye className="h-3 w-3" />
+                          {t('viewLearning') || 'عرض التعلم'}
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 rounded-full"
+                          onClick={() => {
+                            setChangePasswordStudent(student);
+                            setNewPassword('');
+                            setConfirmPassword('');
+                            setPasswordError(null);
+                          }}
+                        >
+                          <Key className="h-3 w-3" />
+                          {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant={student.active ? "destructive" : "default"}
+                          className={`gap-1 rounded-full ${student.active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'}`}
+                          onClick={() => setToggleActiveStudent(student)}
+                        >
+                          {student.active ? (
+                            <>
+                              <XCircle className="h-3 w-3" />
+                              {lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate'}
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="h-3 w-3" />
+                              {lang === 'ar' ? 'تفعيل' : 'Activate'}
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Animated Border on Hover */}
+                    <motion.div
+                      className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      style={{
+                        boxShadow: '0 0 0 2px rgba(59,130,246,0.3), 0 0 0 6px rgba(59,130,246,0.1)'
                       }}
                     />
-                  ) : (
-                    <span className="text-xl font-bold text-primary">
-                      {student.name?.charAt(0)?.toUpperCase() || 'S'}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="absolute top-3 right-3">
-                {getAttendanceBadge(student.type_of_attendance)}
-              </div>
+                  </Card>
+                </motion.div>
+              ))}
             </div>
-
-            {/* Card Content */}
-            <div className="p-6 pt-10">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-bold text-lg">{student.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    {student.active ? (
-                      <Badge className="bg-green-500 gap-1"><CheckCircle className="h-3 w-3" /> {t('active') || 'نشط'}</Badge>
-                    ) : (
-                      <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t('inactive') || 'غير نشط'}</Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">{student.stage?.name || `Stage ${student.stage_id}`}</p>
-                  <p className="text-xs text-muted-foreground">ID: {student.id}</p>
-                </div>
-              </div>
-
-              {/* Contact Info */}
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{student.phone}</span>
-                </div>
-                {student.phone_parent && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span>{t('parentPhone') || 'ولي الأمر'}: {student.phone_parent}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{formatDate(student.created_at)}</span>
-                </div>
-                {student.code_parent && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Award className="h-4 w-4 text-muted-foreground" />
-                    <span>{t('parentCode') || 'كود ولي الأمر'}: {student.code_parent}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="mt-4 pt-3 border-t flex flex-wrap justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1 rounded-full"
-                  onClick={() => {
-                    setSelectedStudentId(student.id);
-                    setShowLearningPage(true);
-                  }}
-                >
-                  <Eye className="h-3 w-3" />
-                  {t('viewLearning') || 'عرض التعلم'}
-                </Button>
-                
-                {/* 🔥 Change Password Button */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1 rounded-full"
-                  onClick={() => {
-                    setChangePasswordStudent(student);
-                    setNewPassword('');
-                    setConfirmPassword('');
-                    setPasswordError(null);
-                  }}
-                >
-                  <Key className="h-3 w-3" />
-                  {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
-                </Button>
-                
-                {/* 🔥 Toggle Active Button */}
-                <Button
-                  size="sm"
-                  variant={student.active ? "destructive" : "default"}
-                  className={`gap-1 rounded-full ${student.active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'}`}
-                  onClick={() => setToggleActiveStudent(student)}
-                >
-                  {student.active ? (
-                    <>
-                      <XCircle className="h-3 w-3" />
-                      {lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate'}
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-3 w-3" />
-                      {lang === 'ar' ? 'تفعيل' : 'Activate'}
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* Animated Border on Hover */}
-            <motion.div
-              className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              style={{
-                boxShadow: '0 0 0 2px rgba(59,130,246,0.3), 0 0 0 6px rgba(59,130,246,0.1)'
-              }}
-            />
-          </Card>
+          )}
         </motion.div>
-      ))}
-    </div>
-  )}
-</motion.div>
 
         {/* ✅ Pagination */}
         {pagination.lastPage > 1 && (
@@ -856,87 +973,115 @@ export const InstructorStudents: React.FC = () => {
       </div>
 
       {/* ✅ Change Password Modal */}
-      <Dialog open={!!changePasswordStudent} onOpenChange={(open) => !open && setChangePasswordStudent(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5 text-blue-500" />
-              {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
-            </DialogTitle>
-            <DialogDescription>
-              {lang === 'ar' 
-                ? `تغيير كلمة المرور للطالب: ${changePasswordStudent?.name}`
-                : `Change password for student: ${changePasswordStudent?.name}`}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                {lang === 'ar' ? 'كلمة المرور الجديدة' : 'New Password'}
-              </Label>
-              <Input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder={lang === 'ar' ? 'أدخل كلمة المرور الجديدة' : 'Enter new password'}
-                className="rounded-xl"
-              />
-              <p className="text-xs text-muted-foreground">
-                {lang === 'ar' ? 'يجب أن تكون كلمة المرور 6 أحرف على الأقل' : 'Password must be at least 6 characters'}
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                {lang === 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password'}
-              </Label>
-              <Input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder={lang === 'ar' ? 'أعد إدخال كلمة المرور' : 'Re-enter password'}
-                className="rounded-xl"
-              />
-            </div>
-            
-            {passwordError && (
-              <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded-lg">
-                <AlertCircle className="h-4 w-4" />
-                {passwordError}
-              </div>
+     <Dialog open={!!changePasswordStudent} onOpenChange={(open) => !open && setChangePasswordStudent(null)}>
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle className="flex items-center gap-2">
+        <Key className="h-5 w-5 text-blue-500" />
+        {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+      </DialogTitle>
+      <DialogDescription>
+        {lang === 'ar' 
+          ? `تغيير كلمة المرور للطالب: ${changePasswordStudent?.name}`
+          : `Change password for student: ${changePasswordStudent?.name}`}
+      </DialogDescription>
+    </DialogHeader>
+    
+    <div className="space-y-4 py-4">
+      {/* كلمة المرور الجديدة مع عين */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <Lock className="h-4 w-4" />
+          {lang === 'ar' ? 'كلمة المرور الجديدة' : 'New Password'}
+        </Label>
+        <div className="relative">
+          <Input
+            type={showNewPassword ? "text" : "password"}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder={lang === 'ar' ? 'أدخل كلمة المرور الجديدة' : 'Enter new password'}
+            className="rounded-xl pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowNewPassword(!showNewPassword)}
+            className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
+          >
+            {showNewPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
             )}
-          </div>
-          
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setChangePasswordStudent(null)}
-            >
-              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-            </Button>
-            <Button
-              onClick={handleChangePassword}
-              disabled={changingPassword}
-              className="gap-2"
-            >
-              {changingPassword ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {lang === 'ar' ? 'جاري التغيير...' : 'Changing...'}
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  {lang === 'ar' ? 'تغيير' : 'Change'}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {lang === 'ar' ? 'يجب أن تكون كلمة المرور 6 أحرف على الأقل' : 'Password must be at least 6 characters'}
+        </p>
+      </div>
+      
+      {/* تأكيد كلمة المرور مع عين */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <Lock className="h-4 w-4" />
+          {lang === 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password'}
+        </Label>
+        <div className="relative">
+          <Input
+            type={showConfirmPassword ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder={lang === 'ar' ? 'أعد إدخال كلمة المرور' : 'Re-enter password'}
+            className="rounded-xl pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
+          >
+            {showConfirmPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+      </div>
+      
+      {passwordError && (
+        <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded-lg">
+          <AlertCircle className="h-4 w-4" />
+          {passwordError}
+        </div>
+      )}
+    </div>
+    
+    <DialogFooter className="gap-2">
+      <Button
+        variant="outline"
+        onClick={() => setChangePasswordStudent(null)}
+      >
+        {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+      </Button>
+      <Button
+        onClick={handleChangePassword}
+        disabled={changingPassword}
+        className="gap-2"
+      >
+        {changingPassword ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {lang === 'ar' ? 'جاري التغيير...' : 'Changing...'}
+          </>
+        ) : (
+          <>
+            <Save className="h-4 w-4" />
+            {lang === 'ar' ? 'تغيير' : 'Change'}
+          </>
+        )}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
       {/* ✅ Toggle Active Confirmation Dialog */}
       <AlertDialog open={!!toggleActiveStudent} onOpenChange={(open) => !open && setToggleActiveStudent(null)}>
