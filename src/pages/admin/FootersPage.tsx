@@ -97,7 +97,7 @@ export function FootersPage() {
   const [forceDeletingFooter, setForceDeletingFooter] = useState<any>(null);
   const [bulkActionDialog, setBulkActionDialog] = useState<{ type: 'delete' | 'restore' | 'forceDelete' | null; open: boolean }>({ type: null, open: false });
   const [actionLoading, setActionLoading] = useState(false);
-
+  const [showingFooterId, setShowingFooterId] = useState<number | null>(null);
   const text = {
     searchPlaceholder: dir === 'rtl' ? 'البحث بالاسم...' : 'Search by name...',
     addFooter: dir === 'rtl' ? 'إضافة قسم تذييل' : 'Add Footer Section',
@@ -178,10 +178,12 @@ export function FootersPage() {
     setFormOpen(true);
   };
 
+  // const handleShowClick = (footerId: number) => {
+  //   navigate(`/admin/footer/${footerId}`);
+  // };
   const handleShowClick = (footerId: number) => {
-    navigate(`/admin/footer/${footerId}`);
+    setShowingFooterId(footerId);
   };
-
   const getFooterName = (footer: any) => {
     if (!footer) return '';
     if (lang === 'ar' && footer.name_ar) return footer.name_ar;
@@ -192,6 +194,7 @@ export function FootersPage() {
     const name = getFooterName(footer);
     return name.charAt(0).toUpperCase() || '?';
   };
+
 
   if (loading) {
     return (
@@ -500,7 +503,14 @@ export function FootersPage() {
         footerId={editingFooterId}
         loading={actionLoading}
       />
-
+      <FooterForm
+        open={showingFooterId !== null}
+        onClose={() => setShowingFooterId(null)}
+        onSubmit={async () => { }}
+        footerId={showingFooterId}
+        loading={false}
+        readOnly={true}
+      />
       <FooterDeleteDialog
         open={!!deletingFooter}
         onClose={() => setDeletingFooter(null)}

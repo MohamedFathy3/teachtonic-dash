@@ -1,33 +1,59 @@
-// src/components/admin/subjects/SubjectStatusToggle.tsx
+import { CheckCircle2, XCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
-import { useApp } from '@/contexts/AppContext';
-import { Switch } from '@/components/ui/switch';
-
-interface SubjectStatusToggleProps {
+interface Props {
   subjectId: number;
   active: boolean;
-  onToggle: (id: number) => Promise<void>;
+  onToggle: (id: number, value: boolean) => void;
+  lang?: "ar" | "en";
 }
 
-export function SubjectStatusToggle({ subjectId, active, onToggle }: SubjectStatusToggleProps) {
-  const { dir } = useApp();
-
-  const handleToggle = async () => {
-    await onToggle(subjectId);
-  };
-
+export function SubjectStatusToggle({
+  subjectId,
+  active,
+  onToggle,
+  lang = "en",
+}: Props) {
   return (
-    <div className="flex items-center gap-2" dir="ltr">
+    <div className="flex items-center justify-center gap-3">
       <Switch
         checked={active}
-        onCheckedChange={handleToggle}
-        className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-300"
+        onCheckedChange={(checked) =>
+          onToggle(subjectId, checked)
+        }
       />
-      <span className={`text-xs font-medium ${
-        active ? 'text-green-600' : 'text-gray-500'
-      }`}>
-        {active ? (dir === 'rtl' ? 'نشط' : 'Active') : (dir === 'rtl' ? 'غير نشط' : 'Inactive')}
-      </span>
+
+      <div
+        className={`
+          flex items-center gap-2
+          px-3 py-1.5
+          rounded-full
+          text-xs font-semibold
+          border
+          transition-all duration-300
+          shadow-sm
+          ${active
+            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+            : "bg-red-50 text-red-700 border-red-200"
+          }
+        `}
+      >
+        {active ? (
+          <CheckCircle2 className="h-3.5 w-3.5" />
+        ) : (
+          <XCircle className="h-3.5 w-3.5" />
+        )}
+
+        <span>
+          {active
+            ? lang === "ar"
+              ? "نشط"
+              : "Active"
+            : lang === "ar"
+              ? "غير نشط"
+              : "Inactive"}
+        </span>
+      </div>
     </div>
   );
 }

@@ -72,6 +72,7 @@ export function FeaturesPage() {
   const [forceDeletingFeature, setForceDeletingFeature] = useState<any>(null);
   const [bulkActionDialog, setBulkActionDialog] = useState<{ type: 'delete' | 'restore' | 'forceDelete' | null; open: boolean }>({ type: null, open: false });
   const [actionLoading, setActionLoading] = useState(false);
+  const [showingFeatureId, setShowingFeatureId] = useState<number | null>(null);
 
   const text = {
     searchPlaceholder: dir === 'rtl' ? 'البحث بالاسم...' : 'Search by name...',
@@ -154,7 +155,7 @@ export function FeaturesPage() {
   };
 
   const handleShowClick = (featureId: number) => {
-    navigate(`/admin/features/${featureId}`);
+    setShowingFeatureId(featureId);
   };
 
   const getFeatureName = (feature: any) => {
@@ -207,8 +208,8 @@ export function FeaturesPage() {
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
             className={`gap-2 rounded-lg ${showDeleted
-                ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                : 'border-gray-200 dark:border-gray-700'
+              ? 'bg-orange-600 hover:bg-orange-700 text-white'
+              : 'border-gray-200 dark:border-gray-700'
               }`}
           >
             {showDeleted ? (
@@ -478,6 +479,17 @@ export function FeaturesPage() {
         featureId={editingFeatureId}
         loading={actionLoading}
       />
+
+
+      <FeatureForm
+        open={showingFeatureId !== null}
+        onClose={() => setShowingFeatureId(null)}
+        onSubmit={async () => { }}
+        featureId={showingFeatureId}
+        loading={false}
+        readOnly={true}
+      />
+
 
       <FeatureDeleteDialog
         open={!!deletingFeature}

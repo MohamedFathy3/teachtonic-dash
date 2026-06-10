@@ -175,10 +175,12 @@ export function FooterSection({ teacherId }: FooterSectionProps) {
                 <Input value={formData.whatsapp_link} onChange={(e) => setFormData({ ...formData, whatsapp_link: e.target.value })} placeholder="https://wa.me/..." />
               </div>
             </div>
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
               <Button onClick={handleSubmit}>{editing ? 'Update' : 'Create'}</Button>
             </div>
+
           </div>
         </DialogContent>
       </Dialog>

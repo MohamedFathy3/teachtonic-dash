@@ -278,8 +278,8 @@ export function SubjectsPage() {
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
             className={`gap-2 rounded-lg ${showDeleted
-                ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                : 'border-gray-200 dark:border-gray-700'
+              ? 'bg-orange-600 hover:bg-orange-700 text-white'
+              : 'border-gray-200 dark:border-gray-700'
               }`}
           >
             {showDeleted ? (

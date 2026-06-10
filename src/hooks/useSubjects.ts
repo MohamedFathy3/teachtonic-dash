@@ -58,7 +58,7 @@ export const useSubjects = (): UseSubjectsReturn => {
   const fetchSubjects = useCallback(async () => {
     if (!isMounted.current) return;
     
-    setLoading(false);
+    setLoading(true);
     try {
       const response = await subjectService.getAllSubjects(
         filters, 
