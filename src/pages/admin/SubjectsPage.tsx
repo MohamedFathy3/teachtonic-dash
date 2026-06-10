@@ -373,7 +373,6 @@ export function SubjectsPage() {
                   />
                 </TableHead>
                 <TableHead>{text.subjectName}</TableHead>
-                <TableHead className="text-center w-24">{text.position}</TableHead>
                 {!showDeleted && <TableHead className="text-center w-32">{text.status}</TableHead>}
                 <TableHead className="text-center hidden lg:table-cell">{text.createdAt}</TableHead>
                 <TableHead className="text-center w-28">{text.actions}</TableHead>
@@ -411,9 +410,7 @@ export function SubjectsPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <span className="px-3 py-1 rounded-md bg-gray-100 text-sm">{subject.position}</span>
-                    </TableCell>
+                
                     {!showDeleted && (
                       <TableCell>
                         <SubjectStatusToggle subjectId={subject.id} active={subject.active} onToggle={toggleActive} />

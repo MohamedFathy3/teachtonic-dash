@@ -11,14 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
-import { Search, Plus, MoreHorizontal, ChevronLeft, ChevronRight, Edit, Trash2, Layers, Trash, Archive, RotateCcw } from 'lucide-react';
+import { Search, Plus, ChevronLeft, ChevronRight, Edit, Trash2, Layers, Trash, Archive, RotateCcw } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useStages } from '@/hooks/useStages';
 import { StageStatusToggle } from '@/components/admin/stages/StageStatusToggle';
 import { StageForm } from '@/components/admin/stages/StageForm';
@@ -63,7 +57,6 @@ export function StagesPage() {
     searchPlaceholder: dir === 'rtl' ? 'البحث باسم المرحلة...' : 'Search by stage name...',
     addStage: dir === 'rtl' ? 'إضافة مرحلة' : 'Add Stage',
     stageName: dir === 'rtl' ? 'اسم المرحلة' : 'Stage Name',
-    position: dir === 'rtl' ? 'الترتيب' : 'Position',
     status: dir === 'rtl' ? 'الحالة' : 'Status',
     createdAt: dir === 'rtl' ? 'تاريخ الإنشاء' : 'Created At',
     actions: dir === 'rtl' ? 'إجراءات' : 'Actions',
@@ -209,9 +202,7 @@ export function StagesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg">
             <Layers className="h-5 w-5 text-white" />
@@ -229,7 +220,6 @@ export function StagesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-
           {/* EXPORT BUTTON */}
           <ExportExcelButton
             data={filteredStages} 
@@ -292,7 +282,6 @@ export function StagesPage() {
             <Plus className="h-4 w-4" />
             {text.addStage}
           </Button>
-
         </div>
       </div>
 
@@ -368,10 +357,9 @@ export function StagesPage() {
                   />
                 </TableHead>
                 <TableHead>{text.stageName}</TableHead>
-                <TableHead className="text-center w-24">{text.position}</TableHead>
                 {!showDeleted && <TableHead className="text-center w-32">{text.status}</TableHead>}
                 <TableHead className="text-center hidden lg:table-cell">{text.createdAt}</TableHead>
-                <TableHead className="text-center w-20">{text.actions}</TableHead>
+                <TableHead className="text-center w-24">{text.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -383,7 +371,7 @@ export function StagesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ delay: index * 0.05, duration: 0.2 }}
-                    className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 group"
+                    className="border-gray-200 dark:border-gray-800 hover:bg-gray-50"
                   >
                     <TableCell>
                       <Checkbox
@@ -397,41 +385,51 @@ export function StagesPage() {
                         <span className={showDeleted ? 'text-gray-500 line-through' : ''}>{getStageName(stage)}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <span className="px-3 py-1 rounded-md bg-gray-100 text-sm">{stage.position}</span>
-                    </TableCell>
                     {!showDeleted && (
                       <TableCell>
                         <StageStatusToggle stageId={stage.id} active={stage.active} onToggle={toggleActive} />
                       </TableCell>
                     )}
-                    <TableCell className="text-center text-gray-500 text-sm">{stage.createdAt}</TableCell>
+                    <TableCell className="text-center text-gray-500 text-sm hidden lg:table-cell">{stage.createdAt}</TableCell>
                     <TableCell className="text-center">
                       {showDeleted ? (
-                        <div className="flex justify-center gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => setRestoringStage(stage)} className="text-green-600">
+                        <div className="flex justify-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => setRestoringStage(stage)} 
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                          >
                             <RotateCcw className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => setForceDeletingStage(stage)} className="text-red-600">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => setForceDeletingStage(stage)} 
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setEditingStage(stage)}>
-                              <Edit className="mr-2 h-4 w-4 text-blue-500" /> {text.edit}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDeletingStage(stage)} className="text-red-600">
-                              <Trash2 className="mr-2 h-4 w-4" /> {text.delete}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex justify-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => setEditingStage(stage)}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => setDeletingStage(stage)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </motion.tr>
