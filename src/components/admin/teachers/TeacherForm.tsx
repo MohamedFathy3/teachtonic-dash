@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/teachers/TeacherForm.tsx
-
+import { Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -25,7 +25,7 @@ interface Props {
 
 export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Props) {
   const { t, dir, lang } = useApp();
-  
+
   const [formData, setFormData] = useState<TeacherFormData>({
     name: '',
     email: '',
@@ -36,7 +36,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     subject: [],
     image: undefined,
   });
-  
+
   const [fetchingTeacher, setFetchingTeacher] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [selectedStageImage, setSelectedStageImage] = useState<number>(0);
@@ -44,7 +44,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-
+  const [showPassword, setShowPassword] = useState(false);
   const [stagesMap, setStagesMap] = useState<Map<number, any>>(new Map());
   const [subjectsMap, setSubjectsMap] = useState<Map<number, any>>(new Map());
 
@@ -60,7 +60,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
           });
         }
         setStagesMap(stagesMapData);
-        
+
         const subjectsRes = await api.get('/subject?perPage=100');
         const subjectsMapData = new Map();
         if (subjectsRes.data?.data) {
@@ -73,7 +73,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
         console.error('Failed to fetch stages/subjects:', error);
       }
     };
-    
+
     if (open) {
       fetchMaps();
     }
@@ -83,13 +83,13 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   useEffect(() => {
     const fetchTeacherData = async () => {
       if (!open || !teacherId) return;
-      
+
       setFetchingTeacher(true);
       try {
         const teacher = await teacherService.getTeacher(teacherId);
         const convertedData = teacherToFormData(teacher);
         setFormData(convertedData);
-        
+
         // حفظ رابط الصورة الحالية
         if (teacher.imageUrl) {
           setCurrentImageUrl(teacher.imageUrl);
@@ -134,13 +134,20 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   };
 
   const addStage = () => {
-    if (selectedStageId && selectedStageImage) {
+    if (selectedStageId) {
+      const stageIdNum = parseInt(selectedStageId);
+
+      // منع تكرار نفس المرحلة في القائمة
+      if (formData.stage.some(item => item.stage_id === stageIdNum)) {
+        setSelectedStageId('');
+        return;
+      }
+
       setFormData(prev => ({
         ...prev,
-        stage: [...prev.stage, { stage_id: parseInt(selectedStageId), image: selectedStageImage }]
+        stage: [...prev.stage, { stage_id: stageIdNum, image: 0 }] // تبدأ بـ 0 حتى يتم رفع الصورة
       }));
       setSelectedStageId('');
-      setSelectedStageImage(0);
     }
   };
 
@@ -151,6 +158,14 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     }));
   };
 
+  // دالة جديدة لتحديث صورة مرحلة معينة داخل المصفوفة بعد رفعها
+  const handleStageImageUpload = (index: number, mediaId: number) => {
+    setFormData(prev => {
+      const updatedStages = [...prev.stage];
+      updatedStages[index] = { ...updatedStages[index], image: mediaId };
+      return { ...prev, stage: updatedStages };
+    });
+  };
   const addSubject = () => {
     if (selectedSubjectId) {
       setFormData(prev => ({
@@ -227,7 +242,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
           {/* Image Upload Section with Preview */}
           <div>
             <Label className="mb-2 block">Profile Image</Label>
-            
+
             {/* عرض الصورة الحالية أو المعاينة */}
             {(currentImageUrl || imagePreview) && (
               <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -257,7 +272,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                 </div>
               </div>
             )}
-            
+
             {/* File Uploader */}
             <FileUploader
               label={currentImageUrl ? 'Change profile image' : 'Upload profile image'}
@@ -268,7 +283,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
               maxFiles={1}
               uniqueId={`teacher-image-${teacherId || 'new'}`}
             />
-            
+
             {/* Upload status messages */}
             {formData.image && !teacherId && (
               <p className="text-xs text-green-600 mt-1">✓ Image ready to upload</p>
@@ -316,65 +331,84 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                 required
               />
             </div>
-            <div>
-              <Label>Password {teacherId && '(leave empty to keep)'}</Label>
+            <div className="relative">
+              <Label>Password {teacherId && "(leave empty to keep)"}</Label>
+
               <Input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={formData.password}
-                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, password: e.target.value }))
+                }
                 required={!teacherId}
+                className="pr-10"
               />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-2 top-9 text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
           {/* Stages Section */}
           <div className="border rounded-lg p-4">
             <Label className="mb-2 block">Stages & Images</Label>
-            <div className="flex gap-2 mb-3 flex-wrap">
+            <div className="flex gap-2 mb-3">
               <AsyncSelect
                 configKey="stages"
                 value={selectedStageId ? parseInt(selectedStageId) : null}
                 onChange={(value) => setSelectedStageId(value?.toString() || '')}
                 placeholder="Select stage"
                 searchPlaceholder="Search stage..."
-                className="flex-1 min-w-[150px]"
+                className="flex-1"
                 perPageOptions={[10, 25, 50]}
                 defaultPerPage={25}
               />
-              
-              <FileUploader
-                label=""
-                onUploadSuccess={(id) => setSelectedStageImage(id)}
-                multiple={false}
-                uniqueId="stage-image-upload"
-              />
-              
+
               <Button type="button" onClick={addStage} size="sm">
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            
-            <div className="space-y-2">
+
+            <div className="space-y-3">
               {formData.stage.length === 0 ? (
                 <p className="text-gray-400 text-sm text-center py-2">No stages added yet</p>
               ) : (
                 formData.stage.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{getStageDisplayName(item.stage_id)}</span>
-                      {item.image > 0 && (
-                        <span className="text-xs text-gray-500">Image ID: {item.image}</span>
+                  <div key={item.stage_id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{getStageDisplayName(item.stage_id)}</p>
+                      {item.image > 0 ? (
+                        <span className="text-xs text-green-600 font-medium">✓ Image Attached (ID: {item.image})</span>
+                      ) : (
+                        <span className="text-xs text-amber-500 font-medium">* Please upload an image for this stage</span>
                       )}
                     </div>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeStage(idx)}>
-                      <X className="h-4 w-4 text-red-500" />
-                    </Button>
+
+                    {/* رافع ملفات مخصص ومستقل تماماً لكل مرحلة بناءً على الـ ID الخاص بها */}
+                    <div className="flex items-center gap-2">
+                      <FileUploader
+                        label={item.image > 0 ? "Change" : "Upload"}
+                        onUploadSuccess={(mediaId) => handleStageImageUpload(idx, mediaId)}
+                        multiple={false}
+                        accept="image/*"
+                        maxFiles={1}
+                        uniqueId={`stage-image-upload-${item.stage_id}`}
+                      />
+
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeStage(idx)}>
+                        <X className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
                   </div>
                 ))
               )}
             </div>
           </div>
-
           {/* Subjects Section */}
           <div className="border rounded-lg p-4">
             <Label className="mb-2 block">Subjects</Label>
@@ -388,15 +422,15 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                 className="flex-1"
                 perPageOptions={[10, 25, 50]}
                 defaultPerPage={25}
-                debounceDelay={500}        
-                cacheData={true}          
+                debounceDelay={500}
+                cacheData={true}
                 enableInfiniteScroll={false}
               />
               <Button type="button" onClick={addSubject} size="sm">
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            
+
             <div className="flex flex-wrap gap-2">
               {formData.subject.length === 0 ? (
                 <p className="text-gray-400 text-sm text-center py-2 w-full">No subjects added yet</p>
