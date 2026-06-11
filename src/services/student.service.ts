@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast';
 
 export interface Student {
   id: number;
+
   name: string;
   phone: string;
   phone_parent: string;
@@ -13,6 +14,7 @@ export interface Student {
   type_of_attendance: 'online' | 'center' | null;
   gender: 'male' | 'female' | null;
   active: boolean;
+  type_of_study: 'general' | 'azhar' | null;  // ✅ أضف هذا 
   teacher_id: number;
   stage_id: number;
   stage?: {
@@ -66,6 +68,7 @@ export interface StudentFilters {
   phone?: string;
   code_parent?: string;
   center_hour_id?: number;
+  type_of_study?: string;
 }
 
 class StudentService extends BaseService<Student> {
@@ -146,6 +149,11 @@ class StudentService extends BaseService<Student> {
         singleFilter = {
           teacher_id: teacherId,
           center_hour_id: filters.center_hour_id,
+        };
+      } else if (filters?.type_of_study) {
+        singleFilter = {
+          teacher_id: teacherId,
+          type_of_study: filters.type_of_study,
         };
       }
 
