@@ -6,16 +6,15 @@ import { useApp } from '@/contexts/AppContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
 import { StatusBadge } from '@/components/lms/StatusBadge';
 import { useTeacherDashboard } from '@/hooks/useTeacherDashboard';
 import api from '@/lib/api';
 import { 
-  BookOpen, Users, FileText, Star, TrendingUp, Download,
-  Calendar, CheckCircle, Award, BarChart3,
-  Eye, Plus, Search, Building, Loader2, DollarSign, 
+  BookOpen, Users, FileText, TrendingUp,
+  Calendar, CheckCircle, BarChart3,
+  Eye, Search, Building, Loader2, DollarSign, 
   Ticket, FileQuestion, Layers, Mail, BookMarked,
   X, ChevronRight, Sparkles, Target, Activity, GraduationCap,
   RefreshCw
@@ -35,6 +34,10 @@ import { CourseExams } from './CourseExams';
 import { CourseAssignments } from './CourseAssignments';
 import { CourseBooks } from './CourseBooks';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ThemeCustomizer } from './ThemeCustomizer';
+import { StudentsFilters } from './StudentsFilters';
+import { StudentsTable } from './StudentsTable';
+import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 
 interface TeacherDashboardProps {
   teacherId: number;
@@ -53,16 +56,6 @@ interface TeacherReport {
   semesters_count: number;
   requests_count: number;
   books_count: number;
-}
-
-interface ThemeResponse {
-  status: boolean;
-  teacher_id: number;
-  active_theme: string | null;
-  themes: Array<{
-    name: string;
-    active: boolean;
-  }>;
 }
 
 // ===================== COMPONENTS =====================
@@ -342,37 +335,6 @@ const BookCard = ({ book, idx }: any) => (
   </motion.div>
 );
 
-// Student Row Component
-const StudentRow = ({ student, idx }: any) => (
-  <motion.tr 
-    key={student.id} 
-    className="border-t hover:bg-muted/30 transition-colors"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    transition={{ delay: idx * 0.03 }}
-  >
-    <td className="p-4">
-      <div className="flex items-center gap-3">
-        <AvatarBadge initials={student.avatar || student.name?.charAt(0)} size="md" />
-        <div>
-          <p className="font-medium">{student.name}</p>
-          <p className="text-xs text-muted-foreground">{student.email}</p>
-        </div>
-      </div>
-    </td>
-    <td className="p-4 font-medium">{student.enrolledCourses ?? 0} Courses</td>
-    <td className="p-4">
-      <div className="flex items-center gap-2 min-w-[120px]">
-        <Progress value={student.progress} className="h-2 flex-1" />
-        <span className="text-xs font-medium">{student.progress}%</span>
-      </div>
-    </td>
-    <td className="p-4">
-      <StatusBadge status={student.status as any} />
-    </td>
-  </motion.tr>
-);
-
 // Assignment Row Component
 const AssignmentRow = ({ assignment, idx }: any) => (
   <motion.tr 
@@ -521,26 +483,38 @@ const StudentsModal = ({ open, onOpenChange, title, subtitle, students, loading,
 // ===================== MAIN COMPONENT =====================
 
 export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardProps) {
-  const { setTheme } = useApp();
   const [activeSubTab, setActiveSubTab] = useState('overview');
   const [activeCourseTab, setActiveCourseTab] = useState<'online' | 'center' | 'semester'>('online');
-  const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [courseDetails, setCourseDetails] = useState<any[]>([]);
-  const [openDetails, setOpenDetails] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
   const [activeDetailTab, setActiveDetailTab] = useState('lessons');
   const [teacherReport, setTeacherReport] = useState<TeacherReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
-  const [activeTheme, setActiveTheme] = useState<string | null>(null);
+  const { stages } = useTeacherMeta(teacherId);
+
+  // Students Filters State
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStageId, setFilterStageId] = useState<number | null>(null);
+  const [filterAttendance, setFilterAttendance] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterTypeOfStudy, setFilterTypeOfStudy] = useState<string>('');
+  const [filterPhone, setFilterPhone] = useState('');
+  const [filterCodeParent, setFilterCodeParent] = useState('');
+  const [filterCenterHourId, setFilterCenterHourId] = useState<string>('');
+  const [allCenterHours, setAllCenterHours] = useState<any[]>([]);
+  const [loadingCenterHours, setLoadingCenterHours] = useState(false);
   
-  // Students Modal States
+  // Students Modal State
   const [studentsModalOpen, setStudentsModalOpen] = useState(false);
-  const [studentsModalType, setStudentsModalType] = useState<'semester' | 'course' | 'lesson'>('semester');
   const [studentsModalTitle, setStudentsModalTitle] = useState('');
   const [studentsModalSubtitle, setStudentsModalSubtitle] = useState('');
   const [modalStudents, setModalStudents] = useState<any[]>([]);
   const [modalStudentsLoading, setModalStudentsLoading] = useState(false);
+  const [studentsModalType, setStudentsModalType] = useState<'semester' | 'course' | 'lesson'>('semester');
+  
+  // Course Details State
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [openDetails, setOpenDetails] = useState(false);
   
   const {
     loading,
@@ -562,7 +536,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     try {
       setReportLoading(true);
       const response = await api.get(`/teachers/${teacherId}/report`);
-      console.log("Teacher Report:", response.data);
       setTeacherReport(response.data?.data);
     } catch (error: any) {
       console.error("Error fetching report:", error);
@@ -572,67 +545,96 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     }
   }, [teacherId]);
 
-  // جلب الثيم النشط
-  const fetchActiveTheme = useCallback(async () => {
+  // جلب الساعات المركزية
+  const fetchCenterHours = useCallback(async () => {
+    setLoadingCenterHours(true);
     try {
-      const response = await api.get(`/teachers/${teacherId}/theme`);
-      console.log("Active theme response:", response.data);
-      if (response.data?.status && response.data?.active_theme) {
-        setActiveTheme(response.data.active_theme);
-        setTheme(response.data.active_theme);
-        localStorage.setItem('theme', response.data.active_theme);
+      const response = await api.post('/center-hour/index', {});
+      if (response.data?.data) {
+        setAllCenterHours(response.data.data);
       }
-    } catch (error: any) {
-      console.error("Error fetching theme:", error);
+    } catch (error) {
+      console.error('Failed to fetch center hours:', error);
+    } finally {
+      setLoadingCenterHours(false);
     }
-  }, [teacherId, setTheme]);
+  }, []);
 
-  // تغيير الثيم - نسخة محسنة
-  const handleThemeChange = async (themeName: string) => {
-    try {
-      const response = await api.post<ThemeResponse>('/activate/theme', { 
-        theme: themeName, 
-        teacher_id: teacherId  // تأكد من استخدام teacher_id (underscore) وليس teacherId (camelCase)
-      });
-      
-      console.log("Theme change response:", response.data);
-      
-      if (response.data?.status) {
-        // تحديث الثيم النشط من الاستجابة
-        setActiveTheme(themeName);
-        setTheme(themeName);
-        localStorage.setItem('theme', themeName);
-        
-        toast.success(`Theme changed to ${themeName} successfully! 🎨`);
-        
-        // إعادة جلب الثيم النشط للتأكد
-        await fetchActiveTheme();
-      } else {
-        toast.error("Failed to change theme: Invalid response");
-      }
-      
-    } catch (error: any) {
-      console.error("Error changing theme:", error);
-      toast.error(error.response?.data?.message || "Failed to change theme");
+  useEffect(() => {
+    if (teacherId) {
+      fetchCenterHours();
+      fetchTeacherReport();
     }
+  }, [teacherId, fetchCenterHours, fetchTeacherReport]);
+
+  // Filtered Students
+  const filteredStudents = useMemo(() => {
+    let result = [...dashboardStudents];
+
+    if (filterStageId) {
+      result = result.filter(s => s.stage_id === filterStageId);
+    }
+    if (filterAttendance) {
+      result = result.filter(s => s.type_of_attendance === filterAttendance);
+    }
+    if (filterStatus !== '') {
+      result = result.filter(s => s.active === (filterStatus === 'active'));
+    }
+    if (filterTypeOfStudy) {
+      result = result.filter(s => s.type_of_study === filterTypeOfStudy);
+    }
+    if (filterPhone) {
+      result = result.filter(s => s.phone?.includes(filterPhone));
+    }
+    if (filterCodeParent) {
+      result = result.filter(s => s.code_parent?.includes(filterCodeParent));
+    }
+    if (filterCenterHourId) {
+      result = result.filter(s => String(s.center_hour_id) === filterCenterHourId);
+    }
+
+    return result;
+  }, [
+    dashboardStudents, 
+    filterStageId, 
+    filterAttendance, 
+    filterStatus,
+    filterTypeOfStudy,
+    filterPhone,
+    filterCodeParent,
+    filterCenterHourId
+  ]);
+
+  const clearFilters = () => {
+    setFilterStageId(null);
+    setFilterAttendance('');
+    setFilterStatus('');
+    setFilterTypeOfStudy('');
+    setFilterPhone('');
+    setFilterCodeParent('');
+    setFilterCenterHourId('');
+    setShowFilters(false);
   };
 
-  // Manual refresh handler
-  const handleRefresh = useCallback(async () => {
+  const hasActiveFilters = !!(filterStageId || filterAttendance || filterStatus || 
+    filterTypeOfStudy || filterPhone || filterCodeParent || filterCenterHourId);
+
+  const getCenterHourDisplay = (hour: any) => {
+    return `${hour.title} - ${hour.date} (${hour.hours_start} to ${hour.hours_end})`;
+  };
+
+  const handleRefresh = async () => {
     await refreshData();
     await fetchTeacherReport();
-    await fetchActiveTheme();
     toast.success("Data refreshed successfully");
-  }, [refreshData, fetchTeacherReport, fetchActiveTheme]);
+  };
 
-  // Students Modal Handlers
   const handleViewSemesterStudents = useCallback(async (semester: any) => {
     setStudentsModalTitle(`Students in ${semester.name}`);
     setStudentsModalSubtitle(semester.name_ar);
     setStudentsModalType('semester');
     setStudentsModalOpen(true);
     setModalStudentsLoading(true);
-    
     const result = await fetchSemesterWithStudents(semester.id);
     setModalStudents(result?.students || []);
     setModalStudentsLoading(false);
@@ -644,7 +646,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     setStudentsModalType('course');
     setStudentsModalOpen(true);
     setModalStudentsLoading(true);
-    
     const result = await fetchCourseWithStudents(course.id);
     setModalStudents(result?.students || []);
     setModalStudentsLoading(false);
@@ -656,18 +657,23 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     setStudentsModalType('lesson');
     setStudentsModalOpen(true);
     setModalStudentsLoading(true);
-    
     const result = await fetchLessonWithStudents(lesson.id);
     setModalStudents(result?.students || []);
     setModalStudentsLoading(false);
   }, [fetchLessonWithStudents]);
 
-  useEffect(() => {
-    if (teacherId) {
-      fetchTeacherReport();
-      fetchActiveTheme();
+  const handleViewCourseDetails = async (course: any) => {
+    try {
+      setDetailsLoading(true);
+      const courseDetailsData = getCourseDetails(course.id);
+      setSelectedCourse({ ...course, details: courseDetailsData });
+      setOpenDetails(true);
+    } catch (error) {
+      toast.error("Failed to load course details");
+    } finally {
+      setDetailsLoading(false);
     }
-  }, [teacherId, fetchTeacherReport, fetchActiveTheme]);
+  };
 
   // إحصائيات الديناميكية من التقرير
   const dynamicStats = useMemo(() => {
@@ -707,39 +713,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     { id: 'theme', label: 'Appearance', icon: Sparkles },
   ];
 
-  const filteredStudents = useMemo(() => {
-    if (!searchTerm.trim()) return dashboardStudents;
-    return dashboardStudents.filter(
-      (student) =>
-        student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.phone?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [dashboardStudents, searchTerm]);
-
-  const handleViewCourseDetails = async (course: any) => {
-    try {
-      setDetailsLoading(true);
-      const courseDetailsFromHook = getCourseDetails(course.id);
-      
-      if (courseDetailsFromHook && courseDetailsFromHook.length > 0) {
-        setSelectedCourse(course);
-        setCourseDetails(courseDetailsFromHook);
-        setOpenDetails(true);
-      } else {
-        const details = await teachersService.getCourseDetails(course.id);
-        setSelectedCourse(course);
-        setCourseDetails(details ?? []);
-        setOpenDetails(true);
-      }
-    } catch (error: any) {
-      console.error("API ERROR =>", error);
-      toast.error("Failed to load course details");
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
   // إعداد بيانات الـ components
   const lessons = courseDetails;
   const courseExams = useMemo(() => {
@@ -763,7 +736,8 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     );
   }
 
-  // ================= RENDER OVERVIEW =================
+  // ================= RENDER FUNCTIONS =================
+
   const renderOverview = () => (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -814,7 +788,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                 <th className="text-left p-4 text-sm font-medium">Type</th>
                 <th className="text-left p-4 text-sm font-medium">Students</th>
                 <th className="text-left p-4 text-sm font-medium">Revenue</th>
-                <th className="text-left p-4 text-sm font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -836,24 +809,14 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                         <p className="text-xs text-muted-foreground">{course.category}</p>
                       </div>
                     </div>
-                   </td>
+                  </td>
                   <td className="p-4">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${course.type === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                       {course.type}
                     </span>
-                   </td>
+                  </td>
                   <td className="p-4 font-medium">{course.students}</td>
                   <td className="p-4 font-medium text-green-600">${course.price}</td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => handleViewCourseDetails(course)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleViewCourseStudents(course)}>
-                        <Users className="h-4 w-4" />
-                      </Button>
-                    </div>
-                   </td>
                 </motion.tr>
               ))}
             </tbody>
@@ -863,7 +826,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     </motion.div>
   );
 
-  // ================= RENDER COURSES =================
   const renderCourses = () => (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex items-center gap-3 p-1 bg-muted/50 rounded-xl w-fit flex-wrap">
@@ -974,49 +936,36 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     </motion.div>
   );
 
-  // ================= RENDER STUDENTS =================
   const renderStudents = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <Card className="rounded-2xl overflow-hidden">
-        <div className="p-6 border-b bg-gradient-to-r from-muted/50 to-transparent">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h3 className="font-semibold text-lg">Enrolled Students</h3>
-              <p className="text-sm text-muted-foreground">Manage and track student progress</p>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search students..."
-                className="pl-9 w-64"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-muted/20">
-                <th className="text-left p-4 text-sm font-medium">Student</th>
-                <th className="text-left p-4 text-sm font-medium">Enrolled Courses</th>
-                <th className="text-left p-4 text-sm font-medium">Progress</th>
-                <th className="text-left p-4 text-sm font-medium">Status</th>
-               </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.map((student, idx) => (
-                <StudentRow key={student.id} student={student} idx={idx} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </motion.div>
+    <div className="space-y-4">
+      <StudentsFilters
+        showFilters={showFilters}
+        setShowFilters={setShowFilters}
+        filterStageId={filterStageId}
+        setFilterStageId={setFilterStageId}
+        filterAttendance={filterAttendance}
+        setFilterAttendance={setFilterAttendance}
+        filterStatus={filterStatus}
+        setFilterStatus={setFilterStatus}
+        filterTypeOfStudy={filterTypeOfStudy}
+        setFilterTypeOfStudy={setFilterTypeOfStudy}
+        filterPhone={filterPhone}
+        setFilterPhone={setFilterPhone}
+        filterCodeParent={filterCodeParent}
+        setFilterCodeParent={setFilterCodeParent}
+        filterCenterHourId={filterCenterHourId}
+        setFilterCenterHourId={setFilterCenterHourId}
+        stages={stages}
+        allCenterHours={allCenterHours}
+        loadingCenterHours={loadingCenterHours}
+        clearFilters={clearFilters}
+        getCenterHourDisplay={getCenterHourDisplay}
+        hasActiveFilters={hasActiveFilters}
+      />
+      <StudentsTable students={filteredStudents} />
+    </div>
   );
 
-  // ================= RENDER ASSIGNMENTS =================
   const renderAssignmentsTab = () => (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <Card className="rounded-2xl overflow-hidden">
@@ -1038,7 +987,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                 <th className="text-left p-4 text-sm font-medium">Duration</th>
                 <th className="text-left p-4 text-sm font-medium">Status</th>
                 <th className="text-left p-4 text-sm font-medium">Created</th>
-               </tr>
+              </tr>
             </thead>
             <tbody>
               {dashboardAssignments.map((assignment, idx) => (
@@ -1051,7 +1000,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     </motion.div>
   );
 
-  // ================= RENDER EXAMS =================
   const renderExamsTab = () => (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <Card className="rounded-2xl overflow-hidden">
@@ -1073,7 +1021,7 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
                 <th className="text-left p-4 text-sm font-medium">Duration</th>
                 <th className="text-left p-4 text-sm font-medium">Result</th>
                 <th className="text-left p-4 text-sm font-medium">Status</th>
-               </tr>
+              </tr>
             </thead>
             <tbody>
               {dashboardExams.map((exam: any, idx) => (
@@ -1086,7 +1034,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     </motion.div>
   );
 
-  // ================= RENDER BOOKS =================
   const renderBooksTab = () => (
     <motion.div
       initial={{ opacity: 0 }}
@@ -1105,7 +1052,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     </motion.div>
   );
 
-  // ================= RENDER REPORTS =================
   const renderReportsTab = () => (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       {reportLoading ? (
@@ -1180,8 +1126,6 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
               </div>
             </Card>
           </div>
-
-       
         </>
       ) : (
         <div className="text-center py-12">
@@ -1192,56 +1136,13 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
     </motion.div>
   );
 
-  // ================= RENDER THEME =================
   const renderThemeTab = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <Card className="p-8">
-        <div className="text-center mb-8">
-          <Sparkles className="h-12 w-12 mx-auto text-primary mb-3" />
-          <h3 className="text-2xl font-bold">Customize Your Theme</h3>
-          <p className="text-muted-foreground mt-2">Choose a style that matches your preference</p>
-          {activeTheme && (
-            <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
-              <Award className="h-3 w-3" />
-              Current: {activeTheme === 'theme1' ? 'Ocean Breeze' : 'Forest Mist'}
-            </div>
-          )}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[
-            { name: 'theme1', label: 'Scientific theme ', gradient: 'from-blue-500 to-purple-500', colors: ['#3b82f6', '#8b5cf6'] },
-            { name: 'theme2', label: 'Basic theme 1', gradient: 'from-emerald-500 to-teal-500', colors: ['#10b981', '#14b8a6'] },
-          ].map((theme) => (
-            <div
-              key={theme.name}
-              className={`cursor-pointer rounded-2xl border-2 p-6 text-center transition-all hover:shadow-xl ${
-                activeTheme === theme.name ? 'border-primary shadow-lg bg-primary/5' : 'border-border'
-              }`}
-              onClick={() => handleThemeChange(theme.name)}
-            >
-              <div className={`h-32 rounded-xl bg-gradient-to-r ${theme.gradient} mb-4 flex items-center justify-center transition-transform hover:scale-105`}>
-                <Sparkles className="h-8 w-8 text-white opacity-80" />
-              </div>
-              <p className="font-semibold text-lg">{theme.label}</p>
-              <div className="flex items-center justify-center gap-2 mt-3">
-                {theme.colors.map((color, i) => (
-                  <div key={i} className="w-6 h-6 rounded-full shadow-md" style={{ backgroundColor: color }} />
-                ))}
-              </div>
-              {activeTheme === theme.name && (
-                <div className="mt-3 text-xs text-primary font-medium flex items-center justify-center gap-1">
-                  <CheckCircle className="h-3 w-3" />
-                  Active Theme
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
-    </motion.div>
+    <ThemeCustomizer 
+      teacherId={teacherId}
+      teacherName={teacherName}
+    />
   );
 
-  // ================= COURSE DETAILS DIALOG =================
   const renderCourseDetailsDialog = () => (
     <Dialog open={openDetails} onOpenChange={setOpenDetails}>
       <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto p-0">

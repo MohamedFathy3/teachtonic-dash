@@ -8,7 +8,7 @@ import {
   Users, Phone, Mail, MapPin, GraduationCap, Star, Eye,
   Download, Share2, Heart, Edit, Trash2, Power, Loader2,
   CheckCircle, XCircle, AlertCircle, Image as ImageIcon,
-  UserCheck, UserX, Globe, Clock, Award, TrendingUp, Filter, X, Search
+  UserCheck, UserX, Globe, Clock, Award, TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +16,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Input } from '@/components/ui/input';
 import { useApp } from '@/contexts/AppContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { arSA, enUS } from 'date-fns/locale';
 import api from '@/lib/api';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 
 interface BookDetail {
   id: number;
@@ -72,14 +69,6 @@ export const BookDetailsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
-  // ✅ State للفلتر في الطلاب
-  const [studentFilters, setStudentFilters] = useState({
-    search: '',
-    typeOfAttendance: '',
-    active: '',
-  });
-  const [showStudentFilters, setShowStudentFilters] = useState(false);
 
   // جلب تفاصيل الكتاب
   const fetchBook = async () => {
@@ -100,150 +89,6 @@ export const BookDetailsPage: React.FC = () => {
   useEffect(() => {
     fetchBook();
   }, [id]);
-
-  // ✅ فلترة الطلاب
-  const filteredStudents = React.useMemo(() => {
-    if (!book?.students) return [];
-    let filtered = [...book.students];
-
-    if (studentFilters.search) {
-      const searchTerm = studentFilters.search.toLowerCase();
-      filtered = filtered.filter(s => 
-        s.name?.toLowerCase().includes(searchTerm) ||
-        s.id?.toString().includes(searchTerm)
-      );
-    }
-
-    if (studentFilters.typeOfAttendance) {
-      filtered = filtered.filter(s => s.type_of_attendance === studentFilters.typeOfAttendance);
-    }
-
-    if (studentFilters.active !== '') {
-      filtered = filtered.filter(s => s.active === (studentFilters.active === 'active'));
-    }
-
-    return filtered;
-  }, [book?.students, studentFilters]);
-
-  // ✅ تصدير بيانات الكتاب إلى Excel
-  const exportBookToExcel = () => {
-    if (!book) return;
-
-    const bookData = [{
-      [lang === 'ar' ? 'المعرف' : 'ID']: book.id,
-      [lang === 'ar' ? 'العنوان' : 'Title']: book.title,
-      [lang === 'ar' ? 'المؤلف' : 'Writer']: book.writer,
-      [lang === 'ar' ? 'السعر' : 'Price']: `${book.price} EGP`,
-      [lang === 'ar' ? 'الخصم' : 'Discount']: `${book.discount} EGP`,
-      [lang === 'ar' ? 'السعر بعد الخصم' : 'Final Price']: `${parseFloat(book.price) - parseFloat(book.discount || '0')} EGP`,
-      [lang === 'ar' ? 'عدد الصفحات' : 'Pages']: book.pages_count,
-      [lang === 'ar' ? 'المرحلة' : 'Stage']: isRTL ? book.stage?.name_ar : book.stage?.name,
-      [lang === 'ar' ? 'الحالة' : 'Status']: book.active === 1 ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
-      [lang === 'ar' ? 'تاريخ الإضافة' : 'Created At']: formatDate(book.createdAt),
-    }];
-
-    const worksheet = XLSX.utils.json_to_sheet(bookData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, lang === 'ar' ? 'معلومات الكتاب' : 'Book Info');
-    
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    saveAs(blob, `book_${book.id}_info.xlsx`);
-    
-    toast.success(lang === 'ar' ? 'تم تصدير معلومات الكتاب بنجاح' : 'Book info exported successfully');
-  };
-
-  // ✅ تصدير الطلاب إلى Excel
-  const exportStudentsToExcel = () => {
-    if (!filteredStudents.length) return;
-
-    const studentsData = filteredStudents.map((student, index) => ({
-      [lang === 'ar' ? '#' : 'No']: index + 1,
-      [lang === 'ar' ? 'المعرف' : 'ID']: student.id,
-      [lang === 'ar' ? 'الاسم' : 'Name']: student.name,
-      [lang === 'ar' ? 'الهاتف' : 'Phone']: student.phone,
-      [lang === 'ar' ? 'هاتف ولي الأمر' : 'Parent Phone']: student.phone_parent || '—',
-      [lang === 'ar' ? 'كود ولي الأمر' : 'Parent Code']: student.code_parent || '—',
-      [lang === 'ar' ? 'نوع الحضور' : 'Attendance Type']: student.type_of_attendance === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'سنتر' : 'Center'),
-      [lang === 'ar' ? 'الحالة' : 'Status']: student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
-      // [lang === 'ar' ? 'الرصيد' : 'Balance']: `${student.balance} EGP`,
-      [lang === 'ar' ? 'المحافظة' : 'Governorate']: student.governorate || '—',
-      [lang === 'ar' ? 'المدرسة' : 'School']: student.school_name || '—',
-      [lang === 'ar' ? 'تاريخ التسجيل' : 'Registered']: formatDate(student.created_at),
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(studentsData);
-    const colWidths = [{ wch: 6 }, { wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 15 }];
-    worksheet['!cols'] = colWidths;
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, lang === 'ar' ? 'طلاب الكتاب' : 'Book Students');
-    
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    saveAs(blob, `book_${book?.id}_students.xlsx`);
-    
-    toast.success(lang === 'ar' ? 'تم تصدير بيانات الطلاب بنجاح' : 'Students data exported successfully');
-  };
-
-  // ✅ تصدير الكل (الكتاب + الطلاب)
-  const exportAllToExcel = () => {
-    if (!book) return;
-
-    const workbook = XLSX.utils.book_new();
-
-    // ورقة معلومات الكتاب
-    const bookData = [{
-      [lang === 'ar' ? 'المعرف' : 'ID']: book.id,
-      [lang === 'ar' ? 'العنوان' : 'Title']: book.title,
-      [lang === 'ar' ? 'المؤلف' : 'Writer']: book.writer,
-      [lang === 'ar' ? 'السعر' : 'Price']: `${book.price} EGP`,
-      [lang === 'ar' ? 'الخصم' : 'Discount']: `${book.discount} EGP`,
-      [lang === 'ar' ? 'السعر بعد الخصم' : 'Final Price']: `${parseFloat(book.price) - parseFloat(book.discount || '0')} EGP`,
-      [lang === 'ar' ? 'عدد الصفحات' : 'Pages']: book.pages_count,
-      [lang === 'ar' ? 'المرحلة' : 'Stage']: isRTL ? book.stage?.name_ar : book.stage?.name,
-      [lang === 'ar' ? 'الحالة' : 'Status']: book.active === 1 ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
-      [lang === 'ar' ? 'تاريخ الإضافة' : 'Created At']: formatDate(book.createdAt),
-    }];
-    const bookSheet = XLSX.utils.json_to_sheet(bookData);
-    XLSX.utils.book_append_sheet(workbook, bookSheet, lang === 'ar' ? 'معلومات الكتاب' : 'Book Info');
-
-    // ورقة الطلاب
-    if (filteredStudents.length > 0) {
-      const studentsData = filteredStudents.map((student, index) => ({
-        [lang === 'ar' ? '#' : 'No']: index + 1,
-        [lang === 'ar' ? 'المعرف' : 'ID']: student.id,
-        [lang === 'ar' ? 'الاسم' : 'Name']: student.name,
-        [lang === 'ar' ? 'الهاتف' : 'Phone']: student.phone,
-        [lang === 'ar' ? 'هاتف ولي الأمر' : 'Parent Phone']: student.phone_parent || '—',
-        [lang === 'ar' ? 'كود ولي الأمر' : 'Parent Code']: student.code_parent || '—',
-        [lang === 'ar' ? 'نوع الحضور' : 'Attendance Type']: student.type_of_attendance === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'سنتر' : 'Center'),
-        [lang === 'ar' ? 'الحالة' : 'Status']: student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
-        [lang === 'ar' ? 'الرصيد' : 'Balance']: `${student.balance} EGP`,
-        [lang === 'ar' ? 'المحافظة' : 'Governorate']: student.governorate || '—',
-        [lang === 'ar' ? 'المدرسة' : 'School']: student.school_name || '—',
-        [lang === 'ar' ? 'تاريخ التسجيل' : 'Registered']: formatDate(student.created_at),
-      }));
-      const studentsSheet = XLSX.utils.json_to_sheet(studentsData);
-      XLSX.utils.book_append_sheet(workbook, studentsSheet, lang === 'ar' ? 'طلاب الكتاب' : 'Book Students');
-    }
-
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    saveAs(blob, `book_${book.id}_complete_${new Date().toISOString().split('T')[0]}.xlsx`);
-    
-    toast.success(lang === 'ar' ? 'تم تصدير جميع البيانات بنجاح' : 'All data exported successfully');
-  };
-
-  // دالة مساعدة لمسح الفلاتر
-  const clearStudentFilters = () => {
-    setStudentFilters({
-      search: '',
-      typeOfAttendance: '',
-      active: '',
-    });
-    setShowStudentFilters(false);
-  };
 
   // دوال مساعدة
   const formatDate = (date: string) => {
@@ -301,7 +146,7 @@ export const BookDetailsPage: React.FC = () => {
       variants={fadeIn}
       className="space-y-6 max-w-7xl mx-auto px-4 pb-8"
     >
-      {/* Header with Export Buttons */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <motion.div whileHover={{ x: -5 }}>
@@ -330,27 +175,14 @@ export const BookDetailsPage: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {/* زر تصدير الكتاب */}
-          <Button variant="outline" size="sm" onClick={exportBookToExcel} className="gap-1">
-            <Download className="h-4 w-4" />
-            {lang === 'ar' ? 'تصدير الكتاب' : 'Export Book'}
-          </Button>
-          {/* زر تصدير الطلاب */}
-          {stats.students > 0 && (
-            <Button variant="outline" size="sm" onClick={exportStudentsToExcel} className="gap-1 bg-green-50 dark:bg-green-950/20 border-green-200">
-              <Download className="h-4 w-4 text-green-600" />
-              <span className="text-green-600 dark:text-green-400">{lang === 'ar' ? 'تصدير الطلاب' : 'Export Students'}</span>
-            </Button>
-          )}
-          {/* زر تصدير الكل */}
-          <Button size="sm" onClick={exportAllToExcel} className="gap-1 bg-gradient-to-r from-blue-600 to-indigo-600">
-            <Download className="h-4 w-4" />
-            {lang === 'ar' ? 'تصدير الكل' : 'Export All'}
-          </Button>
+        <div className="flex gap-2">
           <Button variant="outline" size="sm" className="gap-1">
             <Share2 className="h-4 w-4" />
             {lang === 'ar' ? 'مشاركة' : 'Share'}
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1">
+            <Heart className="h-4 w-4" />
+            {lang === 'ar' ? 'إعجاب' : 'Like'}
           </Button>
           <Button size="sm" className="gap-1 bg-gradient-to-r from-blue-600 to-indigo-600">
             <Edit className="h-4 w-4" />
@@ -359,7 +191,6 @@ export const BookDetailsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* باقي الكود كما هو - Hero Section, Stats Cards, Tabs... */}
       {/* Hero Section with Book Cover */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -420,15 +251,13 @@ export const BookDetailsPage: React.FC = () => {
             {lang === 'ar' ? 'الطلاب' : 'Students'}
             {stats.students > 0 && <Badge variant="secondary" className="ml-1">{stats.students}</Badge>}
           </TabsTrigger>
-<<<<<<< HEAD
-=======
 
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
         </TabsList>
 
-        {/* Overview Tab - نفس الكود */}
+        {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-5 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Book Info Card */}
             <Card className="rounded-xl">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -451,6 +280,7 @@ export const BookDetailsPage: React.FC = () => {
               </CardContent>
             </Card>
 
+            {/* Stage Info Card */}
             {book.stage && (
               <Card className="rounded-xl">
                 <CardHeader className="pb-3">
@@ -468,7 +298,7 @@ export const BookDetailsPage: React.FC = () => {
           </div>
         </TabsContent>
 
-        {/* Students Tab with Filters and Export */}
+        {/* Students Tab */}
         <TabsContent value="students" className="mt-4">
           {stats.students > 0 ? (
             <>
@@ -480,79 +310,13 @@ export const BookDetailsPage: React.FC = () => {
                 <SummaryCard icon={MapPin} label={lang === 'ar' ? 'سنتر' : 'Center'} value={stats.centerStudents} color="orange" />
               </div>
 
-              {/* Filter Section */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
-                <div className="flex gap-2 flex-wrap">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowStudentFilters(!showStudentFilters)}
-                    className="gap-2"
-                  >
-                    <Filter className="h-4 w-4" />
-                    {lang === 'ar' ? 'فلاتر' : 'Filters'}
-                    {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active) && (
-                      <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center rounded-full">
-                        {[studentFilters.search, studentFilters.typeOfAttendance, studentFilters.active].filter(Boolean).length}
-                      </Badge>
-                    )}
-                  </Button>
-                  {/* زر تصدير الطلاب */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={exportStudentsToExcel}
-                    className="gap-2 bg-green-50 dark:bg-green-950/20 border-green-200"
-                  >
-                    <Download className="h-4 w-4 text-green-600" />
-                    <span className="text-green-600 dark:text-green-400">{lang === 'ar' ? 'تصدير Excel' : 'Export Excel'}</span>
-                  </Button>
-                  {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active) && (
-                    <Button variant="ghost" size="sm" onClick={clearStudentFilters} className="gap-1 text-red-500">
-                      <X className="h-4 w-4" />
-                      {lang === 'ar' ? 'مسح الكل' : 'Clear All'}
-                    </Button>
-                  )}
-                </div>
-
-                {/* Search Input */}
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={lang === 'ar' ? 'بحث بالاسم أو المعرف...' : 'Search by name or ID...'}
-                    value={studentFilters.search}
-                    onChange={(e) => setStudentFilters(prev => ({ ...prev, search: e.target.value }))}
-                    className="pl-9 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              {/* Results Count */}
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-sm text-muted-foreground">
-                  {lang === 'ar' 
-                    ? `عرض ${filteredStudents.length} من ${stats.students} طالب`
-                    : `Showing ${filteredStudents.length} of ${stats.students} students`}
-                </p>
-              </div>
-
-              {/* Students List */}
               <div className="space-y-3">
-<<<<<<< HEAD
-                {filteredStudents.map((student, idx) => (
-                  <StudentCard 
-                    key={student.id} 
-                    student={student} 
-                    idx={idx} 
-                    lang={lang} 
-=======
                 {book.students.map((student, idx) => (
                   <StudentCard
                     key={student.id}
                     student={student}
                     idx={idx}
                     lang={lang}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                     formatDate={formatDate}
                   />
                 ))}
@@ -562,11 +326,8 @@ export const BookDetailsPage: React.FC = () => {
             <EmptyState icon={Users} message={lang === 'ar' ? 'لا يوجد طلاب اشتروا هذا الكتاب' : 'No students bought this book'} />
           )}
         </TabsContent>
-<<<<<<< HEAD
-=======
 
 
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
       </Tabs>
 
       {/* Image Modal */}
@@ -598,7 +359,7 @@ export const BookDetailsPage: React.FC = () => {
   );
 };
 
-// ==================== مكونات مساعدة (نفس الكود) ====================
+// ==================== مكونات مساعدة ====================
 
 const StatCard: React.FC<{ icon: React.ElementType; label: string; value: React.ReactNode; color: string }> = ({
   icon: Icon, label, value, color

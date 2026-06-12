@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/instructor/InstructorStudents.tsx
 
-import { useMemo, useCallback, useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { useTeacherMeta } from '@/hooks/useTeacherMeta';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { studentService, Student } from '@/services/student.service';
 import { StudentLearningPage } from './StudentLearningPage';
@@ -12,14 +13,16 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { AdvancedFilters } from '@/components/common/AdvancedFilters';
 import {
   Loader2, Search, Users, User, Phone, Calendar,
-  Monitor, Building2, CheckCircle, XCircle, ChevronLeft, ChevronRight, 
-  Award, Sparkles, Eye, Clock, Key, Lock, Save, AlertCircle,
-  GraduationCap, EyeOff, School,
+  Monitor, Building2, CheckCircle, XCircle, Filter, X,
+  ChevronLeft, ChevronRight, Award, Sparkles, Eye, Clock,
+  Key, Lock, Save, AlertCircle,
+  GraduationCap,
+  EyeOff
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import {
@@ -41,7 +44,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// Animations
+// ✅ Animations
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -56,10 +59,11 @@ const itemVariants = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { type: 'spring', stiffness: 300, damping: 24 },
+    transition: { type: 'spring', stiffness: 300, damping: 24 } as any,
   },
-};
+} as any;
 
+// ✅ Interface for Center Hour
 interface CenterHour {
   id: number;
   title: string;
@@ -73,50 +77,16 @@ interface CenterHour {
   createdAt: string;
 }
 
-// نوع unified للفلاتر
-interface FilterState {
-  stageId: number | null;
-  attendance: string;
-  status: string;
-  studentId: string;
-  phone: string;
-  parentCode: string;
-  centerHourId: string;
-  studentType: string;
-  search: string;
-}
-
 export const InstructorStudents: React.FC = () => {
   const { t, lang, user } = useApp();
   const { stages } = useTeacherMeta(user?.id);
   const isRTL = lang === 'ar';
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-<<<<<<< HEAD
-  
-  // ✅ State موحد للفلاتر
-  const [filters, setFilters] = useState<FilterState>({
-    stageId: null,
-    attendance: '',
-    status: '',
-    studentId: '',
-    phone: '',
-    parentCode: '',
-    centerHourId: '',
-    studentType: '',
-    search: '',
-  });
-  
-=======
   // ✅ State
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
   const [students, setStudents] = useState<Student[]>([]);
-  const [allStudents, setAllStudents] = useState<Student[]>([]); // للفلترة المحلية
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-<<<<<<< HEAD
-  
-=======
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -133,28 +103,25 @@ export const InstructorStudents: React.FC = () => {
   const [filterCenterHourId, setFilterCenterHourId] = useState<string>('');
 
   // ✅ State for Center Hours list (all)
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
   const [allCenterHours, setAllCenterHours] = useState<CenterHour[]>([]);
-  const [filteredCenterHours, setFilteredCenterHours] = useState<CenterHour[]>([]);
   const [loadingCenterHours, setLoadingCenterHours] = useState(false);
 
+  // ✅ Selected student for learning page
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [showLearningPage, setShowLearningPage] = useState(false);
 
+  // ✅ State for Change Password Modal
   const [changePasswordStudent, setChangePasswordStudent] = useState<Student | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
+  // ✅ State for Toggle Active Alert
   const [toggleActiveStudent, setToggleActiveStudent] = useState<Student | null>(null);
   const [togglingActive, setTogglingActive] = useState(false);
-<<<<<<< HEAD
-
-=======
   const [filterTypeOfStudy, setFilterTypeOfStudy] = useState<string>('');
   // ✅ Pagination
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
   const [pagination, setPagination] = useState({
     currentPage: 1,
     lastPage: 1,
@@ -162,17 +129,24 @@ export const InstructorStudents: React.FC = () => {
     perPage: 10,
   });
 
-  // Center Hours filtering
+  // ✅ فلترة الساعات المركزية حسب المرحلة
   useEffect(() => {
-    if (filters.stageId) {
-      const filtered = allCenterHours.filter(() => true);
+    if (filterStageId) {
+      // فلترة الساعات المركزية اللي مرتبطة بالمرحلة المختارة
+      const filtered = allCenterHours.filter(hour => {
+        // هنا المفروض يكون عندك علاقة بين center_hour والمرحلة
+        // لو في الـ API رابط بينهم، استخدمه. حالياً بنعرض الكل
+        return true;
+      });
       setFilteredCenterHours(filtered);
     } else {
       setFilteredCenterHours(allCenterHours);
     }
-    setFilters(prev => ({ ...prev, centerHourId: '' }));
-  }, [filters.stageId, allCenterHours]);
+    // إعادة تعيين الساعة المركزية عند تغيير المرحلة
+    setFilterCenterHourId('');
+  }, [filterStageId, allCenterHours]);
 
+  // ✅ Fetch Center Hours for filter
   const fetchCenterHours = useCallback(async () => {
     setLoadingCenterHours(true);
     try {
@@ -188,16 +162,25 @@ export const InstructorStudents: React.FC = () => {
     }
   }, []);
 
+  // ✅ Load center hours when component mounts
   useEffect(() => {
-    if (user?.id) fetchCenterHours();
+    if (user?.id) {
+      fetchCenterHours();
+    }
   }, [user?.id, fetchCenterHours]);
 
-  // ✅ الفلترة المحلية (لما البيانات كلها موجودة)
-  const filteredStudents = useMemo(() => {
-    let result = [...allStudents];
+  // ✅ Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
+  const filteredStudents = useMemo(() => {
+    let result = [...students];
+
+    const q = debouncedSearch.trim().toLowerCase();
+
+    if (q) {
       result = result.filter(s =>
         s.name?.toLowerCase().includes(q) ||
         s.phone?.includes(q) ||
@@ -205,63 +188,58 @@ export const InstructorStudents: React.FC = () => {
       );
     }
 
-    if (filters.stageId) {
-      result = result.filter(s => s.stage_id === filters.stageId);
+    if (filterStageId) {
+      result = result.filter(s => s.stage_id === filterStageId);
     }
 
-    if (filters.attendance) {
-      result = result.filter(s => s.type_of_attendance === filters.attendance);
+    if (filterAttendance) {
+      result = result.filter(s => s.type_of_attendance === filterAttendance);
     }
 
-    if (filters.status !== '') {
-      result = result.filter(s => s.active === (filters.status === 'active'));
+    if (filterStatus !== '') {
+      result = result.filter(s => s.active === (filterStatus === 'active'));
     }
 
-    if (filters.studentId.trim()) {
-      const idNum = Number(filters.studentId);
+    if (filterId.trim()) {
+      const idNum = Number(filterId);
       if (!Number.isNaN(idNum)) {
         result = result.filter(s => s.id === idNum);
       }
     }
 
-    if (filters.phone) {
-      result = result.filter(s => s.phone?.includes(filters.phone));
+    if (filterPhone) {
+      result = result.filter(s => s.phone?.includes(filterPhone));
     }
 
-    if (filters.parentCode) {
-      result = result.filter(s => s.code_parent?.includes(filters.parentCode));
+    if (filterCodeParent) {
+      result = result.filter(s => s.code_parent?.includes(filterCodeParent));
     }
 
-    if (filters.centerHourId) {
-      result = result.filter(s => String(s.center_hour_id) === filters.centerHourId);
-    }
-
-    if (filters.studentType) {
-      result = result.filter(s => s.type_of_study === filters.studentType);
+    if (filterCenterHourId) {
+      result = result.filter(s => String(s.center_hour_id) === filterCenterHourId);
     }
     if (filterTypeOfStudy) {
       result = result.filter(s => s.type_of_study === filterTypeOfStudy);
     }
 
     return result;
-  }, [allStudents, filters]);
+  }, [
+    students,
+    debouncedSearch,
+    filterStageId,
+    filterAttendance,
+    filterStatus,
+    filterId,
+    filterPhone,
+    filterCodeParent,
+    filterCenterHourId,
+  ]);
 
-  // ✅ دالة تجمع كل الفلاتر وتبعتها في Request واحد
+  // ✅ Fetch students
   const fetchStudents = useCallback(async (page = 1) => {
     setLoading(true);
     setError(null);
-    
     try {
-<<<<<<< HEAD
-      const apiFilters: any = {};
-      
-      if (filters.stageId) apiFilters.stage_id = filters.stageId;
-      if (filters.attendance) apiFilters.type_of_attendance = filters.attendance;
-      if (filters.status !== '') apiFilters.active = filters.status === 'active';
-      if (filters.studentId.trim()) {
-        const idNum = Number(filters.studentId);
-        if (!Number.isNaN(idNum)) apiFilters.id = idNum;
-=======
       const filters: any = {};
       if (filterStageId) filters.stage_id = filterStageId;
       if (filterAttendance) filters.type_of_attendance = filterAttendance;
@@ -270,22 +248,18 @@ export const InstructorStudents: React.FC = () => {
       if (filterId.trim()) {
         const idNum = Number(filterId);
         if (!Number.isNaN(idNum)) filters.id = idNum;
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
       }
-      if (filters.phone) apiFilters.phone = filters.phone;
-      if (filters.parentCode) apiFilters.code_parent = filters.parentCode;
-      if (filters.centerHourId) apiFilters.center_hour_id = Number(filters.centerHourId);
-      if (filters.studentType) apiFilters.type_of_study = filters.studentType;
-      if (filters.search) apiFilters.search = filters.search;
+      if (filterPhone) filters.phone = filterPhone;
+      if (filterCodeParent) filters.code_parent = filterCodeParent;
+      if (filterCenterHourId) filters.center_hour_id = Number(filterCenterHourId);
 
       const response = await studentService.getTeacherStudents(
         user?.id || undefined,
-        apiFilters,
+        filters,
         pagination.perPage,
-        page
+        page,
+        debouncedSearch
       );
-      
-      setAllStudents(response.data);
       setStudents(response.data);
       setPagination({
         currentPage: response.meta.current_page,
@@ -298,9 +272,6 @@ export const InstructorStudents: React.FC = () => {
     } finally {
       setLoading(false);
     }
-<<<<<<< HEAD
-  }, [filters, pagination.perPage, user?.id]);
-=======
   }, [
     debouncedSearch,
     filterStageId,
@@ -314,20 +285,11 @@ export const InstructorStudents: React.FC = () => {
     user?.id,
     filterTypeOfStudy,
   ]);
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
 
-  // الـ debounced search
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchStudents(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [filters.search]);
-
-  // جلب البيانات الأولية
-  useEffect(() => {
-    if (user?.id) fetchStudents(1);
-  }, [user?.id]);
+    if (!user?.id) return;
+    fetchStudents(1);
+  }, [fetchStudents, user?.id]);
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= pagination.lastPage) {
@@ -335,20 +297,6 @@ export const InstructorStudents: React.FC = () => {
     }
   };
 
-<<<<<<< HEAD
-  const clearAllFilters = () => {
-    setFilters({
-      stageId: null,
-      attendance: '',
-      status: '',
-      studentId: '',
-      phone: '',
-      parentCode: '',
-      centerHourId: '',
-      studentType: '',
-      search: '',
-    });
-=======
   const clearFilters = () => {
     setFilterStageId(null);
     setFilterAttendance('');
@@ -364,24 +312,20 @@ export const InstructorStudents: React.FC = () => {
   };
 
   const applyFilters = () => {
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
     fetchStudents(1);
   };
 
-  const getCenterHourDisplay = (hour: CenterHour) => {
-    return `${hour.title} - ${hour.date} (${hour.hours_start} to ${hour.hours_end})`;
-  };
-
+  // ✅ Change Password Function
   const handleChangePassword = async () => {
     if (!changePasswordStudent) return;
 
     if (!newPassword || newPassword.length < 6) {
-      setPasswordError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      setPasswordError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError('كلمتا المرور غير متطابقتين');
+      setPasswordError(lang === 'ar' ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match');
       return;
     }
 
@@ -395,14 +339,10 @@ export const InstructorStudents: React.FC = () => {
       });
 
       if (response.data?.status === true || response.status === 200) {
-<<<<<<< HEAD
-        toast.success(`تم تغيير كلمة مرور الطالب ${changePasswordStudent.name} بنجاح`);
-=======
         toast.success(lang === 'ar'
           ? `تم تغيير كلمة مرور الطالب ${changePasswordStudent.name} بنجاح`
           : `Password changed successfully for ${changePasswordStudent.name}`
         );
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
         setChangePasswordStudent(null);
         setNewPassword('');
         setConfirmPassword('');
@@ -410,13 +350,15 @@ export const InstructorStudents: React.FC = () => {
         throw new Error(response.data?.message || 'Failed to change password');
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'فشل تغيير كلمة المرور');
-      setPasswordError(error?.response?.data?.message || 'حدث خطأ أثناء تغيير كلمة المرور');
+      console.error('Change password error:', error);
+      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'فشل تغيير كلمة المرور' : 'Failed to change password'));
+      setPasswordError(error?.response?.data?.message || (lang === 'ar' ? 'حدث خطأ أثناء تغيير كلمة المرور' : 'An error occurred'));
     } finally {
       setChangingPassword(false);
     }
   };
 
+  // ✅ Toggle Active/Inactive Function
   const handleToggleActive = async () => {
     if (!toggleActiveStudent) return;
 
@@ -429,26 +371,24 @@ export const InstructorStudents: React.FC = () => {
       });
 
       if (response.data?.status === true || response.status === 200) {
-<<<<<<< HEAD
-        toast.success(`${toggleActiveStudent.name} ${newStatus ? 'تم تفعيله' : 'تم إلغاء تفعيله'} بنجاح`);
-=======
         toast.success(lang === 'ar'
           ? `${toggleActiveStudent.name} ${newStatus ? 'تم تفعيله' : 'تم إلغاء تفعيله'} بنجاح`
           : `${toggleActiveStudent.name} has been ${newStatus ? 'activated' : 'deactivated'} successfully`
         );
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
         fetchStudents(pagination.currentPage);
         setToggleActiveStudent(null);
       } else {
         throw new Error(response.data?.message || 'Failed to toggle status');
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'فشل تغيير حالة الطالب');
+      console.error('Toggle active error:', error);
+      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'فشل تغيير حالة الطالب' : 'Failed to change student status'));
     } finally {
       setTogglingActive(false);
     }
   };
 
+  // ✅ Show learning page if a student is selected
   if (showLearningPage && selectedStudentId) {
     return (
       <StudentLearningPage
@@ -461,13 +401,12 @@ export const InstructorStudents: React.FC = () => {
     );
   }
 
+  // ✅ Stats
   const stats = {
     total: pagination.total,
-    active: allStudents.filter(s => s.active).length,
-    online: allStudents.filter(s => s.type_of_attendance === 'online').length,
-    center: allStudents.filter(s => s.type_of_attendance === 'center').length,
-    general: allStudents.filter(s => s.type_of_study === 'general').length,
-    azhari: allStudents.filter(s => s.type_of_study === 'azhari').length,
+    active: students.filter(s => s.active).length,
+    online: students.filter(s => s.type_of_attendance === 'online').length,
+    center: students.filter(s => s.type_of_attendance === 'center').length,
   };
 
   const getAttendanceBadge = (type: string | null) => {
@@ -480,13 +419,6 @@ export const InstructorStudents: React.FC = () => {
     return <Badge variant="outline" className="gap-1">غير محدد</Badge>;
   };
 
-  const getStudentTypeBadge = (student: Student) => {
-    if (student.type_of_study === 'azhari') {
-      return <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 gap-1"><Building2 className="h-3 w-3" /> أزهري</Badge>;
-    }
-    return <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 gap-1"><School className="h-3 w-3" /> عام</Badge>;
-  };
-
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', {
       year: 'numeric',
@@ -495,144 +427,9 @@ export const InstructorStudents: React.FC = () => {
     });
   };
 
-  const filterGroups = [
-    {
-      title: 'معلومات الطالب',
-      icon: <Users className="h-4 w-4 text-primary" />,
-      columns: 3 as const,
-      fields: [
-        {
-          key: 'studentId',
-          label: 'رقم الطالب',
-          type: 'number' as const,
-          placeholder: 'أدخل رقم الطالب',
-          icon: <User className="h-3 w-3" />
-        },
-        {
-          key: 'phone',
-          label: 'رقم الهاتف',
-          type: 'phone' as const,
-          placeholder: 'أدخل رقم الهاتف',
-          icon: <Phone className="h-3 w-3" />
-        },
-        {
-          key: 'parentCode',
-          label: 'كود ولي الأمر',
-          type: 'text' as const,
-          placeholder: 'أدخل كود ولي الأمر',
-          icon: <Award className="h-3 w-3" />
-        }
-      ]
-    },
-    {
-      title: 'التصنيف',
-      icon: <GraduationCap className="h-4 w-4 text-primary" />,
-      columns: 2 as const,
-      fields: [
-        {
-          key: 'stageId',
-          label: 'المرحلة',
-          type: 'select' as const,
-          placeholder: 'اختر المرحلة',
-          icon: <GraduationCap className="h-3 w-3" />,
-          options: stages.map((stage: any) => ({
-            value: stage.id,
-            label: isRTL ? stage.name_ar : stage.name
-          }))
-        },
-        {
-          key: 'studentType',
-          label: 'نوع الطالب',
-          type: 'radio' as const,
-          icon: <School className="h-3 w-3" />,
-          options: [
-            { value: 'general', label: 'عام', icon: <School className="h-3 w-3" /> },
-            { value: 'azhari', label: 'أزهري', icon: <Building2 className="h-3 w-3" /> }
-          ]
-        }
-      ]
-    },
-    {
-      title: 'حالة الحساب',
-      icon: <CheckCircle className="h-4 w-4 text-primary" />,
-      columns: 2 as const,
-      fields: [
-        {
-          key: 'status',
-          label: 'الحالة',
-          type: 'select' as const,
-          placeholder: 'اختر الحالة',
-          icon: <CheckCircle className="h-3 w-3" />,
-          options: [
-            { value: 'active', label: '✅ نشط' },
-            { value: 'inactive', label: '❌ غير نشط' }
-          ]
-        }
-      ]
-    },
-    {
-      title: 'نوع الحضور',
-      icon: <Monitor className="h-4 w-4 text-primary" />,
-      columns: 2 as const,
-      fields: [
-        {
-          key: 'attendance',
-          label: 'نوع الحضور',
-          type: 'select' as const,
-          placeholder: 'اختر نوع الحضور',
-          icon: <Monitor className="h-3 w-3" />,
-          options: [
-            { value: 'online', label: '🖥️ أونلاين' },
-            { value: 'center', label: '🏢 سنتر' }
-          ]
-        },
-        {
-          key: 'centerHourId',
-          label: 'الساعة المركزية',
-          type: 'select' as const,
-          placeholder: 'اختر الساعة المركزية',
-          icon: <Clock className="h-3 w-3" />,
-          condition: (value: any, allFilters: any) => allFilters.attendance === 'center',
-          options: filteredCenterHours.map((hour) => ({
-            value: String(hour.id),
-            label: getCenterHourDisplay(hour)
-          }))
-        }
-      ]
-    }
-  ];
-
-  const currentFilters = {
-    studentId: filters.studentId,
-    phone: filters.phone,
-    parentCode: filters.parentCode,
-    stageId: filters.stageId || '',
-    studentType: filters.studentType,
-    status: filters.status,
-    attendance: filters.attendance,
-    centerHourId: filters.centerHourId,
-  };
-
-  const handleFiltersChange = (newFilters: Record<string, any>) => {
-    setFilters(prev => ({
-      ...prev,
-      stageId: newFilters.stageId ? Number(newFilters.stageId) : null,
-      attendance: newFilters.attendance || '',
-      status: newFilters.status || '',
-      studentId: newFilters.studentId || '',
-      phone: newFilters.phone || '',
-      parentCode: newFilters.parentCode || '',
-      centerHourId: newFilters.centerHourId || '',
-      studentType: newFilters.studentType || '',
-    }));
-  };
-
-  const handleApplyFilters = () => {
-    fetchStudents(1);
-  };
-
-  const handleSearchChange = (value: string) => {
-    setFilters(prev => ({ ...prev, search: value }));
+  // ✅ Get center hour display text
+  const getCenterHourDisplay = (hour: CenterHour) => {
+    return `${hour.title} - ${hour.date} (${hour.hours_start} to ${hour.hours_end})`;
   };
 
   return (
@@ -644,6 +441,7 @@ export const InstructorStudents: React.FC = () => {
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
+        {/* ✅ Header */}
         <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -663,24 +461,21 @@ export const InstructorStudents: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <ExportExcelButton
-              data={students}
-              fileName="students-list"
-              label={lang === 'ar' ? 'تصدير' : 'Export'}
-              disabled={loading || students.length === 0}
-            />
-          </div>
+          <ExportExcelButton
+            data={students}
+            fileName="students-list"
+            label={lang === 'ar' ? 'تصدير' : 'Export'}
+            disabled={loading || students.length === 0}
+          />
         </motion.div>
 
-        <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        {/* ✅ Stats Cards */}
+        <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'إجمالي الطلاب', value: stats.total, icon: Users, color: 'from-blue-500 to-cyan-500' },
-            { label: 'نشط', value: stats.active, icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
-            { label: 'أونلاين', value: stats.online, icon: Monitor, color: 'from-purple-500 to-pink-500' },
-            { label: 'سنتر', value: stats.center, icon: Building2, color: 'from-orange-500 to-red-500' },
-            { label: 'عام', value: stats.general, icon: School, color: 'from-blue-500 to-indigo-500' },
-            { label: 'أزهري', value: stats.azhari, icon: Building2, color: 'from-emerald-500 to-teal-500' },
+            { label: t('totalStudents') || 'إجمالي الطلاب', value: stats.total, icon: Users, color: 'from-blue-500 to-cyan-500' },
+            { label: t('activeStudents') || 'الطلاب النشطون', value: stats.active, icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
+            { label: t('onlineStudents') || 'أونلاين', value: stats.online, icon: Monitor, color: 'from-purple-500 to-pink-500' },
+            { label: t('centerStudents') || 'سنتر', value: stats.center, icon: Building2, color: 'from-orange-500 to-red-500' },
           ].map((stat, idx) => (
             <motion.div
               key={idx}
@@ -702,40 +497,50 @@ export const InstructorStudents: React.FC = () => {
           ))}
         </motion.div>
 
-        <motion.div variants={itemVariants} className="flex gap-4">
-          <div className="relative flex-1 max-w-md">
+        {/* ✅ Search & Filters */}
+        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row justify-between gap-4">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              {t('filters') || 'فلاتر'}
+            </Button>
+            {(filterStageId || filterAttendance || filterStatus || filterCenterHourId) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="gap-1 text-red-500"
+              >
+                <X className="h-4 w-4" />
+                {t('clearFilters') || 'مسح'}
+              </Button>
+            )}
+          </div>
+
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={lang === 'ar' ? 'بحث بالاسم أو رقم الهاتف' : 'Search by name or phone'}
-              value={filters.search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9 rounded-xl"
+              placeholder={lang === 'ar' ? 'بحث بالاسم' : 'Search by name'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 w-64 rounded-xl"
             />
-            {filters.search && (
+            {searchQuery && (
               <button
-                onClick={() => handleSearchChange('')}
+                onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2"
               >
-                <XCircle className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
               </button>
             )}
           </div>
         </motion.div>
 
-<<<<<<< HEAD
-        <AdvancedFilters
-          groups={filterGroups}
-          filters={currentFilters}
-          onFiltersChange={handleFiltersChange}
-          onApply={handleApplyFilters}
-          onReset={clearAllFilters}
-          loading={loading}
-          showResetButton={true}
-          showApplyButton={true}
-          autoApply={false}
-        />
-
-=======
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -969,28 +774,27 @@ export const InstructorStudents: React.FC = () => {
         </AnimatePresence>
 
         {/* ✅ Students Grid */}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
         <motion.div variants={containerVariants} className="space-y-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-muted-foreground mt-4">جاري تحميل الطلاب...</p>
+              <p className="text-muted-foreground mt-4">{t('loadingStudents') || 'جاري تحميل الطلاب...'}</p>
             </div>
           ) : error ? (
             <Card className="p-12 text-center">
               <p className="text-red-500">{error}</p>
             </Card>
-          ) : filteredStudents.length === 0 ? (
+          ) : students.length === 0 ? (
             <Card className="p-16 text-center">
               <div className="flex flex-col items-center">
                 <Users className="h-16 w-16 text-muted-foreground/30 mb-4" />
-                <p className="text-muted-foreground text-lg">لا يوجد طلاب</p>
-                <p className="text-sm text-muted-foreground mt-1">لم يتم تسجيل أي طلاب بعد</p>
+                <p className="text-muted-foreground text-lg">{t('noStudentsFound') || 'لا يوجد طلاب'}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('noStudentsDesc') || 'لم يتم تسجيل أي طلاب بعد'}</p>
               </div>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredStudents.map((student) => (
+              {filteredStudents.map((student, idx) => (
                 <motion.div
                   key={student.id}
                   variants={itemVariants}
@@ -998,23 +802,25 @@ export const InstructorStudents: React.FC = () => {
                   className="group"
                 >
                   <Card className={`relative overflow-hidden rounded-2xl border hover:shadow-xl transition-all duration-300 ${!student.active ? 'opacity-75' : ''}`}>
+                    {/* Card Header with Gradient */}
                     <div className={`relative h-24 bg-gradient-to-r ${student.active ? 'from-blue-500 to-cyan-500' : 'from-gray-500 to-gray-600'}`}>
                       <div className="absolute -bottom-8 left-6">
                         <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800 overflow-hidden">
-<<<<<<< HEAD
-                          {student.imageUrl ? (
-                            <img 
-                              src={student.imageUrl}
-=======
                           {(student.imageUrl || student.image) ? (
                             <img
                               src={student.imageUrl || student.image?.file_path || `https://lms.dentin.cloud/storage/${student.image?.file_path}`}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                               alt={student.name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  const fallbackSpan = document.createElement('span');
+                                  fallbackSpan.className = 'text-xl font-bold text-primary';
+                                  fallbackSpan.textContent = student.name?.charAt(0)?.toUpperCase() || 'S';
+                                  parent.appendChild(fallbackSpan);
+                                }
                               }}
                             />
                           ) : (
@@ -1024,22 +830,22 @@ export const InstructorStudents: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      <div className="absolute top-3 right-3 flex gap-1">
+                      <div className="absolute top-3 right-3">
                         {getAttendanceBadge(student.type_of_attendance)}
                       </div>
                     </div>
 
+                    {/* Card Content */}
                     <div className="p-6 pt-10">
                       <div className="flex items-start justify-between">
                         <div>
                           <h3 className="font-bold text-lg">{student.name}</h3>
                           <div className="flex items-center gap-2 mt-1">
                             {student.active ? (
-                              <Badge className="bg-green-500 gap-1"><CheckCircle className="h-3 w-3" /> نشط</Badge>
+                              <Badge className="bg-green-500 gap-1"><CheckCircle className="h-3 w-3" /> {t('active') || 'نشط'}</Badge>
                             ) : (
-                              <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> غير نشط</Badge>
+                              <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t('inactive') || 'غير نشط'}</Badge>
                             )}
-                            {getStudentTypeBadge(student)}
                           </div>
                         </div>
                         <div className="text-right">
@@ -1048,6 +854,7 @@ export const InstructorStudents: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Contact Info */}
                       <div className="mt-4 space-y-2">
                         <div className="flex items-center gap-2 text-sm">
                           <Phone className="h-4 w-4 text-muted-foreground" />
@@ -1056,7 +863,7 @@ export const InstructorStudents: React.FC = () => {
                         {student.phone_parent && (
                           <div className="flex items-center gap-2 text-sm">
                             <Users className="h-4 w-4 text-muted-foreground" />
-                            <span>ولي الأمر: {student.phone_parent}</span>
+                            <span>{t('parentPhone') || 'ولي الأمر'}: {student.phone_parent}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-2 text-sm">
@@ -1066,11 +873,12 @@ export const InstructorStudents: React.FC = () => {
                         {student.code_parent && (
                           <div className="flex items-center gap-2 text-sm">
                             <Award className="h-4 w-4 text-muted-foreground" />
-                            <span>كود ولي الأمر: {student.code_parent}</span>
+                            <span>{t('parentCode') || 'كود ولي الأمر'}: {student.code_parent}</span>
                           </div>
                         )}
                       </div>
 
+                      {/* Actions */}
                       <div className="mt-4 pt-3 border-t flex flex-wrap justify-end gap-2">
                         <Button
                           size="sm"
@@ -1082,7 +890,7 @@ export const InstructorStudents: React.FC = () => {
                           }}
                         >
                           <Eye className="h-3 w-3" />
-                          عرض التعلم
+                          {t('viewLearning') || 'عرض التعلم'}
                         </Button>
 
                         <Button
@@ -1097,7 +905,7 @@ export const InstructorStudents: React.FC = () => {
                           }}
                         >
                           <Key className="h-3 w-3" />
-                          تغيير كلمة المرور
+                          {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
                         </Button>
 
                         <Button
@@ -1109,18 +917,19 @@ export const InstructorStudents: React.FC = () => {
                           {student.active ? (
                             <>
                               <XCircle className="h-3 w-3" />
-                              إلغاء التفعيل
+                              {lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate'}
                             </>
                           ) : (
                             <>
                               <CheckCircle className="h-3 w-3" />
-                              تفعيل
+                              {lang === 'ar' ? 'تفعيل' : 'Activate'}
                             </>
                           )}
                         </Button>
                       </div>
                     </div>
 
+                    {/* Animated Border on Hover */}
                     <motion.div
                       className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                       style={{
@@ -1134,6 +943,7 @@ export const InstructorStudents: React.FC = () => {
           )}
         </motion.div>
 
+        {/* ✅ Pagination */}
         {pagination.lastPage > 1 && (
           <div className="flex items-center justify-center gap-3 py-6">
             <Button
@@ -1183,29 +993,12 @@ export const InstructorStudents: React.FC = () => {
         )}
       </div>
 
-<<<<<<< HEAD
-=======
       {/* ✅ Change Password Modal */}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
       <Dialog open={!!changePasswordStudent} onOpenChange={(open) => !open && setChangePasswordStudent(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="h-5 w-5 text-blue-500" />
-<<<<<<< HEAD
-              تغيير كلمة المرور
-            </DialogTitle>
-            <DialogDescription>
-              تغيير كلمة المرور للطالب: {changePasswordStudent?.name}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                كلمة المرور الجديدة
-=======
               {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
             </DialogTitle>
             <DialogDescription>
@@ -1221,18 +1014,13 @@ export const InstructorStudents: React.FC = () => {
               <Label className="flex items-center gap-2">
                 <Lock className="h-4 w-4" />
                 {lang === 'ar' ? 'كلمة المرور الجديدة' : 'New Password'}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
               </Label>
               <div className="relative">
                 <Input
                   type={showNewPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-<<<<<<< HEAD
-                  placeholder="أدخل كلمة المرور الجديدة"
-=======
                   placeholder={lang === 'ar' ? 'أدخل كلمة المرور الجديدة' : 'Enter new password'}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                   className="rounded-xl pr-10"
                 />
                 <button
@@ -1240,18 +1028,6 @@ export const InstructorStudents: React.FC = () => {
                   onClick={() => setShowNewPassword(!showNewPassword)}
                   className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
                 >
-<<<<<<< HEAD
-                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">يجب أن تكون كلمة المرور 6 أحرف على الأقل</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                تأكيد كلمة المرور
-=======
                   {showNewPassword ? (
                     <EyeOff className="h-4 w-4" />
                   ) : (
@@ -1269,18 +1045,13 @@ export const InstructorStudents: React.FC = () => {
               <Label className="flex items-center gap-2">
                 <Lock className="h-4 w-4" />
                 {lang === 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password'}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
               </Label>
               <div className="relative">
                 <Input
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-<<<<<<< HEAD
-                  placeholder="أعد إدخال كلمة المرور"
-=======
                   placeholder={lang === 'ar' ? 'أعد إدخال كلمة المرور' : 'Re-enter password'}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                   className="rounded-xl pr-10"
                 />
                 <button
@@ -1288,13 +1059,6 @@ export const InstructorStudents: React.FC = () => {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
                 >
-<<<<<<< HEAD
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            
-=======
                   {showConfirmPassword ? (
                     <EyeOff className="h-4 w-4" />
                   ) : (
@@ -1304,7 +1068,6 @@ export const InstructorStudents: React.FC = () => {
               </div>
             </div>
 
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
             {passwordError && (
               <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
@@ -1312,18 +1075,6 @@ export const InstructorStudents: React.FC = () => {
               </div>
             )}
           </div>
-<<<<<<< HEAD
-          
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setChangePasswordStudent(null)}>
-              إلغاء
-            </Button>
-            <Button onClick={handleChangePassword} disabled={changingPassword} className="gap-2">
-              {changingPassword ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  جاري التغيير...
-=======
 
           <DialogFooter className="gap-2">
             <Button
@@ -1341,16 +1092,11 @@ export const InstructorStudents: React.FC = () => {
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {lang === 'ar' ? 'جاري التغيير...' : 'Changing...'}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4" />
-<<<<<<< HEAD
-                  تغيير
-=======
                   {lang === 'ar' ? 'تغيير' : 'Change'}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                 </>
               )}
             </Button>
@@ -1358,18 +1104,11 @@ export const InstructorStudents: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* ✅ Toggle Active Confirmation Dialog */}
       <AlertDialog open={!!toggleActiveStudent} onOpenChange={(open) => !open && setToggleActiveStudent(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-<<<<<<< HEAD
-              {toggleActiveStudent?.active ? 'إلغاء تفعيل الطالب' : 'تفعيل الطالب'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {toggleActiveStudent?.active
-                ? `هل أنت متأكد من إلغاء تفعيل الطالب "${toggleActiveStudent?.name}"؟ لن يتمكن الطالب من تسجيل الدخول.`
-                : `هل أنت متأكد من تفعيل الطالب "${toggleActiveStudent?.name}"؟`}
-=======
               {toggleActiveStudent?.active
                 ? (lang === 'ar' ? 'إلغاء تفعيل الطالب' : 'Deactivate Student')
                 : (lang === 'ar' ? 'تفعيل الطالب' : 'Activate Student')}
@@ -1382,11 +1121,12 @@ export const InstructorStudents: React.FC = () => {
                 : (lang === 'ar'
                   ? `هل أنت متأكد من تفعيل الطالب "${toggleActiveStudent?.name}"؟`
                   : `Are you sure you want to activate "${toggleActiveStudent?.name}"?`)}
->>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel>
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleToggleActive}
               className={toggleActiveStudent?.active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'}
@@ -1395,10 +1135,12 @@ export const InstructorStudents: React.FC = () => {
               {togglingActive ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  جاري...
+                  {lang === 'ar' ? 'جاري...' : 'Loading...'}
                 </>
               ) : (
-                toggleActiveStudent?.active ? 'إلغاء التفعيل' : 'تفعيل'
+                toggleActiveStudent?.active
+                  ? (lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate')
+                  : (lang === 'ar' ? 'تفعيل' : 'Activate')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
