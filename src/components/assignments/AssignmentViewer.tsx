@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { useNavigate, useParams } from 'react-router-dom'; 
+import { useNavigate, useParams } from 'react-router-dom';
 import { assignmentService } from '@/services/assignment.service';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -134,7 +134,7 @@ const StudentAnswersModal: React.FC<{
     const answer = student.answers?.find((a: any) => a.question_id === q.id);
     return sum + (answer?.mark ? parseFloat(answer.mark) : 0);
   }, 0);
-  
+
   const totalMarks = assignment?.total_marks || 0;
   const percentage = totalMarks > 0 ? (totalScore / totalMarks) * 100 : 0;
 
@@ -142,14 +142,14 @@ const StudentAnswersModal: React.FC<{
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-5 rounded-t-lg"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <motion.div 
+                <motion.div
                   whileHover={{ scale: 1.1 }}
                   className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold backdrop-blur-sm"
                 >
@@ -171,7 +171,7 @@ const StudentAnswersModal: React.FC<{
           </motion.div>
 
           <div className="p-6 border-b">
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 rounded-2xl p-5"
@@ -182,7 +182,7 @@ const StudentAnswersModal: React.FC<{
                   <p className="text-3xl font-bold">{totalScore} / {totalMarks}</p>
                   <p className="text-sm mt-1">{percentage.toFixed(1)}%</p>
                 </div>
-                <motion.div 
+                <motion.div
                   whileHover={{ scale: 1.05 }}
                   className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${percentage >= 50 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}
                 >
@@ -203,7 +203,7 @@ const StudentAnswersModal: React.FC<{
                 const answer = student.answers?.find((a: any) => a.question_id === q.id);
                 const isEssay = q.question_type === 'essay';
                 const needsGrading = isEssay && answer && answer.mark === null && answer.answer;
-                
+
                 return (
                   <motion.div
                     key={q.id}
@@ -216,7 +216,7 @@ const StudentAnswersModal: React.FC<{
                       <div className="p-4">
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center gap-3">
-                            <motion.div 
+                            <motion.div
                               whileHover={{ scale: 1.1 }}
                               className="w-8 h-8 rounded-lg bg-gradient-to-r from-primary to-secondary text-white flex items-center justify-center font-bold text-sm"
                             >
@@ -246,9 +246,9 @@ const StudentAnswersModal: React.FC<{
                         )}
                         {isEssay && answer?.answer && (
                           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                            <Button 
-                              size="sm" 
-                              variant={needsGrading ? "default" : "outline"} 
+                            <Button
+                              size="sm"
+                              variant={needsGrading ? "default" : "outline"}
                               className="mt-3 gap-1"
                               onClick={() => { setGradingAnswer(answer); setGradingQuestion(q); }}
                             >
@@ -275,7 +275,7 @@ export const AssignmentViewer: React.FC = () => {
   const { t, lang } = useApp();
   const navigate = useNavigate();
   const { assignmentId } = useParams();
-  
+
   // ✅ جميع الـ Hooks في البداية
   const [loading, setLoading] = useState(true);
   const [assignment, setAssignment] = useState<any>(null);
@@ -284,12 +284,12 @@ export const AssignmentViewer: React.FC = () => {
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [viewingProfile, setViewingProfile] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  
+
   // ✅ فلاتر بحث الطلاب
   const [searchQuery, setSearchQuery] = useState('');
   const [studentSearchCode, setStudentSearchCode] = useState('');
   const [studentSearchPhone, setStudentSearchPhone] = useState('');
-
+  const [filterTypeOfStudy, setFilterTypeOfStudy] = useState<string>('');
   useEffect(() => {
     if (assignmentId) {
       console.log("🔍 Fetching assignment ID:", assignmentId);
@@ -344,21 +344,26 @@ export const AssignmentViewer: React.FC = () => {
         s.phone?.includes(studentSearchPhone)
       );
     }
+    if (filterTypeOfStudy) {
+      filtered = filtered.filter((s: any) =>
+        s.type_of_study === filterTypeOfStudy
+      );
+    }
 
     return filtered;
-  }, [students, searchQuery, studentSearchCode, studentSearchPhone]);
+  }, [students, searchQuery, studentSearchCode, studentSearchPhone, filterTypeOfStudy]);
 
   // ✅ بيانات التصدير
   const exportData = useMemo(() => {
     if (!questions.length || !filteredStudents.length) return [];
-    
+
     return filteredStudents.map((student: any) => {
       const score = questions.reduce((total: number, q: any) => {
         const answer = student.answers?.find((a: any) => a.question_id === q.id);
         return total + (answer?.mark ? parseFloat(answer.mark) : 0);
       }, 0);
       const percentage = (score / (assignment?.total_marks || 1)) * 100;
-      
+
       return {
         [lang === 'ar' ? 'الرقم' : 'ID']: student.id,
         [lang === 'ar' ? 'الاسم' : 'Name']: student.name,
@@ -370,6 +375,12 @@ export const AssignmentViewer: React.FC = () => {
         [lang === 'ar' ? 'الدرجة' : 'Score']: `${score}/${assignment?.total_marks}`,
         [lang === 'ar' ? 'النسبة' : 'Percentage']: `${percentage.toFixed(1)}%`,
         [lang === 'ar' ? 'تاريخ التسجيل' : 'Registered']: new Date(student.created_at || student.createdAt).toLocaleDateString(),
+        [lang === 'ar' ? 'نوع الدراسة' : 'Study Type']:
+          student.type_of_study === 'general'
+            ? (lang === 'ar' ? 'عام' : 'General')
+            : student.type_of_study === 'azhar'
+              ? (lang === 'ar' ? 'أزهر' : 'Azhar')
+              : '-',
       };
     });
   }, [filteredStudents, questions, assignment?.total_marks, lang]);
@@ -390,6 +401,7 @@ export const AssignmentViewer: React.FC = () => {
     setSearchQuery('');
     setStudentSearchCode('');
     setStudentSearchPhone('');
+    setFilterTypeOfStudy('');
   };
 
   const getTypeLabel = (type: string) => {
@@ -578,16 +590,16 @@ export const AssignmentViewer: React.FC = () => {
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full max-w-md grid grid-cols-2 rounded-2xl bg-slate-100 dark:bg-slate-800 p-1">
-              <TabsTrigger 
-                value="questions" 
+              <TabsTrigger
+                value="questions"
                 className="rounded-xl gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-md transition-all duration-300"
               >
                 <FileQuestion className="h-4 w-4" />
                 {lang === 'ar' ? 'الأسئلة' : 'Questions'}
                 <Badge variant="secondary" className="ml-1 text-xs">{questions.length}</Badge>
               </TabsTrigger>
-              <TabsTrigger 
-                value="students" 
+              <TabsTrigger
+                value="students"
                 className="rounded-xl gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-md transition-all duration-300"
               >
                 <Users className="h-4 w-4" />
@@ -679,7 +691,7 @@ export const AssignmentViewer: React.FC = () => {
               </div>
 
               {/* حقول البحث المتقدمة */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -700,6 +712,18 @@ export const AssignmentViewer: React.FC = () => {
                     className="pl-10 rounded-xl"
                   />
                 </div>
+                {/* 🔹 نوع الدراسة */}
+                <div className="relative">
+                  <select
+                    value={filterTypeOfStudy}
+                    onChange={(e) => setFilterTypeOfStudy(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border bg-background text-sm"
+                  >
+                    <option value="">{lang === 'ar' ? '📖 كل أنواع الدراسة' : '📖 All Study Types'}</option>
+                    <option value="general">📚 {lang === 'ar' ? 'عام' : 'General'}</option>
+                    <option value="azhar">🕌 {lang === 'ar' ? 'أزهر' : 'Azhar'}</option>
+                  </select>
+                </div>
 
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -715,7 +739,7 @@ export const AssignmentViewer: React.FC = () => {
               {/* عرض عدد النتائج */}
               <div className="flex justify-between items-center mb-4">
                 <p className="text-sm text-muted-foreground">
-                  {lang === 'ar' 
+                  {lang === 'ar'
                     ? `عرض ${filteredStudents.length} من ${students.length} طالب`
                     : `Showing ${filteredStudents.length} of ${students.length} students`}
                 </p>
@@ -749,7 +773,7 @@ export const AssignmentViewer: React.FC = () => {
                         transition={{ delay: idx * 0.05 }}
                         whileHover={{ y: -5 }}
                       >
-                        <Card 
+                        <Card
                           className="cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300 group border border-slate-100 dark:border-slate-800"
                           onClick={() => { setSelectedStudent(student); setStudentModalOpen(true); }}
                         >
@@ -779,7 +803,7 @@ export const AssignmentViewer: React.FC = () => {
                                 <p className="text-lg font-bold text-gray-800 dark:text-white">{score}/{assignment?.total_marks}</p>
                                 <div className="flex items-center gap-1">
                                   <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <motion.div 
+                                    <motion.div
                                       initial={{ width: 0 }}
                                       animate={{ width: `${percentage}%` }}
                                       className={`h-full ${percentage >= 50 ? 'bg-green-500' : 'bg-red-500'}`}
@@ -802,6 +826,16 @@ export const AssignmentViewer: React.FC = () => {
                                 <Phone className="h-3 w-3" />
                                 <span>{student.phone}</span>
                               </div>
+                              {student.type_of_study && (
+                                <div className="flex items-center gap-1">
+                                  <span>📖</span>
+                                  <span>
+                                    {student.type_of_study === 'general'
+                                      ? (lang === 'ar' ? 'عام' : 'General')
+                                      : (lang === 'ar' ? 'أزهر' : 'Azhar')}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </Card>
@@ -815,14 +849,14 @@ export const AssignmentViewer: React.FC = () => {
         </motion.div>
       </div>
 
-      <StudentAnswersModal 
-        isOpen={studentModalOpen} 
-        onClose={() => { setStudentModalOpen(false); setSelectedStudent(null); }} 
-        student={selectedStudent} 
-        assignment={assignment} 
-        questions={questions} 
-        onGradeSubmit={handleGradeEssay} 
-        onViewProfile={(id) => { setStudentModalOpen(false); setViewingProfile(id); }} 
+      <StudentAnswersModal
+        isOpen={studentModalOpen}
+        onClose={() => { setStudentModalOpen(false); setSelectedStudent(null); }}
+        student={selectedStudent}
+        assignment={assignment}
+        questions={questions}
+        onGradeSubmit={handleGradeEssay}
+        onViewProfile={(id) => { setStudentModalOpen(false); setViewingProfile(id); }}
       />
     </motion.div>
   );

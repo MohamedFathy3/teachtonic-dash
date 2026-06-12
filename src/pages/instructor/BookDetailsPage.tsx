@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  ChevronLeft, BookOpen, User, DollarSign, FileText, Calendar, 
-  Users, Phone, Mail, MapPin, GraduationCap, Star, Eye, 
-  Download, Share2, Heart, Edit, Trash2, Power, Loader2, 
+import {
+  ChevronLeft, BookOpen, User, DollarSign, FileText, Calendar,
+  Users, Phone, Mail, MapPin, GraduationCap, Star, Eye,
+  Download, Share2, Heart, Edit, Trash2, Power, Loader2,
   CheckCircle, XCircle, AlertCircle, Image as ImageIcon,
   UserCheck, UserX, Globe, Clock, Award, TrendingUp
 } from 'lucide-react';
@@ -64,7 +64,7 @@ export const BookDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { lang, isRTL } = useApp();
-  
+
   const [book, setBook] = useState<BookDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -199,9 +199,9 @@ export const BookDetailsPage: React.FC = () => {
         onClick={() => setSelectedImage(book.image?.fullUrl || book.imageUrl || null)}
       >
         {book.image?.fullUrl ? (
-          <img 
-            src={book.image.fullUrl} 
-            alt={book.title} 
+          <img
+            src={book.image.fullUrl}
+            alt={book.title}
             className="w-full h-64 md:h-96 object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
@@ -251,7 +251,7 @@ export const BookDetailsPage: React.FC = () => {
             {lang === 'ar' ? 'الطلاب' : 'Students'}
             {stats.students > 0 && <Badge variant="secondary" className="ml-1">{stats.students}</Badge>}
           </TabsTrigger>
-      
+
         </TabsList>
 
         {/* Overview Tab */}
@@ -312,11 +312,11 @@ export const BookDetailsPage: React.FC = () => {
 
               <div className="space-y-3">
                 {book.students.map((student, idx) => (
-                  <StudentCard 
-                    key={student.id} 
-                    student={student} 
-                    idx={idx} 
-                    lang={lang} 
+                  <StudentCard
+                    key={student.id}
+                    student={student}
+                    idx={idx}
+                    lang={lang}
                     formatDate={formatDate}
                   />
                 ))}
@@ -327,7 +327,7 @@ export const BookDetailsPage: React.FC = () => {
           )}
         </TabsContent>
 
-    
+
       </Tabs>
 
       {/* Image Modal */}
@@ -361,8 +361,8 @@ export const BookDetailsPage: React.FC = () => {
 
 // ==================== مكونات مساعدة ====================
 
-const StatCard: React.FC<{ icon: React.ElementType; label: string; value: React.ReactNode; color: string }> = ({ 
-  icon: Icon, label, value, color 
+const StatCard: React.FC<{ icon: React.ElementType; label: string; value: React.ReactNode; color: string }> = ({
+  icon: Icon, label, value, color
 }) => (
   <motion.div variants={fadeIn} whileHover={{ y: -3 }} className="text-center p-4 rounded-xl bg-gradient-to-br from-card to-muted/30 border">
     <Icon className={`h-6 w-6 text-${color}-500 mx-auto mb-2`} />
@@ -379,8 +379,8 @@ const InfoRow: React.FC<{ icon: React.ElementType; label: string; value: React.R
   </div>
 );
 
-const StudentCard: React.FC<{ student: any; idx: number; lang: string; formatDate: (date: string) => string }> = ({ 
-  student, idx, lang, formatDate 
+const StudentCard: React.FC<{ student: any; idx: number; lang: string; formatDate: (date: string) => string }> = ({
+  student, idx, lang, formatDate
 }) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.9 }}
@@ -408,7 +408,7 @@ const StudentCard: React.FC<{ student: any; idx: number; lang: string; formatDat
             {student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
           </Badge>
         </div>
-        
+
         <div className="mt-2 space-y-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Phone className="h-3 w-3" />
@@ -433,7 +433,7 @@ const StudentCard: React.FC<{ student: any; idx: number; lang: string; formatDat
               <MapPin className="h-3 w-3 text-green-500" />
             )}
             <span>
-              {student.type_of_attendance === 'online' 
+              {student.type_of_attendance === 'online'
                 ? (lang === 'ar' ? 'أونلاين' : 'Online')
                 : (lang === 'ar' ? 'سنتر' : 'Center')}
             </span>
@@ -454,14 +454,24 @@ const StudentCard: React.FC<{ student: any; idx: number; lang: string; formatDat
               <span>{lang === 'ar' ? 'المرحلة:' : 'Stage:'} {student.stage.name}</span>
             </div>
           )}
+          {student.type_of_study && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>📖</span>
+              <span>
+                {student.type_of_study === 'general'
+                  ? (lang === 'ar' ? 'عام' : 'General')
+                  : (lang === 'ar' ? 'أزهر' : 'Azhar')}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
   </motion.div>
 );
 
-const SummaryCard: React.FC<{ icon: React.ElementType; label: string; value: number; color: string }> = ({ 
-  icon: Icon, label, value, color 
+const SummaryCard: React.FC<{ icon: React.ElementType; label: string; value: number; color: string }> = ({
+  icon: Icon, label, value, color
 }) => (
   <div className="text-center p-3 rounded-xl bg-muted/30 border">
     <Icon className={`h-5 w-5 text-${color}-500 mx-auto mb-1`} />

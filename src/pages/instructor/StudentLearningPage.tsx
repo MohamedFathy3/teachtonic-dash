@@ -55,6 +55,8 @@ interface StudentExam {
   };
   student_mark: number | null;
   questions: ExamQuestion[];
+  // type_of_study: 'general' | 'azhar' | null;  // ✅ أضف هذا 
+
 }
 
 interface GradeEssayModalProps {
@@ -198,10 +200,10 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
   const navigate = useNavigate();
   const { studentId: paramStudentId } = useParams<{ studentId: string }>();
   const isRTL = lang === 'ar';
-  
+
   // استخدام الـ ID من props أو من الرابط
   const studentId = propStudentId || (paramStudentId ? parseInt(paramStudentId) : null);
-  
+
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<StudentLearningData | null>(null);
   const [activeTab, setActiveTab] = useState('courses');
@@ -352,7 +354,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
       className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950"
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
-        
+
         {/* Header with Back Button */}
         <div className="flex items-center gap-3">
           <Button
@@ -378,7 +380,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
               <div className="absolute -bottom-8 left-6">
                 <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800 overflow-hidden">
                   {(student.imageUrl || student.image) ? (
-                    <img 
+                    <img
                       src={student.imageUrl || student.image?.file_path || `https://lms.dentin.cloud/storage/${student.image?.file_path}`}
                       alt={student.name}
                       className="w-full h-full object-cover"
@@ -768,7 +770,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                           const typeInfo = getQuestionTypeLabel(question.question_type);
                           const isEssay = question.question_type === 'essay';
                           const needsGrading = isEssay && question.student_answer && question.mark_obtained === null;
-                          
+
                           return (
                             <div key={question.id} className="p-4 hover:bg-muted/20 transition-colors">
                               <div className="flex items-start justify-between gap-4">
@@ -786,7 +788,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                                     </div>
                                   </div>
                                   <p className="text-sm font-medium">{question.question}</p>
-                                  
+
                                   {/* Student Answer */}
                                   {question.student_answer && (
                                     <div className="mt-2 p-2 bg-muted/30 rounded-lg">
@@ -796,7 +798,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                                       <p className="text-sm">{question.student_answer}</p>
                                     </div>
                                   )}
-                                  
+
                                   {!question.student_answer && (
                                     <p className="text-xs text-yellow-600 mt-2 flex items-center gap-1">
                                       <AlertCircle className="h-3 w-3" />
@@ -804,7 +806,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                                     </p>
                                   )}
                                 </div>
-                                
+
                                 {/* Grade Essay Button */}
                                 {isEssay && question.student_answer && (
                                   <Button
@@ -885,7 +887,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                           const typeInfo = getQuestionTypeLabel(question.question_type);
                           const isEssay = question.question_type === 'essay';
                           const needsGrading = isEssay && question.student_answer && question.mark_obtained === null;
-                          
+
                           return (
                             <div key={question.id} className="p-4 hover:bg-muted/20 transition-colors">
                               <div className="flex items-start justify-between gap-4">
@@ -903,7 +905,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                                     </div>
                                   </div>
                                   <p className="text-sm font-medium">{question.question}</p>
-                                  
+
                                   {/* Student Answer */}
                                   {question.student_answer && (
                                     <div className="mt-2 p-2 bg-muted/30 rounded-lg">
@@ -913,7 +915,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                                       <p className="text-sm">{question.student_answer}</p>
                                     </div>
                                   )}
-                                  
+
                                   {!question.student_answer && (
                                     <p className="text-xs text-yellow-600 mt-2 flex items-center gap-1">
                                       <AlertCircle className="h-3 w-3" />
@@ -921,7 +923,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                                     </p>
                                   )}
                                 </div>
-                                
+
                                 {/* Grade Essay Button */}
                                 {isEssay && question.student_answer && (
                                   <Button
