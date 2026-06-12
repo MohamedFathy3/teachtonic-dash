@@ -261,7 +261,7 @@ const handleShowClick = (teacherId: number) => {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
+          {/* <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
             className={`gap-2 rounded-lg ${
@@ -275,7 +275,7 @@ const handleShowClick = (teacherId: number) => {
             ) : (
               <><Trash className="h-4 w-4" />{text.showDeleted}</>
             )}
-          </Button>
+          </Button> */}
           <Button
             onClick={() => {
               setEditingTeacherId(null);

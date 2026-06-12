@@ -24,6 +24,7 @@ import api from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Eye, Settings2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { assignmentService } from '@/services/assignment.service';
 
 // Interface for Center Hour
 interface CenterHour {
@@ -82,6 +83,19 @@ export const InstructorAssignments: React.FC = () => {
     }
   }, []);
 
+const handleToggleActive = async (assignment: any) => {
+  try {
+    await assignmentService.toggleAssignmentActive(assignment.id);
+    await fetchAssignments(pagination.currentPage);
+    toast.success(
+      assignment.active === 1 
+        ? (lang === 'ar' ? 'تم إلغاء تنشيط الواجب' : 'Assignment deactivated')
+        : (lang === 'ar' ? 'تم تنشيط الواجب' : 'Assignment activated')
+    );
+  } catch (error) {
+    toast.error(lang === 'ar' ? 'حدث خطأ' : 'Error occurred');
+  }
+};
 
 const toggleMustSolveAssignment = async (assignmentId: number, value: boolean) => {
   try {
@@ -428,6 +442,7 @@ const handleToggleShowResult = async (assignmentId: number, currentValue: boolea
   onToggleRandomAnswers={handleToggleRandomAnswers}
   onToggleShowResult={handleToggleShowResult}
   onToggleMustSolve={toggleMustSolveAssignment}
+  onToggleActive={handleToggleActive}
 />
             ))}
           </div>

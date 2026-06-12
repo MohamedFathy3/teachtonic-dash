@@ -8,7 +8,7 @@ import api from '@/lib/api';
 
 class AssignmentService extends BaseService<Exam> {
   constructor() {
-    super('exam'); // ✅ نفس endpoint بتاع الامتحانات
+    super('exam');
   }
 
   async getAllAssignments(
@@ -21,7 +21,7 @@ class AssignmentService extends BaseService<Exam> {
     try {
       const baseFilters: Record<string, any> = { 
         ...(filters || {}),
-        type: 'assignment'  // 🔥 فقط الواجبات
+        type: 'assignment'
       };      
       if (search && search.trim()) {
         baseFilters.title = search.trim();
@@ -103,8 +103,16 @@ class AssignmentService extends BaseService<Exam> {
     toast({ title: "Success", description: "Assignment deleted" });
   }
 
+  // ✅ دالة تبديل حالة النشاط
   async toggleAssignmentActive(id: number): Promise<{ message: string }> {
-    return await this.toggleActive(id);
+    try {
+      const response = await api.put(`/${this.endpoint}/${id}/active`);
+      toast({ title: "Success", description: response.data?.message || "Assignment status changed" });
+      return response.data;
+    } catch (error: any) {
+      toast({ title: "Error", description: error.response?.data?.message || "Failed to toggle status", variant: "destructive" });
+      throw error;
+    }
   }
 
   async addQuestions(assignmentId: number, questions: any[]): Promise<boolean> {
@@ -113,19 +121,19 @@ class AssignmentService extends BaseService<Exam> {
   }
 
   async toggleRandomQuestions(id: number, value: boolean): Promise<Exam> {
-  const response = await api.patch(`/${this.endpoint}/${id}`, { random_questions: value });
-  return response.data.data;
-}
+    const response = await api.patch(`/${this.endpoint}/${id}`, { random_questions: value });
+    return response.data.data;
+  }
 
-async toggleRandomAnswers(id: number, value: boolean): Promise<Exam> {
-  const response = await api.patch(`/${this.endpoint}/${id}`, { random_answers: value });
-  return response.data.data;
-}
+  async toggleRandomAnswers(id: number, value: boolean): Promise<Exam> {
+    const response = await api.patch(`/${this.endpoint}/${id}`, { random_answers: value });
+    return response.data.data;
+  }
 
-async toggleShowResult(id: number, value: boolean): Promise<Exam> {
-  const response = await api.patch(`/${this.endpoint}/${id}`, { show_result: value });
-  return response.data.data;
-}
+  async toggleShowResult(id: number, value: boolean): Promise<Exam> {
+    const response = await api.patch(`/${this.endpoint}/${id}`, { show_result: value });
+    return response.data.data;
+  }
 }
 
 export const assignmentService = new AssignmentService();

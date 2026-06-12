@@ -32,6 +32,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     labelField: 'name',
     labelFieldAr: 'name_ar',
   },
+  
   subjects: {
     endpoint: '/subject/index',
     orderBy: 'position',
@@ -39,7 +40,48 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     searchField: 'name',
     labelField: 'name',
     labelFieldAr: 'name_ar',
+    // ✅ إضافة customFetcher لدعم الفلترة حسب المرحلة
+    customFetcher: async (params) => {
+      const { page, perPage, search, extraFilters } = params;
+      
+      const requestBody: any = {
+        filters: {},
+        orderBy: 'position',
+        orderByDirection: 'asc',
+        perPage,
+        page,
+        paginate: true,
+      };
+
+      if (search) {
+        requestBody.search = search;
+        requestBody.searchFields = ['name', 'name_ar'];
+      }
+
+      // 🔥 فلترة المواد حسب المرحلة (stage_id)
+      if (extraFilters?.stage_id) {
+        requestBody.filters.stage_id = extraFilters.stage_id;
+        console.log('🔍 Filtering subjects by stage_id:', extraFilters.stage_id);
+      }
+
+      console.log('🔍 Subjects Request Body:', requestBody);
+
+      const response = await api.post('/subject/index', requestBody);
+
+      const data = response.data.data.map((subject: any) => ({
+        id: subject.id,
+        name: subject.name,
+        name_ar: subject.name_ar,
+        original: subject,
+      }));
+
+      return {
+        data,
+        meta: response.data.meta,
+      };
+    },
   },
+  
   teachers: {
     endpoint: '/teacher/index',
     orderBy: 'name',
@@ -48,6 +90,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     labelField: 'name',
     labelFieldAr: 'name',
   },
+  
   'assistant-teachers': {
     endpoint: '/assistant-teacher/index',
     orderBy: 'name',
@@ -94,26 +137,19 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     labelField: 'title',
     labelFieldAr: 'title_ar',
     customFetcher: async (params) => {
-      // 🔥 بناء الفلاتر من extraFilters
       const filters: Record<string, any> = {};
 
-      // 🔥 إضافة teacher_id من extraFilters (لجلب دروس المعلم فقط)
       if (params.extraFilters?.teacher_id) {
         filters.teacher_id = params.extraFilters.teacher_id;
       }
 
-      // 🔥 إضافة stage_id من extraFilters
       if (params.extraFilters?.stage_id) {
         filters.stage_id = params.extraFilters.stage_id;
       }
 
-      // 🔥 إضافة course_id من extraFilters (لو موجود)
       if (params.extraFilters?.course_id) {
         filters.course_id = params.extraFilters.course_id;
       }
-
-      console.log('🔍 Lessons Request - Filters:', filters);
-      console.log('🔍 Lessons Request - ExtraFilters:', params.extraFilters);
 
       const requestBody: any = {
         filters,
@@ -129,11 +165,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
         requestBody.searchFields = ['titles', 'titles_ar', 'description', 'description_ar'];
       }
 
-      console.log('🔍 Lessons Request Body:', requestBody);
-
       const response = await api.post('/course-detail/index', requestBody);
-
-      console.log('📥 Lessons Response:', response.data);
 
       const data = response.data.data.map((lesson: any) => ({
         id: lesson.id,
@@ -164,8 +196,6 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     customFetcher: async (params) => {
       const { page, perPage, search, extraFilters } = params;
 
-      console.log('🔍 Semesters extraFilters received:', extraFilters);
-
       const requestBody: any = {
         filters: {},
         orderBy: 'id',
@@ -180,12 +210,9 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
         requestBody.searchFields = ['name', 'name_ar'];
       }
 
-      // 🔥 إضافة teacher_id من extraFilters
       if (extraFilters?.teacher_id) {
         requestBody.filters.teacher_id = extraFilters.teacher_id;
       }
-
-      console.log('🔍 Semesters requestBody:', requestBody);
 
       const response = await api.post('/semesters/index', requestBody);
 

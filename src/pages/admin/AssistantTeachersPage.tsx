@@ -218,7 +218,7 @@ export function AssistantTeachersPage() {
             label={lang === 'ar' ? 'تصدير' : 'Export'}
             disabled={loading || filteredAssistants.length === 0}
           />
-          <Button
+          {/* <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
             className={`gap-2 rounded-lg ${
@@ -232,7 +232,7 @@ export function AssistantTeachersPage() {
             ) : (
               <><Trash className="h-4 w-4" />{text.showDeleted}</>
             )}
-          </Button>
+          </Button> */}
           <Button
             onClick={() => {
               setEditingAssistantId(null);

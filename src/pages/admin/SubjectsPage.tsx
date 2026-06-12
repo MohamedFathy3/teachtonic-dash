@@ -274,7 +274,7 @@ export function SubjectsPage() {
       transition-all
     "
           />
-          <Button
+          {/* <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
             className={`gap-2 rounded-lg ${showDeleted
@@ -287,7 +287,7 @@ export function SubjectsPage() {
             ) : (
               <><Trash className="h-4 w-4" />{text.showDeleted}</>
             )}
-          </Button>
+          </Button> */}
           <Button
             onClick={() => {
               setEditingSubjectId(null);

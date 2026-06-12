@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/instructor/InstructorStudents.tsx
 
-import { useMemo } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { useTeacherMeta } from '@/hooks/useTeacherMeta';
-import React, { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { studentService, Student } from '@/services/student.service';
 import { StudentLearningPage } from './StudentLearningPage';
@@ -13,16 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { AdvancedFilters } from '@/components/common/AdvancedFilters';
 import {
   Loader2, Search, Users, User, Phone, Calendar,
-  Monitor, Building2, CheckCircle, XCircle, Filter, X,
-  ChevronLeft, ChevronRight, Award, Sparkles, Eye, Clock,
-  Key, Lock, Save, AlertCircle,
-  GraduationCap,
-  EyeOff
+  Monitor, Building2, CheckCircle, XCircle, ChevronLeft, ChevronRight, 
+  Award, Sparkles, Eye, Clock, Key, Lock, Save, AlertCircle,
+  GraduationCap, EyeOff, School,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { AsyncSelect } from '@/components/ui/AsyncSelect';
+import { motion } from 'framer-motion';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import {
@@ -44,7 +41,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// ✅ Animations
+// Animations
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -59,11 +56,10 @@ const itemVariants = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { type: 'spring', stiffness: 300, damping: 24 } as any,
+    transition: { type: 'spring', stiffness: 300, damping: 24 },
   },
-} as any;
+};
 
-// ✅ Interface for Center Hour
 interface CenterHour {
   id: number;
   title: string;
@@ -77,51 +73,60 @@ interface CenterHour {
   createdAt: string;
 }
 
+// نوع unified للفلاتر
+interface FilterState {
+  stageId: number | null;
+  attendance: string;
+  status: string;
+  studentId: string;
+  phone: string;
+  parentCode: string;
+  centerHourId: string;
+  studentType: string;
+  search: string;
+}
+
 export const InstructorStudents: React.FC = () => {
   const { t, lang, user } = useApp();
   const { stages } = useTeacherMeta(user?.id);
   const isRTL = lang === 'ar';
-const [showNewPassword, setShowNewPassword] = useState(false);
-const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  // ✅ State
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // ✅ State موحد للفلاتر
+  const [filters, setFilters] = useState<FilterState>({
+    stageId: null,
+    attendance: '',
+    status: '',
+    studentId: '',
+    phone: '',
+    parentCode: '',
+    centerHourId: '',
+    studentType: '',
+    search: '',
+  });
+  
   const [students, setStudents] = useState<Student[]>([]);
+  const [allStudents, setAllStudents] = useState<Student[]>([]); // للفلترة المحلية
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   
-  // ✅ فلتر المرحلة - المستوى الأول
-  const [filterStageId, setFilterStageId] = useState<number | null>(null);
-  // ✅ خيارات الساعات المركزية حسب المرحلة
-  const [filteredCenterHours, setFilteredCenterHours] = useState<CenterHour[]>([]);
-  const [filterAttendance, setFilterAttendance] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<string>('');
-  const [filterId, setFilterId] = useState<string>('');
-  const [filterPhone, setFilterPhone] = useState('');
-  const [filterCodeParent, setFilterCodeParent] = useState('');
-  const [filterCenterHourId, setFilterCenterHourId] = useState<string>('');
-  
-  // ✅ State for Center Hours list (all)
   const [allCenterHours, setAllCenterHours] = useState<CenterHour[]>([]);
+  const [filteredCenterHours, setFilteredCenterHours] = useState<CenterHour[]>([]);
   const [loadingCenterHours, setLoadingCenterHours] = useState(false);
 
-  // ✅ Selected student for learning page
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [showLearningPage, setShowLearningPage] = useState(false);
 
-  // ✅ State for Change Password Modal
   const [changePasswordStudent, setChangePasswordStudent] = useState<Student | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  // ✅ State for Toggle Active Alert
   const [toggleActiveStudent, setToggleActiveStudent] = useState<Student | null>(null);
   const [togglingActive, setTogglingActive] = useState(false);
 
-  // ✅ Pagination
   const [pagination, setPagination] = useState({
     currentPage: 1,
     lastPage: 1,
@@ -129,24 +134,17 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     perPage: 10,
   });
 
-  // ✅ فلترة الساعات المركزية حسب المرحلة
+  // Center Hours filtering
   useEffect(() => {
-    if (filterStageId) {
-      // فلترة الساعات المركزية اللي مرتبطة بالمرحلة المختارة
-      const filtered = allCenterHours.filter(hour => {
-        // هنا المفروض يكون عندك علاقة بين center_hour والمرحلة
-        // لو في الـ API رابط بينهم، استخدمه. حالياً بنعرض الكل
-        return true;
-      });
+    if (filters.stageId) {
+      const filtered = allCenterHours.filter(() => true);
       setFilteredCenterHours(filtered);
     } else {
       setFilteredCenterHours(allCenterHours);
     }
-    // إعادة تعيين الساعة المركزية عند تغيير المرحلة
-    setFilterCenterHourId('');
-  }, [filterStageId, allCenterHours]);
+    setFilters(prev => ({ ...prev, centerHourId: '' }));
+  }, [filters.stageId, allCenterHours]);
 
-  // ✅ Fetch Center Hours for filter
   const fetchCenterHours = useCallback(async () => {
     setLoadingCenterHours(true);
     try {
@@ -162,25 +160,16 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     }
   }, []);
 
-  // ✅ Load center hours when component mounts
   useEffect(() => {
-    if (user?.id) {
-      fetchCenterHours();
-    }
+    if (user?.id) fetchCenterHours();
   }, [user?.id, fetchCenterHours]);
 
-  // ✅ Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
+  // ✅ الفلترة المحلية (لما البيانات كلها موجودة)
   const filteredStudents = useMemo(() => {
-    let result = [...students];
+    let result = [...allStudents];
 
-    const q = debouncedSearch.trim().toLowerCase();
-
-    if (q) {
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
       result = result.filter(s =>
         s.name?.toLowerCase().includes(q) ||
         s.phone?.includes(q) ||
@@ -188,74 +177,73 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       );
     }
 
-    if (filterStageId) {
-      result = result.filter(s => s.stage_id === filterStageId);
+    if (filters.stageId) {
+      result = result.filter(s => s.stage_id === filters.stageId);
     }
 
-    if (filterAttendance) {
-      result = result.filter(s => s.type_of_attendance === filterAttendance);
+    if (filters.attendance) {
+      result = result.filter(s => s.type_of_attendance === filters.attendance);
     }
 
-    if (filterStatus !== '') {
-      result = result.filter(s => s.active === (filterStatus === 'active'));
+    if (filters.status !== '') {
+      result = result.filter(s => s.active === (filters.status === 'active'));
     }
 
-    if (filterId.trim()) {
-      const idNum = Number(filterId);
+    if (filters.studentId.trim()) {
+      const idNum = Number(filters.studentId);
       if (!Number.isNaN(idNum)) {
         result = result.filter(s => s.id === idNum);
       }
     }
 
-    if (filterPhone) {
-      result = result.filter(s => s.phone?.includes(filterPhone));
+    if (filters.phone) {
+      result = result.filter(s => s.phone?.includes(filters.phone));
     }
 
-    if (filterCodeParent) {
-      result = result.filter(s => s.code_parent?.includes(filterCodeParent));
+    if (filters.parentCode) {
+      result = result.filter(s => s.code_parent?.includes(filters.parentCode));
     }
 
-    if (filterCenterHourId) {
-      result = result.filter(s => String(s.center_hour_id) === filterCenterHourId);
+    if (filters.centerHourId) {
+      result = result.filter(s => String(s.center_hour_id) === filters.centerHourId);
+    }
+
+    if (filters.studentType) {
+      result = result.filter(s => s.type_of_study === filters.studentType);
     }
 
     return result;
-  }, [
-    students,
-    debouncedSearch,
-    filterStageId,
-    filterAttendance,
-    filterStatus,
-    filterId,
-    filterPhone,
-    filterCodeParent,
-    filterCenterHourId,
-  ]);
+  }, [allStudents, filters]);
 
-  // ✅ Fetch students
+  // ✅ دالة تجمع كل الفلاتر وتبعتها في Request واحد
   const fetchStudents = useCallback(async (page = 1) => {
     setLoading(true);
     setError(null);
+    
     try {
-      const filters: any = {};
-      if (filterStageId) filters.stage_id = filterStageId;
-      if (filterAttendance) filters.type_of_attendance = filterAttendance;
-      if (filterStatus !== '') filters.active = filterStatus === 'active';
-      if (filterId.trim()) {
-        const idNum = Number(filterId);
-        if (!Number.isNaN(idNum)) filters.id = idNum;
+      const apiFilters: any = {};
+      
+      if (filters.stageId) apiFilters.stage_id = filters.stageId;
+      if (filters.attendance) apiFilters.type_of_attendance = filters.attendance;
+      if (filters.status !== '') apiFilters.active = filters.status === 'active';
+      if (filters.studentId.trim()) {
+        const idNum = Number(filters.studentId);
+        if (!Number.isNaN(idNum)) apiFilters.id = idNum;
       }
-      if (filterPhone) filters.phone = filterPhone;
-      if (filterCodeParent) filters.code_parent = filterCodeParent;
-      if (filterCenterHourId) filters.center_hour_id = Number(filterCenterHourId);
+      if (filters.phone) apiFilters.phone = filters.phone;
+      if (filters.parentCode) apiFilters.code_parent = filters.parentCode;
+      if (filters.centerHourId) apiFilters.center_hour_id = Number(filters.centerHourId);
+      if (filters.studentType) apiFilters.type_of_study = filters.studentType;
+      if (filters.search) apiFilters.search = filters.search;
 
       const response = await studentService.getTeacherStudents(
         user?.id || undefined,
-        filters,
+        apiFilters,
         pagination.perPage,
-        page,
-        debouncedSearch
+        page
       );
+      
+      setAllStudents(response.data);
       setStudents(response.data);
       setPagination({
         currentPage: response.meta.current_page,
@@ -268,23 +256,20 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     } finally {
       setLoading(false);
     }
-  }, [
-    debouncedSearch,
-    filterStageId,
-    filterAttendance,
-    filterStatus,
-    filterId,
-    filterPhone,
-    filterCodeParent,
-    filterCenterHourId,
-    pagination.perPage,
-    user?.id
-  ]);
+  }, [filters, pagination.perPage, user?.id]);
 
+  // الـ debounced search
   useEffect(() => {
-    if (!user?.id) return;
-    fetchStudents(1);
-  }, [fetchStudents, user?.id]);
+    const timer = setTimeout(() => {
+      fetchStudents(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [filters.search]);
+
+  // جلب البيانات الأولية
+  useEffect(() => {
+    if (user?.id) fetchStudents(1);
+  }, [user?.id]);
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= pagination.lastPage) {
@@ -292,34 +277,35 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     }
   };
 
-  const clearFilters = () => {
-    setFilterStageId(null);
-    setFilterAttendance('');
-    setFilterStatus('');
-    setFilterId('');
-    setFilterPhone('');
-    setFilterCodeParent('');
-    setFilterCenterHourId('');
-    setSearchQuery('');
-    setDebouncedSearch('');
-    setShowFilters(false);
-  };
-
-  const applyFilters = () => {
+  const clearAllFilters = () => {
+    setFilters({
+      stageId: null,
+      attendance: '',
+      status: '',
+      studentId: '',
+      phone: '',
+      parentCode: '',
+      centerHourId: '',
+      studentType: '',
+      search: '',
+    });
     fetchStudents(1);
   };
 
-  // ✅ Change Password Function
+  const getCenterHourDisplay = (hour: CenterHour) => {
+    return `${hour.title} - ${hour.date} (${hour.hours_start} to ${hour.hours_end})`;
+  };
+
   const handleChangePassword = async () => {
     if (!changePasswordStudent) return;
     
     if (!newPassword || newPassword.length < 6) {
-      setPasswordError(lang === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters');
+      setPasswordError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
       return;
     }
     
     if (newPassword !== confirmPassword) {
-      setPasswordError(lang === 'ar' ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match');
+      setPasswordError('كلمتا المرور غير متطابقتين');
       return;
     }
     
@@ -333,10 +319,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       });
       
       if (response.data?.status === true || response.status === 200) {
-        toast.success(lang === 'ar' 
-          ? `تم تغيير كلمة مرور الطالب ${changePasswordStudent.name} بنجاح` 
-          : `Password changed successfully for ${changePasswordStudent.name}`
-        );
+        toast.success(`تم تغيير كلمة مرور الطالب ${changePasswordStudent.name} بنجاح`);
         setChangePasswordStudent(null);
         setNewPassword('');
         setConfirmPassword('');
@@ -344,15 +327,13 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
         throw new Error(response.data?.message || 'Failed to change password');
       }
     } catch (error: any) {
-      console.error('Change password error:', error);
-      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'فشل تغيير كلمة المرور' : 'Failed to change password'));
-      setPasswordError(error?.response?.data?.message || (lang === 'ar' ? 'حدث خطأ أثناء تغيير كلمة المرور' : 'An error occurred'));
+      toast.error(error?.response?.data?.message || 'فشل تغيير كلمة المرور');
+      setPasswordError(error?.response?.data?.message || 'حدث خطأ أثناء تغيير كلمة المرور');
     } finally {
       setChangingPassword(false);
     }
   };
 
-  // ✅ Toggle Active/Inactive Function
   const handleToggleActive = async () => {
     if (!toggleActiveStudent) return;
     
@@ -365,24 +346,19 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       });
       
       if (response.data?.status === true || response.status === 200) {
-        toast.success(lang === 'ar' 
-          ? `${toggleActiveStudent.name} ${newStatus ? 'تم تفعيله' : 'تم إلغاء تفعيله'} بنجاح` 
-          : `${toggleActiveStudent.name} has been ${newStatus ? 'activated' : 'deactivated'} successfully`
-        );
+        toast.success(`${toggleActiveStudent.name} ${newStatus ? 'تم تفعيله' : 'تم إلغاء تفعيله'} بنجاح`);
         fetchStudents(pagination.currentPage);
         setToggleActiveStudent(null);
       } else {
         throw new Error(response.data?.message || 'Failed to toggle status');
       }
     } catch (error: any) {
-      console.error('Toggle active error:', error);
-      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'فشل تغيير حالة الطالب' : 'Failed to change student status'));
+      toast.error(error?.response?.data?.message || 'فشل تغيير حالة الطالب');
     } finally {
       setTogglingActive(false);
     }
   };
 
-  // ✅ Show learning page if a student is selected
   if (showLearningPage && selectedStudentId) {
     return (
       <StudentLearningPage
@@ -395,12 +371,13 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     );
   }
 
-  // ✅ Stats
   const stats = {
     total: pagination.total,
-    active: students.filter(s => s.active).length,
-    online: students.filter(s => s.type_of_attendance === 'online').length,
-    center: students.filter(s => s.type_of_attendance === 'center').length,
+    active: allStudents.filter(s => s.active).length,
+    online: allStudents.filter(s => s.type_of_attendance === 'online').length,
+    center: allStudents.filter(s => s.type_of_attendance === 'center').length,
+    general: allStudents.filter(s => s.type_of_study === 'general').length,
+    azhari: allStudents.filter(s => s.type_of_study === 'azhari').length,
   };
 
   const getAttendanceBadge = (type: string | null) => {
@@ -413,6 +390,13 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     return <Badge variant="outline" className="gap-1">غير محدد</Badge>;
   };
 
+  const getStudentTypeBadge = (student: Student) => {
+    if (student.type_of_study === 'azhari') {
+      return <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 gap-1"><Building2 className="h-3 w-3" /> أزهري</Badge>;
+    }
+    return <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 gap-1"><School className="h-3 w-3" /> عام</Badge>;
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', {
       year: 'numeric',
@@ -421,9 +405,144 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     });
   };
 
-  // ✅ Get center hour display text
-  const getCenterHourDisplay = (hour: CenterHour) => {
-    return `${hour.title} - ${hour.date} (${hour.hours_start} to ${hour.hours_end})`;
+  const filterGroups = [
+    {
+      title: 'معلومات الطالب',
+      icon: <Users className="h-4 w-4 text-primary" />,
+      columns: 3 as const,
+      fields: [
+        {
+          key: 'studentId',
+          label: 'رقم الطالب',
+          type: 'number' as const,
+          placeholder: 'أدخل رقم الطالب',
+          icon: <User className="h-3 w-3" />
+        },
+        {
+          key: 'phone',
+          label: 'رقم الهاتف',
+          type: 'phone' as const,
+          placeholder: 'أدخل رقم الهاتف',
+          icon: <Phone className="h-3 w-3" />
+        },
+        {
+          key: 'parentCode',
+          label: 'كود ولي الأمر',
+          type: 'text' as const,
+          placeholder: 'أدخل كود ولي الأمر',
+          icon: <Award className="h-3 w-3" />
+        }
+      ]
+    },
+    {
+      title: 'التصنيف',
+      icon: <GraduationCap className="h-4 w-4 text-primary" />,
+      columns: 2 as const,
+      fields: [
+        {
+          key: 'stageId',
+          label: 'المرحلة',
+          type: 'select' as const,
+          placeholder: 'اختر المرحلة',
+          icon: <GraduationCap className="h-3 w-3" />,
+          options: stages.map((stage: any) => ({
+            value: stage.id,
+            label: isRTL ? stage.name_ar : stage.name
+          }))
+        },
+        {
+          key: 'studentType',
+          label: 'نوع الطالب',
+          type: 'radio' as const,
+          icon: <School className="h-3 w-3" />,
+          options: [
+            { value: 'general', label: 'عام', icon: <School className="h-3 w-3" /> },
+            { value: 'azhari', label: 'أزهري', icon: <Building2 className="h-3 w-3" /> }
+          ]
+        }
+      ]
+    },
+    {
+      title: 'حالة الحساب',
+      icon: <CheckCircle className="h-4 w-4 text-primary" />,
+      columns: 2 as const,
+      fields: [
+        {
+          key: 'status',
+          label: 'الحالة',
+          type: 'select' as const,
+          placeholder: 'اختر الحالة',
+          icon: <CheckCircle className="h-3 w-3" />,
+          options: [
+            { value: 'active', label: '✅ نشط' },
+            { value: 'inactive', label: '❌ غير نشط' }
+          ]
+        }
+      ]
+    },
+    {
+      title: 'نوع الحضور',
+      icon: <Monitor className="h-4 w-4 text-primary" />,
+      columns: 2 as const,
+      fields: [
+        {
+          key: 'attendance',
+          label: 'نوع الحضور',
+          type: 'select' as const,
+          placeholder: 'اختر نوع الحضور',
+          icon: <Monitor className="h-3 w-3" />,
+          options: [
+            { value: 'online', label: '🖥️ أونلاين' },
+            { value: 'center', label: '🏢 سنتر' }
+          ]
+        },
+        {
+          key: 'centerHourId',
+          label: 'الساعة المركزية',
+          type: 'select' as const,
+          placeholder: 'اختر الساعة المركزية',
+          icon: <Clock className="h-3 w-3" />,
+          condition: (value: any, allFilters: any) => allFilters.attendance === 'center',
+          options: filteredCenterHours.map((hour) => ({
+            value: String(hour.id),
+            label: getCenterHourDisplay(hour)
+          }))
+        }
+      ]
+    }
+  ];
+
+  const currentFilters = {
+    studentId: filters.studentId,
+    phone: filters.phone,
+    parentCode: filters.parentCode,
+    stageId: filters.stageId || '',
+    studentType: filters.studentType,
+    status: filters.status,
+    attendance: filters.attendance,
+    centerHourId: filters.centerHourId,
+  };
+
+  const handleFiltersChange = (newFilters: Record<string, any>) => {
+    setFilters(prev => ({
+      ...prev,
+      stageId: newFilters.stageId ? Number(newFilters.stageId) : null,
+      attendance: newFilters.attendance || '',
+      status: newFilters.status || '',
+      studentId: newFilters.studentId || '',
+      phone: newFilters.phone || '',
+      parentCode: newFilters.parentCode || '',
+      centerHourId: newFilters.centerHourId || '',
+      studentType: newFilters.studentType || '',
+    }));
+  };
+
+  const handleApplyFilters = () => {
+    fetchStudents(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setFilters(prev => ({ ...prev, search: value }));
   };
 
   return (
@@ -435,7 +554,6 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
-        {/* ✅ Header */}
         <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -455,21 +573,24 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
             </div>
           </div>
 
-          <ExportExcelButton
-            data={students}
-            fileName="students-list"
-            label={lang === 'ar' ? 'تصدير' : 'Export'}
-            disabled={loading || students.length === 0}
-          />
+          <div className="flex gap-2">
+            <ExportExcelButton
+              data={students}
+              fileName="students-list"
+              label={lang === 'ar' ? 'تصدير' : 'Export'}
+              disabled={loading || students.length === 0}
+            />
+          </div>
         </motion.div>
 
-        {/* ✅ Stats Cards */}
-        <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-6 gap-4">
           {[
-            { label: t('totalStudents') || 'إجمالي الطلاب', value: stats.total, icon: Users, color: 'from-blue-500 to-cyan-500' },
-            { label: t('activeStudents') || 'الطلاب النشطون', value: stats.active, icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
-            { label: t('onlineStudents') || 'أونلاين', value: stats.online, icon: Monitor, color: 'from-purple-500 to-pink-500' },
-            { label: t('centerStudents') || 'سنتر', value: stats.center, icon: Building2, color: 'from-orange-500 to-red-500' },
+            { label: 'إجمالي الطلاب', value: stats.total, icon: Users, color: 'from-blue-500 to-cyan-500' },
+            { label: 'نشط', value: stats.active, icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
+            { label: 'أونلاين', value: stats.online, icon: Monitor, color: 'from-purple-500 to-pink-500' },
+            { label: 'سنتر', value: stats.center, icon: Building2, color: 'from-orange-500 to-red-500' },
+            { label: 'عام', value: stats.general, icon: School, color: 'from-blue-500 to-indigo-500' },
+            { label: 'أزهري', value: stats.azhari, icon: Building2, color: 'from-emerald-500 to-teal-500' },
           ].map((stat, idx) => (
             <motion.div
               key={idx}
@@ -491,289 +612,59 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
           ))}
         </motion.div>
 
-        {/* ✅ Search & Filters */}
-        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row justify-between gap-4">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className="gap-2"
-            >
-              <Filter className="h-4 w-4" />
-              {t('filters') || 'فلاتر'}
-            </Button>
-            {(filterStageId || filterAttendance || filterStatus || filterCenterHourId) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="gap-1 text-red-500"
-              >
-                <X className="h-4 w-4" />
-                {t('clearFilters') || 'مسح'}
-              </Button>
-            )}
-          </div>
-
-          <div className="relative">
+        <motion.div variants={itemVariants} className="flex gap-4">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={lang === 'ar' ? 'بحث بالاسم' : 'Search by name'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 w-64 rounded-xl"
+              placeholder={lang === 'ar' ? 'بحث بالاسم أو رقم الهاتف' : 'Search by name or phone'}
+              value={filters.search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-9 rounded-xl"
             />
-            {searchQuery && (
+            {filters.search && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => handleSearchChange('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2"
               >
-                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                <XCircle className="h-4 w-4 text-gray-400 hover:text-gray-600" />
               </button>
             )}
           </div>
         </motion.div>
 
-<AnimatePresence>
-  {showFilters && (
-    <motion.div
-      initial={{ opacity: 0, height: 0, y: -20 }}
-      animate={{ opacity: 1, height: 'auto', y: 0 }}
-      exit={{ opacity: 0, height: 0, y: -20 }}
-      className="overflow-hidden"
-    >
-      <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          
-          {/* 🔹 Stage (المرحلة) - المستوى الأول */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1 text-sm font-medium">
-              <GraduationCap className="h-4 w-4 text-primary" />
-              {t('stage') || 'المرحلة'}
-            </Label>
-            <select
-              value={filterStageId || ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                setFilterStageId(value ? Number(value) : null);
-                // إعادة تعيين الساعة المركزية عند تغيير المرحلة
-                setFilterCenterHourId('');
-              }}
-              className="w-full px-3 py-2 rounded-xl border bg-background"
-            >
-              <option value="">
-                {lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
-              </option>
-              {stages.map((stage: any) => (
-                <option key={stage.id} value={stage.id}>
-                  {isRTL ? stage.name_ar : stage.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <AdvancedFilters
+          groups={filterGroups}
+          filters={currentFilters}
+          onFiltersChange={handleFiltersChange}
+          onApply={handleApplyFilters}
+          onReset={clearAllFilters}
+          loading={loading}
+          showResetButton={true}
+          showApplyButton={true}
+          autoApply={false}
+        />
 
-          {/* 🔹 نوع الحضور - المستوى الثاني */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-1">
-              <Monitor className="h-4 w-4" />
-              {t('attendanceType') || 'نوع الحضور'}
-            </Label>
-            <select
-              value={filterAttendance}
-              onChange={(e) => {
-                const newValue = e.target.value;
-                setFilterAttendance(newValue);
-                // إعادة تعيين الساعة المركزية عند تغيير نوع الحضور
-                if (newValue !== 'center') {
-                  setFilterCenterHourId('');
-                }
-              }}
-              className="w-full px-3 py-2 rounded-xl border bg-background"
-            >
-              <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
-              <option value="online">🖥️ {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
-              <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
-            </select>
-          </div>
-
-          {/* 🔹 الساعة المركزية - يظهر فقط لو اختار سنتر */}
-          {filterAttendance === 'center' && (
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1 text-sm font-medium">
-                <Clock className="h-4 w-4 text-primary" />
-                {lang === 'ar' ? ' مواعيد السناتر' : 'Center Hour'}
-              </Label>
-              <select
-                value={filterCenterHourId}
-                onChange={(e) => setFilterCenterHourId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border bg-background"
-                disabled={loadingCenterHours}
-              >
-                <option value="">
-                  {lang === 'ar' ? 'جميع  موعيد السناتر' : 'All Center Hours'}
-                </option>
-                {filteredCenterHours.map((hour) => (
-                  <option key={hour.id} value={String(hour.id)}>
-                    {getCenterHourDisplay(hour)}
-                  </option>
-                ))}
-              </select>
-              {filteredCenterHours.length === 0 && (
-                <p className="text-xs text-amber-500 mt-1">
-                  {lang === 'ar' ? '⚠️ لا توجد ساعات مركزية لهذه المرحلة' : '⚠️ No center hours for this stage'}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* 🔹 باقي الفلاتر */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-1">
-              <CheckCircle className="h-4 w-4" />
-              {t('status') || 'الحالة'}
-            </Label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border bg-background"
-            >
-              <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
-              <option value="active">✅ {lang === 'ar' ? 'نشط' : 'Active'}</option>
-              <option value="inactive">❌ {lang === 'ar' ? 'غير نشط' : 'Inactive'}</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-1">
-              <Phone className="h-4 w-4" />
-              {lang === 'ar' ? 'الهاتف' : 'Phone'}
-            </Label>
-            <Input
-              value={filterPhone}
-              onChange={(e) => setFilterPhone(e.target.value)}
-              placeholder={lang === 'ar' ? 'اكتب رقم الهاتف' : 'Enter phone'}
-              className="rounded-xl"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-1">
-              <Award className="h-4 w-4" />
-              {lang === 'ar' ? 'كود ولي الأمر' : 'Parent Code'}
-            </Label>
-            <Input
-              value={filterCodeParent}
-              onChange={(e) => setFilterCodeParent(e.target.value)}
-              placeholder={lang === 'ar' ? 'اكتب الكود' : 'Enter code'}
-              className="rounded-xl"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-1">
-              <User className="h-4 w-4" />
-              {t('studentId') || 'رقم الطالب'}
-            </Label>
-            <Input
-              type="number"
-              value={filterId}
-              onChange={(e) => setFilterId(e.target.value)}
-              placeholder={lang === 'ar' ? 'رقم الطالب' : 'Student ID'}
-              className="rounded-xl"
-            />
-          </div>
-        </div>
-
-        {/* 🔹 Actions */}
-        <div className="flex justify-end gap-3 mt-5 pt-3 border-t">
-          <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2">
-            <X className="h-4 w-4" />
-            {t('reset') || 'إعادة تعيين'}
-          </Button>
-          <Button size="sm" onClick={applyFilters} className="gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
-            <Search className="h-4 w-4" />
-            {t('applyFilters') || 'تطبيق'}
-          </Button>
-        </div>
-
-        {/* عرض الفلاتر النشطة */}
-        {(filterStageId || filterAttendance || filterStatus || filterCenterHourId || filterPhone || filterCodeParent || filterId) && (
-          <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
-            <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
-            {filterStageId && (
-              <Badge variant="secondary" className="text-xs gap-1">
-                <GraduationCap className="h-3 w-3" />
-                {stages.find(s => s.id === filterStageId)?.name || filterStageId}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterStageId(null)} />
-              </Badge>
-            )}
-            {filterAttendance && (
-              <Badge variant="secondary" className="text-xs gap-1">
-                {filterAttendance === 'online' ? '🖥️ أونلاين' : '🏢 سنتر'}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterAttendance('')} />
-              </Badge>
-            )}
-            {filterCenterHourId && filterAttendance === 'center' && (
-              <Badge variant="secondary" className="text-xs gap-1">
-                <Clock className="h-3 w-3" />
-                {allCenterHours.find(h => h.id === Number(filterCenterHourId))?.title || filterCenterHourId}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterCenterHourId('')} />
-              </Badge>
-            )}
-            {filterStatus && (
-              <Badge variant="secondary" className="text-xs gap-1">
-                {filterStatus === 'active' ? '✅ نشط' : '❌ غير نشط'}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterStatus('')} />
-              </Badge>
-            )}
-            {filterPhone && (
-              <Badge variant="secondary" className="text-xs gap-1">
-                📞 {filterPhone}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterPhone('')} />
-              </Badge>
-            )}
-            {filterCodeParent && (
-              <Badge variant="secondary" className="text-xs gap-1">
-                🎫 {filterCodeParent}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterCodeParent('')} />
-              </Badge>
-            )}
-            {filterId && (
-              <Badge variant="secondary" className="text-xs gap-1">
-                🆔 {filterId}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterId('')} />
-              </Badge>
-            )}
-          </div>
-        )}
-      </Card>
-    </motion.div>
-  )}
-</AnimatePresence>
-
-        {/* ✅ Students Grid */}
         <motion.div variants={containerVariants} className="space-y-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="text-muted-foreground mt-4">{t('loadingStudents') || 'جاري تحميل الطلاب...'}</p>
+              <p className="text-muted-foreground mt-4">جاري تحميل الطلاب...</p>
             </div>
           ) : error ? (
             <Card className="p-12 text-center">
               <p className="text-red-500">{error}</p>
             </Card>
-          ) : students.length === 0 ? (
+          ) : filteredStudents.length === 0 ? (
             <Card className="p-16 text-center">
               <div className="flex flex-col items-center">
                 <Users className="h-16 w-16 text-muted-foreground/30 mb-4" />
-                <p className="text-muted-foreground text-lg">{t('noStudentsFound') || 'لا يوجد طلاب'}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t('noStudentsDesc') || 'لم يتم تسجيل أي طلاب بعد'}</p>
+                <p className="text-muted-foreground text-lg">لا يوجد طلاب</p>
+                <p className="text-sm text-muted-foreground mt-1">لم يتم تسجيل أي طلاب بعد</p>
               </div>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredStudents.map((student, idx) => (
+              {filteredStudents.map((student) => (
                 <motion.div
                   key={student.id}
                   variants={itemVariants}
@@ -781,25 +672,17 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
                   className="group"
                 >
                   <Card className={`relative overflow-hidden rounded-2xl border hover:shadow-xl transition-all duration-300 ${!student.active ? 'opacity-75' : ''}`}>
-                    {/* Card Header with Gradient */}
                     <div className={`relative h-24 bg-gradient-to-r ${student.active ? 'from-blue-500 to-cyan-500' : 'from-gray-500 to-gray-600'}`}>
                       <div className="absolute -bottom-8 left-6">
                         <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800 overflow-hidden">
-                          {(student.imageUrl || student.image) ? (
+                          {student.imageUrl ? (
                             <img 
-                              src={student.imageUrl || student.image?.file_path || `https://lms.dentin.cloud/storage/${student.image?.file_path}`}
+                              src={student.imageUrl}
                               alt={student.name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  const fallbackSpan = document.createElement('span');
-                                  fallbackSpan.className = 'text-xl font-bold text-primary';
-                                  fallbackSpan.textContent = student.name?.charAt(0)?.toUpperCase() || 'S';
-                                  parent.appendChild(fallbackSpan);
-                                }
                               }}
                             />
                           ) : (
@@ -809,22 +692,22 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
                           )}
                         </div>
                       </div>
-                      <div className="absolute top-3 right-3">
+                      <div className="absolute top-3 right-3 flex gap-1">
                         {getAttendanceBadge(student.type_of_attendance)}
                       </div>
                     </div>
 
-                    {/* Card Content */}
                     <div className="p-6 pt-10">
                       <div className="flex items-start justify-between">
                         <div>
                           <h3 className="font-bold text-lg">{student.name}</h3>
                           <div className="flex items-center gap-2 mt-1">
                             {student.active ? (
-                              <Badge className="bg-green-500 gap-1"><CheckCircle className="h-3 w-3" /> {t('active') || 'نشط'}</Badge>
+                              <Badge className="bg-green-500 gap-1"><CheckCircle className="h-3 w-3" /> نشط</Badge>
                             ) : (
-                              <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t('inactive') || 'غير نشط'}</Badge>
+                              <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> غير نشط</Badge>
                             )}
+                            {getStudentTypeBadge(student)}
                           </div>
                         </div>
                         <div className="text-right">
@@ -833,7 +716,6 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
                         </div>
                       </div>
 
-                      {/* Contact Info */}
                       <div className="mt-4 space-y-2">
                         <div className="flex items-center gap-2 text-sm">
                           <Phone className="h-4 w-4 text-muted-foreground" />
@@ -842,7 +724,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
                         {student.phone_parent && (
                           <div className="flex items-center gap-2 text-sm">
                             <Users className="h-4 w-4 text-muted-foreground" />
-                            <span>{t('parentPhone') || 'ولي الأمر'}: {student.phone_parent}</span>
+                            <span>ولي الأمر: {student.phone_parent}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-2 text-sm">
@@ -852,12 +734,11 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
                         {student.code_parent && (
                           <div className="flex items-center gap-2 text-sm">
                             <Award className="h-4 w-4 text-muted-foreground" />
-                            <span>{t('parentCode') || 'كود ولي الأمر'}: {student.code_parent}</span>
+                            <span>كود ولي الأمر: {student.code_parent}</span>
                           </div>
                         )}
                       </div>
 
-                      {/* Actions */}
                       <div className="mt-4 pt-3 border-t flex flex-wrap justify-end gap-2">
                         <Button
                           size="sm"
@@ -869,7 +750,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
                           }}
                         >
                           <Eye className="h-3 w-3" />
-                          {t('viewLearning') || 'عرض التعلم'}
+                          عرض التعلم
                         </Button>
                         
                         <Button
@@ -884,7 +765,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
                           }}
                         >
                           <Key className="h-3 w-3" />
-                          {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+                          تغيير كلمة المرور
                         </Button>
                         
                         <Button
@@ -896,19 +777,18 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
                           {student.active ? (
                             <>
                               <XCircle className="h-3 w-3" />
-                              {lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate'}
+                              إلغاء التفعيل
                             </>
                           ) : (
                             <>
                               <CheckCircle className="h-3 w-3" />
-                              {lang === 'ar' ? 'تفعيل' : 'Activate'}
+                              تفعيل
                             </>
                           )}
                         </Button>
                       </div>
                     </div>
 
-                    {/* Animated Border on Hover */}
                     <motion.div
                       className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                       style={{
@@ -922,7 +802,6 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
           )}
         </motion.div>
 
-        {/* ✅ Pagination */}
         {pagination.lastPage > 1 && (
           <div className="flex items-center justify-center gap-3 py-6">
             <Button
@@ -972,140 +851,109 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
         )}
       </div>
 
-      {/* ✅ Change Password Modal */}
-     <Dialog open={!!changePasswordStudent} onOpenChange={(open) => !open && setChangePasswordStudent(null)}>
-  <DialogContent className="sm:max-w-md">
-    <DialogHeader>
-      <DialogTitle className="flex items-center gap-2">
-        <Key className="h-5 w-5 text-blue-500" />
-        {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
-      </DialogTitle>
-      <DialogDescription>
-        {lang === 'ar' 
-          ? `تغيير كلمة المرور للطالب: ${changePasswordStudent?.name}`
-          : `Change password for student: ${changePasswordStudent?.name}`}
-      </DialogDescription>
-    </DialogHeader>
-    
-    <div className="space-y-4 py-4">
-      {/* كلمة المرور الجديدة مع عين */}
-      <div className="space-y-2">
-        <Label className="flex items-center gap-2">
-          <Lock className="h-4 w-4" />
-          {lang === 'ar' ? 'كلمة المرور الجديدة' : 'New Password'}
-        </Label>
-        <div className="relative">
-          <Input
-            type={showNewPassword ? "text" : "password"}
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder={lang === 'ar' ? 'أدخل كلمة المرور الجديدة' : 'Enter new password'}
-            className="rounded-xl pr-10"
-          />
-          <button
-            type="button"
-            onClick={() => setShowNewPassword(!showNewPassword)}
-            className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
-          >
-            {showNewPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
+      <Dialog open={!!changePasswordStudent} onOpenChange={(open) => !open && setChangePasswordStudent(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-blue-500" />
+              تغيير كلمة المرور
+            </DialogTitle>
+            <DialogDescription>
+              تغيير كلمة المرور للطالب: {changePasswordStudent?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                كلمة المرور الجديدة
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="أدخل كلمة المرور الجديدة"
+                  className="rounded-xl pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">يجب أن تكون كلمة المرور 6 أحرف على الأقل</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                تأكيد كلمة المرور
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="أعد إدخال كلمة المرور"
+                  className="rounded-xl pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            
+            {passwordError && (
+              <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded-lg">
+                <AlertCircle className="h-4 w-4" />
+                {passwordError}
+              </div>
             )}
-          </button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {lang === 'ar' ? 'يجب أن تكون كلمة المرور 6 أحرف على الأقل' : 'Password must be at least 6 characters'}
-        </p>
-      </div>
-      
-      {/* تأكيد كلمة المرور مع عين */}
-      <div className="space-y-2">
-        <Label className="flex items-center gap-2">
-          <Lock className="h-4 w-4" />
-          {lang === 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password'}
-        </Label>
-        <div className="relative">
-          <Input
-            type={showConfirmPassword ? "text" : "password"}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder={lang === 'ar' ? 'أعد إدخال كلمة المرور' : 'Re-enter password'}
-            className="rounded-xl pr-10"
-          />
-          <button
-            type="button"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
-          >
-            {showConfirmPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-          </button>
-        </div>
-      </div>
-      
-      {passwordError && (
-        <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded-lg">
-          <AlertCircle className="h-4 w-4" />
-          {passwordError}
-        </div>
-      )}
-    </div>
-    
-    <DialogFooter className="gap-2">
-      <Button
-        variant="outline"
-        onClick={() => setChangePasswordStudent(null)}
-      >
-        {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-      </Button>
-      <Button
-        onClick={handleChangePassword}
-        disabled={changingPassword}
-        className="gap-2"
-      >
-        {changingPassword ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {lang === 'ar' ? 'جاري التغيير...' : 'Changing...'}
-          </>
-        ) : (
-          <>
-            <Save className="h-4 w-4" />
-            {lang === 'ar' ? 'تغيير' : 'Change'}
-          </>
-        )}
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+          </div>
+          
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setChangePasswordStudent(null)}>
+              إلغاء
+            </Button>
+            <Button onClick={handleChangePassword} disabled={changingPassword} className="gap-2">
+              {changingPassword ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  جاري التغيير...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  تغيير
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* ✅ Toggle Active Confirmation Dialog */}
       <AlertDialog open={!!toggleActiveStudent} onOpenChange={(open) => !open && setToggleActiveStudent(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {toggleActiveStudent?.active 
-                ? (lang === 'ar' ? 'إلغاء تفعيل الطالب' : 'Deactivate Student')
-                : (lang === 'ar' ? 'تفعيل الطالب' : 'Activate Student')}
+              {toggleActiveStudent?.active ? 'إلغاء تفعيل الطالب' : 'تفعيل الطالب'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {toggleActiveStudent?.active
-                ? (lang === 'ar' 
-                    ? `هل أنت متأكد من إلغاء تفعيل الطالب "${toggleActiveStudent?.name}"؟ لن يتمكن الطالب من تسجيل الدخول.`
-                    : `Are you sure you want to deactivate "${toggleActiveStudent?.name}"? The student will not be able to login.`)
-                : (lang === 'ar'
-                    ? `هل أنت متأكد من تفعيل الطالب "${toggleActiveStudent?.name}"؟`
-                    : `Are you sure you want to activate "${toggleActiveStudent?.name}"?`)}
+                ? `هل أنت متأكد من إلغاء تفعيل الطالب "${toggleActiveStudent?.name}"؟ لن يتمكن الطالب من تسجيل الدخول.`
+                : `هل أنت متأكد من تفعيل الطالب "${toggleActiveStudent?.name}"؟`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-            </AlertDialogCancel>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleToggleActive}
               className={toggleActiveStudent?.active ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'}
@@ -1114,12 +962,10 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
               {togglingActive ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  {lang === 'ar' ? 'جاري...' : 'Loading...'}
+                  جاري...
                 </>
               ) : (
-                toggleActiveStudent?.active
-                  ? (lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate')
-                  : (lang === 'ar' ? 'تفعيل' : 'Activate')
+                toggleActiveStudent?.active ? 'إلغاء التفعيل' : 'تفعيل'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

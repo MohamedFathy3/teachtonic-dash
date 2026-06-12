@@ -248,7 +248,7 @@ export function StagesPage() {
           />
 
           {/* TOGGLE DELETED */}
-          <Button
+          {/* <Button
             onClick={() => setShowDeleted(!showDeleted)}
             variant={showDeleted ? "default" : "outline"}
             className={`gap-2 rounded-xl h-10 ${showDeleted
@@ -267,7 +267,7 @@ export function StagesPage() {
                 {text.showDeleted}
               </>
             )}
-          </Button>
+          </Button> */}
 
           {/* ADD BUTTON */}
           <Button

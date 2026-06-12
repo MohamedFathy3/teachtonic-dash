@@ -465,14 +465,7 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
                       {/* Header with close button */}
                       <div className={`relative bg-gradient-to-r ${getCurrentTypeConfig().color} p-6 text-white`}>
                         {/* ✅ زر الإغلاق في الزاوية */}
-                        <button
-                          type="button"
-                          onClick={handleCancel}
-                          className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
-                          aria-label="Close"
-                        >
-                          <X size={20} />
-                        </button>
+                      
                         
                         <div className="flex items-center gap-3">
                           <div className="text-4xl animate-bounce">

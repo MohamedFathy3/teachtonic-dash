@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/admin/LessonDetailsPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -11,8 +11,13 @@ import {
   Hourglass, TrendingUp, Shield, Star, BookMarked, GraduationCap,
   Settings, CheckSquare, MessageSquare, ThumbsUp, Share2, Heart,
   AlertCircle, Info, HelpCircle, Image as ImageIcon, X, Database,
-  Printer, Copy, Check, ListChecks, Clock as ClockIcon, Pencil
+  Printer, Copy, Check, ListChecks, Clock as ClockIcon, Pencil,
+  XCircle,
+  Filter,
+  Search
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +33,7 @@ import { examService } from '@/services/exam.service';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { arSA, enUS } from 'date-fns/locale';
+import { Input } from '@/components/ui/input';
 
 // ==================== أنواع البيانات ====================
 interface Question {
@@ -194,7 +200,48 @@ export const LessonDetailsPage: React.FC = () => {
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
   const [examLoading, setExamLoading] = useState(false);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
+const [studentFilters, setStudentFilters] = useState({
+  search: '',
+  typeOfAttendance: '',
+  active: '',
+  attended: '', // حضور/غياب
+});
+const [showStudentFilters, setShowStudentFilters] = useState(false);
 
+// أضف داخل المكون LessonDetailsPage مع باقي الدوال
+
+// ✅ تصدير الطلاب إلى Excel
+const exportStudentsToExcel = () => {
+  const filteredData = filteredStudents.map((student, index) => ({
+    [lang === 'ar' ? '#' : 'No']: index + 1,
+    [lang === 'ar' ? 'الرقم' : 'ID']: student.id,
+    [lang === 'ar' ? 'الاسم' : 'Name']: student.name,
+    [lang === 'ar' ? 'الهاتف' : 'Phone']: student.phone,
+    [lang === 'ar' ? 'هاتف ولي الأمر' : 'Parent Phone']: student.phone_parent || '—',
+    [lang === 'ar' ? 'كود ولي الأمر' : 'Parent Code']: student.code_parent || '—',
+    [lang === 'ar' ? 'نوع الحضور' : 'Attendance Type']: student.type_of_attendance === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'سنتر' : 'Center'),
+    [lang === 'ar' ? 'الحالة' : 'Status']: student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
+    [lang === 'ar' ? 'حضور الدرس' : 'Lesson Attendance']: student.attended ? (lang === 'ar' ? 'حاضر' : 'Attended') : (lang === 'ar' ? 'غائب' : 'Absent'),
+    [lang === 'ar' ? 'المحافظة' : 'Governorate']: student.governorate || '—',
+    [lang === 'ar' ? 'المدرسة' : 'School']: student.school_name || '—',
+    [lang === 'ar' ? 'تاريخ التسجيل' : 'Registered Date']: new Date(student.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US'),
+  }));
+
+  const fileName = `lesson_${lessonId}_students_${new Date().toISOString().split('T')[0]}.xlsx`;
+  
+  const worksheet = XLSX.utils.json_to_sheet(filteredData);
+  const colWidths = [{ wch: 6 }, { wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 15 }];
+  worksheet['!cols'] = colWidths;
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, lang === 'ar' ? 'طلاب الدرس' : 'Lesson Students');
+  
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  saveAs(blob, fileName);
+  
+  toast.success(lang === 'ar' ? 'تم تصدير بيانات الطلاب بنجاح' : 'Students data exported successfully');
+};
   // جلب تفاصيل الدرس
   const fetchLesson = async () => {
     if (!lessonId) return;
@@ -210,7 +257,57 @@ export const LessonDetailsPage: React.FC = () => {
       setLoading(false);
     }
   };
+const filteredStudents = useMemo(() => {
+  let filtered = lesson?.students || [];
 
+  // بحث بالاسم
+  if (studentFilters.search) {
+    const searchTerm = studentFilters.search.toLowerCase();
+    filtered = filtered.filter(s => 
+      s.name?.toLowerCase().includes(searchTerm) ||
+      s.id?.toString().includes(searchTerm)
+    );
+  }
+
+  // فلتر نوع الحضور
+  if (studentFilters.typeOfAttendance) {
+    filtered = filtered.filter(s => s.type_of_attendance === studentFilters.typeOfAttendance);
+  }
+
+  // فلتر الحالة (نشط/غير نشط)
+  if (studentFilters.active !== '') {
+    filtered = filtered.filter(s => s.active === (studentFilters.active === 'active'));
+  }
+
+  // فلتر الحضور/الغياب (حسب الدرس الحالي)
+  if (studentFilters.attended !== '') {
+    filtered = filtered.filter(s => s.attended === (studentFilters.attended === 'attended'));
+  }
+
+  return filtered;
+}, [lesson?.students, studentFilters]);
+
+// ✅ دالة لمسح الفلاتر
+const clearStudentFilters = () => {
+  setStudentFilters({
+    search: '',
+    typeOfAttendance: '',
+    active: '',
+    attended: '',
+  });
+  setShowStudentFilters(false);
+};
+
+// إحصائيات الطلاب
+const studentStats = {
+  total: lesson?.students?.length || 0,
+  active: lesson?.students?.filter(s => s.active).length || 0,
+  inactive: lesson?.students?.filter(s => !s.active).length || 0,
+  online: lesson?.students?.filter(s => s.type_of_attendance === 'online').length || 0,
+  center: lesson?.students?.filter(s => s.type_of_attendance === 'center').length || 0,
+  attended: lesson?.students?.filter(s => s.attended).length || 0,
+  absent: lesson?.students?.filter(s => !s.attended).length || 0,
+};
   // جلب تفاصيل الامتحان
   const fetchExamDetails = async (examId: number) => {
     setExamLoading(true);
@@ -321,7 +418,6 @@ export const LessonDetailsPage: React.FC = () => {
     centerStudents: lesson.students?.filter(s => s.type_of_attendance === 'center').length || 0,
     exams: lesson.exams?.length || 0,
     assignments: lesson.assignments?.length || 0,
-    videos: lesson.link_video?.filter(v => v?.trim()).length || 0,
   };
 
   return (
@@ -591,26 +687,203 @@ export const LessonDetailsPage: React.FC = () => {
           </TabsContent>
 
           {/* ==================== Students Tab ==================== */}
-          <TabsContent value="students" className="mt-4">
-            {stats.students > 0 ? (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                  <SummaryCard icon={Users} label={lang === 'ar' ? 'إجمالي الطلاب' : 'Total'} value={stats.students} color="blue" />
-                  <SummaryCard icon={CheckCircle2} label={lang === 'ar' ? 'نشط' : 'Active'} value={stats.activeStudents} color="green" />
-                  <SummaryCard icon={Globe} label={lang === 'ar' ? 'أونلاين' : 'Online'} value={stats.onlineStudents} color="purple" />
-                  <SummaryCard icon={MapPin} label={lang === 'ar' ? 'سنتر' : 'Center'} value={stats.centerStudents} color="orange" />
+<TabsContent value="students" className="mt-4">
+  {stats.students > 0 ? (
+    <>
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        <SummaryCard icon={Users} label={lang === 'ar' ? 'إجمالي الطلاب' : 'Total'} value={studentStats.total} color="blue" />
+        <SummaryCard icon={CheckCircle2} label={lang === 'ar' ? 'نشط' : 'Active'} value={studentStats.active} color="green" />
+        <SummaryCard icon={XCircle} label={lang === 'ar' ? 'غير نشط' : 'Inactive'} value={studentStats.inactive} color="red" />
+        <SummaryCard icon={Globe} label={lang === 'ar' ? 'أونلاين' : 'Online'} value={studentStats.online} color="purple" />
+      </div>
+
+      {/* Filter Button and Search */}
+    {/* Filter Button and Search */}
+<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+  <div className="flex gap-2 flex-wrap">
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setShowStudentFilters(!showStudentFilters)}
+      className="gap-2"
+    >
+      <Filter className="h-4 w-4" />
+      {lang === 'ar' ? 'فلاتر متقدمة' : 'Advanced Filters'}
+      {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active || studentFilters.attended) && (
+        <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center rounded-full">
+          {[studentFilters.search, studentFilters.typeOfAttendance, studentFilters.active, studentFilters.attended].filter(Boolean).length}
+        </Badge>
+      )}
+    </Button>
+    
+    {/* 🔥 زر تصدير Excel */}
+    {filteredStudents.length > 0 && (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={exportStudentsToExcel}
+        className="gap-2"
+      >
+        <Download className="h-4 w-4" />
+        {lang === 'ar' ? 'تصدير Excel' : 'Export Excel'}
+      </Button>
+    )}
+    
+    {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active || studentFilters.attended) && (
+      <Button variant="ghost" size="sm" onClick={clearStudentFilters} className="gap-1 text-red-500">
+        <X className="h-4 w-4" />
+        {lang === 'ar' ? 'مسح الكل' : 'Clear All'}
+      </Button>
+    )}
+  </div>
+  
+  {/* Search Input */}
+  <div className="relative w-full sm:w-64">
+    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <Input
+      placeholder={lang === 'ar' ? 'بحث بالاسم أو المعرف...' : 'Search by name or ID...'}
+      value={studentFilters.search}
+      onChange={(e) => setStudentFilters(prev => ({ ...prev, search: e.target.value }))}
+      className="pl-9 rounded-xl"
+    />
+  </div>
+</div>
+
+      {/* Filters Panel */}
+      <AnimatePresence>
+        {showStudentFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-5 overflow-hidden"
+          >
+            <Card className="p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* نوع الحضور */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    {lang === 'ar' ? 'نوع الحضور' : 'Attendance Type'}
+                  </label>
+                  <select
+                    value={studentFilters.typeOfAttendance}
+                    onChange={(e) => setStudentFilters(prev => ({ ...prev, typeOfAttendance: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border bg-background"
+                  >
+                    <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+                    <option value="online">💻 {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
+                    <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
+                  </select>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {lesson.students.map((student, idx) => (
-                    <StudentCard key={student.id} student={student} idx={idx} lang={lang} formatDate={formatDate} />
-                  ))}
+                {/* الحالة */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    {lang === 'ar' ? 'الحالة' : 'Status'}
+                  </label>
+                  <select
+                    value={studentFilters.active}
+                    onChange={(e) => setStudentFilters(prev => ({ ...prev, active: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border bg-background"
+                  >
+                    <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+                    <option value="active">✅ {lang === 'ar' ? 'نشط' : 'Active'}</option>
+                    <option value="inactive">❌ {lang === 'ar' ? 'غير نشط' : 'Inactive'}</option>
+                  </select>
                 </div>
-              </>
-            ) : (
-              <EmptyState icon={Users} message={lang === 'ar' ? 'لا يوجد طلاب مسجلين في هذا الكورس' : 'No students enrolled in this course'} />
-            )}
-          </TabsContent>
+
+                {/* حضور/غياب */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    {lang === 'ar' ? 'حضور الدرس' : 'Lesson Attendance'}
+                  </label>
+                  <select
+                    value={studentFilters.attended}
+                    onChange={(e) => setStudentFilters(prev => ({ ...prev, attended: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl border bg-background"
+                  >
+                    <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+                    <option value="attended">✅ {lang === 'ar' ? 'حاضر' : 'Attended'}</option>
+                    <option value="absent">❌ {lang === 'ar' ? 'غائب' : 'Absent'}</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Apply Button */}
+              <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
+                <Button size="sm" onClick={() => setShowStudentFilters(false)} className="gap-2 bg-gradient-to-r from-primary to-secondary">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {lang === 'ar' ? 'تطبيق الفلاتر' : 'Apply Filters'}
+                </Button>
+              </div>
+
+              {/* Active Filters Display */}
+              {(studentFilters.typeOfAttendance || studentFilters.active || studentFilters.attended) && (
+                <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t">
+                  <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
+                  {studentFilters.typeOfAttendance && (
+                    <Badge variant="secondary" className="text-xs gap-1">
+                      {studentFilters.typeOfAttendance === 'online' ? '💻 أونلاين' : '🏢 سنتر'}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setStudentFilters(prev => ({ ...prev, typeOfAttendance: '' }))} />
+                    </Badge>
+                  )}
+                  {studentFilters.active && (
+                    <Badge variant="secondary" className="text-xs gap-1">
+                      {studentFilters.active === 'active' ? '✅ نشط' : '❌ غير نشط'}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setStudentFilters(prev => ({ ...prev, active: '' }))} />
+                    </Badge>
+                  )}
+                  {studentFilters.attended && (
+                    <Badge variant="secondary" className="text-xs gap-1">
+                      {studentFilters.attended === 'attended' ? '✅ حاضر' : '❌ غائب'}
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => setStudentFilters(prev => ({ ...prev, attended: '' }))} />
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Results Count */}
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-muted-foreground">
+          {lang === 'ar' 
+            ? `عرض ${filteredStudents.length} من ${studentStats.total} طالب`
+            : `Showing ${filteredStudents.length} of ${studentStats.total} students`}
+        </p>
+      </div>
+
+      {/* Students Grid */}
+      {filteredStudents.length === 0 ? (
+        <div className="text-center py-12 bg-muted/30 rounded-xl">
+          <Search className="h-16 w-16 mx-auto text-muted-foreground/30 mb-3" />
+          <p className="text-muted-foreground">{lang === 'ar' ? 'لا توجد نتائج مطابقة للبحث' : 'No matching students found'}</p>
+          <Button variant="link" onClick={clearStudentFilters} className="mt-2">
+            {lang === 'ar' ? 'مسح الفلاتر' : 'Clear filters'}
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredStudents.map((student, idx) => (
+            <StudentCard 
+              key={student.id} 
+              student={student} 
+              idx={idx} 
+              lang={lang} 
+              formatDate={formatDate}
+              lessonAttended={student.attended}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  ) : (
+    <EmptyState icon={Users} message={lang === 'ar' ? 'لا يوجد طلاب مسجلين في هذا الكورس' : 'No students enrolled in this course'} />
+  )}
+</TabsContent>
         </Tabs>
 
         {/* ==================== Image Modal ==================== */}

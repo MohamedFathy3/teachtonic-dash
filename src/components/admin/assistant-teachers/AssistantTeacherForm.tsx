@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import { assistantTeacherService } from '@/services/assistant-teacher.service';
 import type { AssistantTeacherFormData } from '@/types/assistant-teacher.types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -32,6 +32,8 @@ export function AssistantTeacherForm({ open, onClose, onSubmit, assistantId, loa
   });
   
   const [fetchingAssistant, setFetchingAssistant] = useState(false);
+  // ✅ State لإظهار/إخفاء الباسورد
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const fetchAssistantData = async () => {
@@ -61,6 +63,7 @@ export function AssistantTeacherForm({ open, onClose, onSubmit, assistantId, loa
           password: '',
           teacher_id: 0,
         });
+        setShowPassword(false);
       }
     };
 
@@ -78,6 +81,7 @@ export function AssistantTeacherForm({ open, onClose, onSubmit, assistantId, loa
         password: '',
         teacher_id: 0,
       });
+      setShowPassword(false);
     }
     onClose();
   };
@@ -133,17 +137,32 @@ export function AssistantTeacherForm({ open, onClose, onSubmit, assistantId, loa
             />
           </div>
 
+          {/* ✅ Password Field with Eye Icon */}
           <div>
             <Label>Password {assistantId && '(leave empty to keep)'}</Label>
-            <Input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-              required={!assistantId}
-            />
+            <div className="relative">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                required={!assistantId}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* 🔥 Main Teacher Select with AsyncSelect */}
+          {/* Main Teacher Select with AsyncSelect */}
           <div>
             <Label>Main Teacher</Label>
             <AsyncSelect
@@ -156,9 +175,9 @@ export function AssistantTeacherForm({ open, onClose, onSubmit, assistantId, loa
               perPageOptions={[10, 25, 50, 100]}
               defaultPerPage={25}
               showPagination
-                debounceDelay={500}        
-  cacheData={true}          
-  enableInfiniteScroll={false}
+              debounceDelay={500}        
+              cacheData={true}          
+              enableInfiniteScroll={false}
             />
           </div>
 

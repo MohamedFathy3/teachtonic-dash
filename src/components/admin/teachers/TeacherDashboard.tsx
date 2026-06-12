@@ -1209,8 +1209,8 @@ export function TeacherDashboard({ teacherId, teacherName }: TeacherDashboardPro
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
-            { name: 'theme1', label: 'Ocean Breeze', gradient: 'from-blue-500 to-purple-500', colors: ['#3b82f6', '#8b5cf6'] },
-            { name: 'theme2', label: 'Forest Mist', gradient: 'from-emerald-500 to-teal-500', colors: ['#10b981', '#14b8a6'] },
+            { name: 'theme1', label: 'Scientific theme ', gradient: 'from-blue-500 to-purple-500', colors: ['#3b82f6', '#8b5cf6'] },
+            { name: 'theme2', label: 'Basic theme 1', gradient: 'from-emerald-500 to-teal-500', colors: ['#10b981', '#14b8a6'] },
           ].map((theme) => (
             <div
               key={theme.name}

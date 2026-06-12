@@ -51,7 +51,7 @@ const adminNav: NavItem[] = [
   { to: "AssistantInstructors", labelKey: "AssistantInstructors", icon: GraduationCap },
   { to: "courses", labelKey: "courses", icon: BookOpen },
   { to: "reviews", labelKey: "reviews", icon: Star },
-  { to: "settings", labelKey: "settings", icon: Settings },
+  // { to: "settings", labelKey: "settings", icon: Settings },
 ];
 
 const instructorNav: NavItem[] = [
