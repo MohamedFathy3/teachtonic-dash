@@ -37,6 +37,7 @@ interface StudentFilters {
   search: string;
   typeOfAttendance: string;
   active: string;
+  typeOfStudy: string;
 }
 
 // ✅ أنيميشن
@@ -157,7 +158,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isLiked, setIsLiked] = useState(false);
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
   // 🔥 State للدروس
   const [lessons, setLessons] = useState<CourseDetail[]>([]);
@@ -176,15 +177,16 @@ const navigate = useNavigate();
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedPdfId, setSelectedPdfId] = useState<number | null>(null);
   const [selectedPdfUrl, setSelectedPdfUrl] = useState<string | null>(null);
-  
+
   // 🔥 State لعرض طلاب الدرس
   const [showLessonStudentsModal, setShowLessonStudentsModal] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<any>(null);
-  
+
   // ✅ State للفلتر في الطلاب
   const [studentFilters, setStudentFilters] = useState<StudentFilters>({
     search: '',
     typeOfAttendance: '',
+    typeOfStudy: '',
     active: '',
   });
   const [showStudentFilters, setShowStudentFilters] = useState(false);
@@ -277,7 +279,7 @@ const navigate = useNavigate();
 
     if (studentFilters.search) {
       const searchTerm = studentFilters.search.toLowerCase();
-      filtered = filtered.filter(s => 
+      filtered = filtered.filter(s =>
         s.name?.toLowerCase().includes(searchTerm) ||
         s.id?.toString().includes(searchTerm)
       );
@@ -286,7 +288,9 @@ const navigate = useNavigate();
     if (studentFilters.typeOfAttendance) {
       filtered = filtered.filter(s => s.type_of_attendance === studentFilters.typeOfAttendance);
     }
-
+    if (studentFilters.typeOfStudy) {
+      filtered = filtered.filter(s => s.type_of_study === studentFilters.typeOfStudy);
+    }
     if (studentFilters.active !== '') {
       filtered = filtered.filter(s => s.active === (studentFilters.active === 'active'));
     }
@@ -300,6 +304,7 @@ const navigate = useNavigate();
       search: '',
       typeOfAttendance: '',
       active: '',
+      typeOfStudy: '',
     });
     setShowStudentFilters(false);
   };
@@ -757,7 +762,7 @@ const navigate = useNavigate();
                             </Badge>
                           )}
                         </div>
-       
+
                         <div className="space-y-0.5">
                           {Array.isArray(isRTL ? lesson.titles_ar : lesson.titles)
                             ? (isRTL ? lesson.titles_ar : lesson.titles).map((t: string, i: number) => (
@@ -767,7 +772,7 @@ const navigate = useNavigate();
                             ))
                             : <h4 className="font-semibold text-base">{(isRTL ? lesson.titles_ar : lesson.titles) || '—'}</h4>
                           }
-               
+
                         </div>
 
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
@@ -806,15 +811,15 @@ const navigate = useNavigate();
                         </div>
 
                         {/* 🔥 زر عرض طلاب الدرس */}
-                           <Button 
-  size="icon" 
-  variant="ghost"
-  className="h-8 w-8 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/20 text-blue-500"
-onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلام، دلوقتي الـ Route موجود
-  title={lang === 'ar' ? 'عرض تفاصيل الدرس' : 'View Lesson Details'}
->
-  <Eye className="h-4 w-4" />
-</Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/20 text-blue-500"
+                          onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلام، دلوقتي الـ Route موجود
+                          title={lang === 'ar' ? 'عرض تفاصيل الدرس' : 'View Lesson Details'}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
 
                         <Button size="icon" variant="ghost"
                           className="h-8 w-8 rounded-full hover:bg-primary/10"
@@ -860,7 +865,7 @@ onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلا
               <Users className="h-5 w-5 text-primary" />
               {lang === 'ar' ? 'الطلاب المسجلين في هذا الكورس' : 'Students Enrolled in This Course'} ({students.length})
             </h3>
-            
+
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -876,7 +881,7 @@ onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلا
                   </Badge>
                 )}
               </Button>
-              
+
               <ExportExcelButton
                 data={filteredStudents.map((s: any) => ({
                   id: s.id,
@@ -905,7 +910,8 @@ onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلا
                 className="mb-4 overflow-hidden"
               >
                 <Card className="p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
                     <div>
                       <label className="block text-xs font-medium text-muted-foreground mb-1">
                         {lang === 'ar' ? 'بحث بالاسم أو كود الطالب' : 'Search by name or ID'}
@@ -933,6 +939,20 @@ onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلا
                         <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
                         <option value="online">🖥️ {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
                         <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        {lang === 'ar' ? 'نوع الدراسة' : 'Study Type'}
+                      </label>
+                      <select
+                        value={studentFilters.typeOfStudy}
+                        onChange={(e) => setStudentFilters(prev => ({ ...prev, typeOfStudy: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl border bg-background"
+                      >
+                        <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+                        <option value="general">📚 {lang === 'ar' ? 'عام' : 'General'}</option>
+                        <option value="azhar">🕌 {lang === 'ar' ? 'أزهر' : 'Azhar'}</option>
                       </select>
                     </div>
 
@@ -1034,7 +1054,7 @@ onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلا
                           {student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
                         </Badge>
                       </div>
-                      
+
                       <div className="mt-2 space-y-1">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Phone className="h-3 w-3" />
@@ -1059,7 +1079,7 @@ onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلا
                             <MapPin className="h-3 w-3 text-green-500" />
                           )}
                           <span>
-                            {student.type_of_attendance === 'online' 
+                            {student.type_of_attendance === 'online'
                               ? (lang === 'ar' ? 'أونلاين' : 'Online')
                               : (lang === 'ar' ? 'سنتر' : 'Center')}
                           </span>
@@ -1068,6 +1088,16 @@ onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلا
                           <Calendar className="h-3 w-3" />
                           <span>{lang === 'ar' ? 'تاريخ التسجيل:' : 'Joined:'} {new Date(student.created_at || student.createdAt).toLocaleDateString()}</span>
                         </div>
+                        {student.type_of_study && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>📖</span>
+                            <span>
+                              {student.type_of_study === 'general'
+                                ? (lang === 'ar' ? 'عام' : 'General')
+                                : (lang === 'ar' ? 'أزهر' : 'Azhar')}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1075,7 +1105,7 @@ onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلا
               ))}
             </div>
           )}
-          
+
           {students.length > 0 && (
             <div className="mt-4 p-3 rounded-xl bg-muted/30 text-sm text-muted-foreground flex justify-between items-center flex-wrap gap-2">
               <span>{lang === 'ar' ? '📊 إجمالي الطلاب' : '📊 Total Students'}: {students.length}</span>
@@ -1228,7 +1258,7 @@ onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلا
                             {student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
                           </Badge>
                         </div>
-                        
+
                         <div className="mt-1 space-y-0.5">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Phone className="h-3 w-3" />
@@ -1247,7 +1277,7 @@ onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلا
                               <MapPin className="h-3 w-3 text-green-500" />
                             )}
                             <span>
-                              {student.type_of_attendance === 'online' 
+                              {student.type_of_attendance === 'online'
                                 ? (lang === 'ar' ? 'أونلاين' : 'Online')
                                 : (lang === 'ar' ? 'سنتر' : 'Center')}
                             </span>

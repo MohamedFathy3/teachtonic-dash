@@ -92,6 +92,7 @@ export const InstructorStudents: React.FC = () => {
   const isRTL = lang === 'ar';
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+<<<<<<< HEAD
   
   // ✅ State موحد للفلاتر
   const [filters, setFilters] = useState<FilterState>({
@@ -106,11 +107,33 @@ export const InstructorStudents: React.FC = () => {
     search: '',
   });
   
+=======
+  // ✅ State
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
   const [students, setStudents] = useState<Student[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]); // للفلترة المحلية
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+<<<<<<< HEAD
   
+=======
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // ✅ فلتر المرحلة - المستوى الأول
+  const [filterStageId, setFilterStageId] = useState<number | null>(null);
+  // ✅ خيارات الساعات المركزية حسب المرحلة
+  const [filteredCenterHours, setFilteredCenterHours] = useState<CenterHour[]>([]);
+  const [filterAttendance, setFilterAttendance] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterId, setFilterId] = useState<string>('');
+  const [filterPhone, setFilterPhone] = useState('');
+  const [filterCodeParent, setFilterCodeParent] = useState('');
+  const [filterCenterHourId, setFilterCenterHourId] = useState<string>('');
+
+  // ✅ State for Center Hours list (all)
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
   const [allCenterHours, setAllCenterHours] = useState<CenterHour[]>([]);
   const [filteredCenterHours, setFilteredCenterHours] = useState<CenterHour[]>([]);
   const [loadingCenterHours, setLoadingCenterHours] = useState(false);
@@ -126,7 +149,12 @@ export const InstructorStudents: React.FC = () => {
 
   const [toggleActiveStudent, setToggleActiveStudent] = useState<Student | null>(null);
   const [togglingActive, setTogglingActive] = useState(false);
+<<<<<<< HEAD
 
+=======
+  const [filterTypeOfStudy, setFilterTypeOfStudy] = useState<string>('');
+  // ✅ Pagination
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
   const [pagination, setPagination] = useState({
     currentPage: 1,
     lastPage: 1,
@@ -211,6 +239,9 @@ export const InstructorStudents: React.FC = () => {
     if (filters.studentType) {
       result = result.filter(s => s.type_of_study === filters.studentType);
     }
+    if (filterTypeOfStudy) {
+      result = result.filter(s => s.type_of_study === filterTypeOfStudy);
+    }
 
     return result;
   }, [allStudents, filters]);
@@ -221,6 +252,7 @@ export const InstructorStudents: React.FC = () => {
     setError(null);
     
     try {
+<<<<<<< HEAD
       const apiFilters: any = {};
       
       if (filters.stageId) apiFilters.stage_id = filters.stageId;
@@ -229,6 +261,16 @@ export const InstructorStudents: React.FC = () => {
       if (filters.studentId.trim()) {
         const idNum = Number(filters.studentId);
         if (!Number.isNaN(idNum)) apiFilters.id = idNum;
+=======
+      const filters: any = {};
+      if (filterStageId) filters.stage_id = filterStageId;
+      if (filterAttendance) filters.type_of_attendance = filterAttendance;
+      if (filterStatus !== '') filters.active = filterStatus === 'active';
+      if (filterTypeOfStudy) filters.type_of_study = filterTypeOfStudy;
+      if (filterId.trim()) {
+        const idNum = Number(filterId);
+        if (!Number.isNaN(idNum)) filters.id = idNum;
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
       }
       if (filters.phone) apiFilters.phone = filters.phone;
       if (filters.parentCode) apiFilters.code_parent = filters.parentCode;
@@ -256,7 +298,23 @@ export const InstructorStudents: React.FC = () => {
     } finally {
       setLoading(false);
     }
+<<<<<<< HEAD
   }, [filters, pagination.perPage, user?.id]);
+=======
+  }, [
+    debouncedSearch,
+    filterStageId,
+    filterAttendance,
+    filterStatus,
+    filterId,
+    filterPhone,
+    filterCodeParent,
+    filterCenterHourId,
+    pagination.perPage,
+    user?.id,
+    filterTypeOfStudy,
+  ]);
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
 
   // الـ debounced search
   useEffect(() => {
@@ -277,6 +335,7 @@ export const InstructorStudents: React.FC = () => {
     }
   };
 
+<<<<<<< HEAD
   const clearAllFilters = () => {
     setFilters({
       stageId: null,
@@ -289,6 +348,23 @@ export const InstructorStudents: React.FC = () => {
       studentType: '',
       search: '',
     });
+=======
+  const clearFilters = () => {
+    setFilterStageId(null);
+    setFilterAttendance('');
+    setFilterStatus('');
+    setFilterId('');
+    setFilterPhone('');
+    setFilterCodeParent('');
+    setFilterCenterHourId('');
+    setSearchQuery('');
+    setDebouncedSearch('');
+    setFilterTypeOfStudy('');
+    setShowFilters(false);
+  };
+
+  const applyFilters = () => {
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
     fetchStudents(1);
   };
 
@@ -298,28 +374,35 @@ export const InstructorStudents: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (!changePasswordStudent) return;
-    
+
     if (!newPassword || newPassword.length < 6) {
       setPasswordError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       setPasswordError('كلمتا المرور غير متطابقتين');
       return;
     }
-    
+
     setChangingPassword(true);
     setPasswordError(null);
-    
+
     try {
       const response = await api.post('/student/change-password', {
         student_id: changePasswordStudent.id,
         password: newPassword,
       });
-      
+
       if (response.data?.status === true || response.status === 200) {
+<<<<<<< HEAD
         toast.success(`تم تغيير كلمة مرور الطالب ${changePasswordStudent.name} بنجاح`);
+=======
+        toast.success(lang === 'ar'
+          ? `تم تغيير كلمة مرور الطالب ${changePasswordStudent.name} بنجاح`
+          : `Password changed successfully for ${changePasswordStudent.name}`
+        );
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
         setChangePasswordStudent(null);
         setNewPassword('');
         setConfirmPassword('');
@@ -336,17 +419,24 @@ export const InstructorStudents: React.FC = () => {
 
   const handleToggleActive = async () => {
     if (!toggleActiveStudent) return;
-    
+
     setTogglingActive(true);
-    
+
     try {
       const newStatus = !toggleActiveStudent.active;
       const response = await api.put(`/student/${toggleActiveStudent.id}/active`, {
         active: newStatus
       });
-      
+
       if (response.data?.status === true || response.status === 200) {
+<<<<<<< HEAD
         toast.success(`${toggleActiveStudent.name} ${newStatus ? 'تم تفعيله' : 'تم إلغاء تفعيله'} بنجاح`);
+=======
+        toast.success(lang === 'ar'
+          ? `${toggleActiveStudent.name} ${newStatus ? 'تم تفعيله' : 'تم إلغاء تفعيله'} بنجاح`
+          : `${toggleActiveStudent.name} has been ${newStatus ? 'activated' : 'deactivated'} successfully`
+        );
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
         fetchStudents(pagination.currentPage);
         setToggleActiveStudent(null);
       } else {
@@ -632,6 +722,7 @@ export const InstructorStudents: React.FC = () => {
           </div>
         </motion.div>
 
+<<<<<<< HEAD
         <AdvancedFilters
           groups={filterGroups}
           filters={currentFilters}
@@ -644,6 +735,241 @@ export const InstructorStudents: React.FC = () => {
           autoApply={false}
         />
 
+=======
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, y: -20 }}
+              animate={{ opacity: 1, height: 'auto', y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -20 }}
+              className="overflow-hidden"
+            >
+              <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+                  {/* 🔹 Stage (المرحلة) - المستوى الأول */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1 text-sm font-medium">
+                      <GraduationCap className="h-4 w-4 text-primary" />
+                      {t('stage') || 'المرحلة'}
+                    </Label>
+                    <select
+                      value={filterStageId || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFilterStageId(value ? Number(value) : null);
+                        // إعادة تعيين الساعة المركزية عند تغيير المرحلة
+                        setFilterCenterHourId('');
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                    >
+                      <option value="">
+                        {lang === 'ar' ? 'جميع المراحل' : 'All Stages'}
+                      </option>
+                      {stages.map((stage: any) => (
+                        <option key={stage.id} value={stage.id}>
+                          {isRTL ? stage.name_ar : stage.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* 🔹 نوع الدراسة */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      <GraduationCap className="h-4 w-4" />
+                      {lang === 'ar' ? 'نوع الدراسة' : 'Study Type'}
+                    </Label>
+                    <select
+                      value={filterTypeOfStudy}
+                      onChange={(e) => setFilterTypeOfStudy(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                    >
+                      <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+                      <option value="general">📚 {lang === 'ar' ? 'عام' : 'General'}</option>
+                      <option value="azhar">🕌 {lang === 'ar' ? 'أزهر' : 'Azhar'}</option>
+                    </select>
+                  </div>
+                  {/* 🔹 نوع الحضور - المستوى الثاني */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      <Monitor className="h-4 w-4" />
+                      {t('attendanceType') || 'نوع الحضور'}
+                    </Label>
+                    <select
+                      value={filterAttendance}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setFilterAttendance(newValue);
+                        // إعادة تعيين الساعة المركزية عند تغيير نوع الحضور
+                        if (newValue !== 'center') {
+                          setFilterCenterHourId('');
+                        }
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                    >
+                      <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+                      <option value="online">🖥️ {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
+                      <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
+                    </select>
+                  </div>
+
+                  {/* 🔹 الساعة المركزية - يظهر فقط لو اختار سنتر */}
+                  {filterAttendance === 'center' && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1 text-sm font-medium">
+                        <Clock className="h-4 w-4 text-primary" />
+                        {lang === 'ar' ? ' مواعيد السناتر' : 'Center Hour'}
+                      </Label>
+                      <select
+                        value={filterCenterHourId}
+                        onChange={(e) => setFilterCenterHourId(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border bg-background"
+                        disabled={loadingCenterHours}
+                      >
+                        <option value="">
+                          {lang === 'ar' ? 'جميع  موعيد السناتر' : 'All Center Hours'}
+                        </option>
+                        {filteredCenterHours.map((hour) => (
+                          <option key={hour.id} value={String(hour.id)}>
+                            {getCenterHourDisplay(hour)}
+                          </option>
+                        ))}
+                      </select>
+                      {filteredCenterHours.length === 0 && (
+                        <p className="text-xs text-amber-500 mt-1">
+                          {lang === 'ar' ? '⚠️ لا توجد ساعات مركزية لهذه المرحلة' : '⚠️ No center hours for this stage'}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 🔹 باقي الفلاتر */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      <CheckCircle className="h-4 w-4" />
+                      {t('status') || 'الحالة'}
+                    </Label>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                    >
+                      <option value="">{lang === 'ar' ? 'الكل' : 'All'}</option>
+                      <option value="active">✅ {lang === 'ar' ? 'نشط' : 'Active'}</option>
+                      <option value="inactive">❌ {lang === 'ar' ? 'غير نشط' : 'Inactive'}</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      <Phone className="h-4 w-4" />
+                      {lang === 'ar' ? 'الهاتف' : 'Phone'}
+                    </Label>
+                    <Input
+                      value={filterPhone}
+                      onChange={(e) => setFilterPhone(e.target.value)}
+                      placeholder={lang === 'ar' ? 'اكتب رقم الهاتف' : 'Enter phone'}
+                      className="rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      <Award className="h-4 w-4" />
+                      {lang === 'ar' ? 'كود ولي الأمر' : 'Parent Code'}
+                    </Label>
+                    <Input
+                      value={filterCodeParent}
+                      onChange={(e) => setFilterCodeParent(e.target.value)}
+                      placeholder={lang === 'ar' ? 'اكتب الكود' : 'Enter code'}
+                      className="rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      {t('studentId') || 'رقم الطالب'}
+                    </Label>
+                    <Input
+                      type="number"
+                      value={filterId}
+                      onChange={(e) => setFilterId(e.target.value)}
+                      placeholder={lang === 'ar' ? 'رقم الطالب' : 'Student ID'}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                {/* 🔹 Actions */}
+                <div className="flex justify-end gap-3 mt-5 pt-3 border-t">
+                  <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2">
+                    <X className="h-4 w-4" />
+                    {t('reset') || 'إعادة تعيين'}
+                  </Button>
+                  <Button size="sm" onClick={applyFilters} className="gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
+                    <Search className="h-4 w-4" />
+                    {t('applyFilters') || 'تطبيق'}
+                  </Button>
+                </div>
+
+                {/* عرض الفلاتر النشطة */}
+                {(filterStageId || filterAttendance || filterStatus || filterCenterHourId || filterPhone || filterCodeParent || filterId) && (
+                  <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
+                    <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
+                    {filterStageId && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        <GraduationCap className="h-3 w-3" />
+                        {stages.find(s => s.id === filterStageId)?.name || filterStageId}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterStageId(null)} />
+                      </Badge>
+                    )}
+                    {filterAttendance && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        {filterAttendance === 'online' ? '🖥️ أونلاين' : '🏢 سنتر'}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterAttendance('')} />
+                      </Badge>
+                    )}
+                    {filterCenterHourId && filterAttendance === 'center' && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        <Clock className="h-3 w-3" />
+                        {allCenterHours.find(h => h.id === Number(filterCenterHourId))?.title || filterCenterHourId}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterCenterHourId('')} />
+                      </Badge>
+                    )}
+                    {filterStatus && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        {filterStatus === 'active' ? '✅ نشط' : '❌ غير نشط'}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterStatus('')} />
+                      </Badge>
+                    )}
+                    {filterPhone && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        📞 {filterPhone}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterPhone('')} />
+                      </Badge>
+                    )}
+                    {filterCodeParent && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        🎫 {filterCodeParent}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterCodeParent('')} />
+                      </Badge>
+                    )}
+                    {filterId && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        🆔 {filterId}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterId('')} />
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ✅ Students Grid */}
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
         <motion.div variants={containerVariants} className="space-y-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
@@ -675,9 +1001,15 @@ export const InstructorStudents: React.FC = () => {
                     <div className={`relative h-24 bg-gradient-to-r ${student.active ? 'from-blue-500 to-cyan-500' : 'from-gray-500 to-gray-600'}`}>
                       <div className="absolute -bottom-8 left-6">
                         <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg border-4 border-white dark:border-gray-800 overflow-hidden">
+<<<<<<< HEAD
                           {student.imageUrl ? (
                             <img 
                               src={student.imageUrl}
+=======
+                          {(student.imageUrl || student.image) ? (
+                            <img
+                              src={student.imageUrl || student.image?.file_path || `https://lms.dentin.cloud/storage/${student.image?.file_path}`}
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                               alt={student.name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
@@ -752,7 +1084,7 @@ export const InstructorStudents: React.FC = () => {
                           <Eye className="h-3 w-3" />
                           عرض التعلم
                         </Button>
-                        
+
                         <Button
                           size="sm"
                           variant="outline"
@@ -767,7 +1099,7 @@ export const InstructorStudents: React.FC = () => {
                           <Key className="h-3 w-3" />
                           تغيير كلمة المرور
                         </Button>
-                        
+
                         <Button
                           size="sm"
                           variant={student.active ? "destructive" : "default"}
@@ -851,11 +1183,16 @@ export const InstructorStudents: React.FC = () => {
         )}
       </div>
 
+<<<<<<< HEAD
+=======
+      {/* ✅ Change Password Modal */}
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
       <Dialog open={!!changePasswordStudent} onOpenChange={(open) => !open && setChangePasswordStudent(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="h-5 w-5 text-blue-500" />
+<<<<<<< HEAD
               تغيير كلمة المرور
             </DialogTitle>
             <DialogDescription>
@@ -868,13 +1205,34 @@ export const InstructorStudents: React.FC = () => {
               <Label className="flex items-center gap-2">
                 <Lock className="h-4 w-4" />
                 كلمة المرور الجديدة
+=======
+              {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === 'ar'
+                ? `تغيير كلمة المرور للطالب: ${changePasswordStudent?.name}`
+                : `Change password for student: ${changePasswordStudent?.name}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* كلمة المرور الجديدة مع عين */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                {lang === 'ar' ? 'كلمة المرور الجديدة' : 'New Password'}
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
               </Label>
               <div className="relative">
                 <Input
                   type={showNewPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+<<<<<<< HEAD
                   placeholder="أدخل كلمة المرور الجديدة"
+=======
+                  placeholder={lang === 'ar' ? 'أدخل كلمة المرور الجديدة' : 'Enter new password'}
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                   className="rounded-xl pr-10"
                 />
                 <button
@@ -882,6 +1240,7 @@ export const InstructorStudents: React.FC = () => {
                   onClick={() => setShowNewPassword(!showNewPassword)}
                   className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
                 >
+<<<<<<< HEAD
                   {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
@@ -892,13 +1251,36 @@ export const InstructorStudents: React.FC = () => {
               <Label className="flex items-center gap-2">
                 <Lock className="h-4 w-4" />
                 تأكيد كلمة المرور
+=======
+                  {showNewPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {lang === 'ar' ? 'يجب أن تكون كلمة المرور 6 أحرف على الأقل' : 'Password must be at least 6 characters'}
+              </p>
+            </div>
+
+            {/* تأكيد كلمة المرور مع عين */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                {lang === 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password'}
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
               </Label>
               <div className="relative">
                 <Input
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+<<<<<<< HEAD
                   placeholder="أعد إدخال كلمة المرور"
+=======
+                  placeholder={lang === 'ar' ? 'أعد إدخال كلمة المرور' : 'Re-enter password'}
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                   className="rounded-xl pr-10"
                 />
                 <button
@@ -906,11 +1288,23 @@ export const InstructorStudents: React.FC = () => {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
                 >
+<<<<<<< HEAD
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
             
+=======
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
             {passwordError && (
               <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
@@ -918,6 +1312,7 @@ export const InstructorStudents: React.FC = () => {
               </div>
             )}
           </div>
+<<<<<<< HEAD
           
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setChangePasswordStudent(null)}>
@@ -928,11 +1323,34 @@ export const InstructorStudents: React.FC = () => {
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   جاري التغيير...
+=======
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setChangePasswordStudent(null)}
+            >
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </Button>
+            <Button
+              onClick={handleChangePassword}
+              disabled={changingPassword}
+              className="gap-2"
+            >
+              {changingPassword ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {lang === 'ar' ? 'جاري التغيير...' : 'Changing...'}
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4" />
+<<<<<<< HEAD
                   تغيير
+=======
+                  {lang === 'ar' ? 'تغيير' : 'Change'}
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
                 </>
               )}
             </Button>
@@ -944,12 +1362,27 @@ export const InstructorStudents: React.FC = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
+<<<<<<< HEAD
               {toggleActiveStudent?.active ? 'إلغاء تفعيل الطالب' : 'تفعيل الطالب'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {toggleActiveStudent?.active
                 ? `هل أنت متأكد من إلغاء تفعيل الطالب "${toggleActiveStudent?.name}"؟ لن يتمكن الطالب من تسجيل الدخول.`
                 : `هل أنت متأكد من تفعيل الطالب "${toggleActiveStudent?.name}"؟`}
+=======
+              {toggleActiveStudent?.active
+                ? (lang === 'ar' ? 'إلغاء تفعيل الطالب' : 'Deactivate Student')
+                : (lang === 'ar' ? 'تفعيل الطالب' : 'Activate Student')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {toggleActiveStudent?.active
+                ? (lang === 'ar'
+                  ? `هل أنت متأكد من إلغاء تفعيل الطالب "${toggleActiveStudent?.name}"؟ لن يتمكن الطالب من تسجيل الدخول.`
+                  : `Are you sure you want to deactivate "${toggleActiveStudent?.name}"? The student will not be able to login.`)
+                : (lang === 'ar'
+                  ? `هل أنت متأكد من تفعيل الطالب "${toggleActiveStudent?.name}"؟`
+                  : `Are you sure you want to activate "${toggleActiveStudent?.name}"?`)}
+>>>>>>> 3822f4525e4c92162736b9a733b04cbb0ba31cd6
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
