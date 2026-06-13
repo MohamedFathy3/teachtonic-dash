@@ -36,7 +36,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     subject: [],
     image: undefined,
   });
-  
+  const [currentStageId, setCurrentStageId] = useState<string>('');
   const [fetchingTeacher, setFetchingTeacher] = useState(false);
   const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [selectedStageImage, setSelectedStageImage] = useState<number>(0);
@@ -331,16 +331,21 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
           <div className="border rounded-lg p-4">
             <Label className="mb-2 block">Stages & Images</Label>
             <div className="flex gap-2 mb-3 flex-wrap">
-              <AsyncSelect
-                configKey="stages"
-                value={selectedStageId ? parseInt(selectedStageId) : null}
-                onChange={(value) => setSelectedStageId(value?.toString() || '')}
-                placeholder="Select stage"
-                searchPlaceholder="Search stage..."
-                className="flex-1 min-w-[150px]"
-                perPageOptions={[10, 25, 50]}
-                defaultPerPage={25}
-              />
+             <AsyncSelect
+  configKey="stages"
+  value={selectedStageId ? parseInt(selectedStageId) : null}
+  onChange={(value, selectedItem) => {
+    setSelectedStageId(value?.toString() || '');
+    if (selectedItem) {
+      setCurrentStageId(value?.toString() || ''); 
+    }
+  }}
+  placeholder="Select stage"
+  searchPlaceholder="Search stage..."
+  className="flex-1 min-w-[150px]"
+  perPageOptions={[10, 25, 50]}
+  defaultPerPage={25}
+/>
               
               <FileUploader
                 label=""
@@ -379,19 +384,21 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
           <div className="border rounded-lg p-4">
             <Label className="mb-2 block">Subjects</Label>
             <div className="flex gap-2 mb-3">
-              <AsyncSelect
-                configKey="subjects"
-                value={selectedSubjectId ? parseInt(selectedSubjectId) : null}
-                onChange={(value) => setSelectedSubjectId(value?.toString() || '')}
-                placeholder="Select subject"
-                searchPlaceholder="Search subject..."
-                className="flex-1"
-                perPageOptions={[10, 25, 50]}
-                defaultPerPage={25}
-                debounceDelay={500}        
-                cacheData={true}          
-                enableInfiniteScroll={false}
-              />
+          <AsyncSelect
+  configKey="subjects"
+  value={selectedSubjectId ? parseInt(selectedSubjectId) : null}
+  onChange={(value) => setSelectedSubjectId(value?.toString() || '')}
+  placeholder="Select subject"
+  searchPlaceholder="Search subject..."
+  className="flex-1"
+  perPageOptions={[10, 25, 50]}
+  defaultPerPage={25}
+  debounceDelay={500}
+  cacheData={true}
+  enableInfiniteScroll={false}
+  extraFilters={{ stage_id: currentStageId ? parseInt(currentStageId) : undefined }} // 🔥 هنا الربط!
+  key={currentStageId} // عشان يعيد تحميل البيانات لما يتغير الـ stage
+/>
               <Button type="button" onClick={addSubject} size="sm">
                 <Plus className="h-4 w-4" />
               </Button>

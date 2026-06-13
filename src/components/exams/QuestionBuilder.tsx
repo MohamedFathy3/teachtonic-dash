@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { QuestionDetailsModal } from '@/components/exams/QuestionDetailsModal';
 
 interface QuestionBuilderProps {
   examId: number;
@@ -33,7 +34,7 @@ interface Question {
   question: string;
   mark: number;
   correct_answer?: string;
-  options?: { option_text: string; is_correct: boolean }[];
+  options?: { option_text: string; is_correct: boolean, image:number }[];
   image?: number | null;
 }
 
@@ -45,7 +46,8 @@ export const QuestionBuilder: React.FC<QuestionBuilderProps> = ({ examId, onSucc
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-
+const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
+const [questionModalOpen, setQuestionModalOpen] = useState(false);
   // ✅ فرم السؤال الجديد
   const [questionForm, setQuestionForm] = useState<Question>({
     id: Date.now().toString(),
@@ -54,10 +56,10 @@ export const QuestionBuilder: React.FC<QuestionBuilderProps> = ({ examId, onSucc
     mark: 1,
     image: null,
     options: [
-      { option_text: '', is_correct: false },
-      { option_text: '', is_correct: false },
-      { option_text: '', is_correct: false },
-      { option_text: '', is_correct: false },
+      { option_text: '', is_correct: false, image: null },
+      { option_text: '', is_correct: false, image: null },
+      { option_text: '', is_correct: false, image: null },
+      { option_text: '', is_correct: false, image: null },
     ],
   });
 
@@ -70,10 +72,10 @@ export const QuestionBuilder: React.FC<QuestionBuilderProps> = ({ examId, onSucc
       mark: 1,
       image: null,
       options: [
-        { option_text: '', is_correct: false },
-        { option_text: '', is_correct: false },
-        { option_text: '', is_correct: false },
-        { option_text: '', is_correct: false },
+        { option_text: '', is_correct: false, image: null },
+        { option_text: '', is_correct: false, image: null },
+        { option_text: '', is_correct: false, image: null },
+        { option_text: '', is_correct: false, image: null },
       ],
     });
     setIsEditing(false);
@@ -105,12 +107,12 @@ export const QuestionBuilder: React.FC<QuestionBuilderProps> = ({ examId, onSucc
         toast.error(lang === 'ar' ? 'يرجى تحديد إجابة صحيحة واحدة على الأقل' : 'Please select at least one correct answer');
         return;
       }
-      const hasEmptyOption = questionForm.options?.some(opt => !opt.option_text.trim());
-      if (hasEmptyOption) {
-        toast.error(lang === 'ar' ? 'يرجى ملء جميع الخيارات' : 'Please fill all options');
-        return;
-      }
+     const hasEmpty = questionForm.options?.some(opt => !opt.option_text.trim() && !opt.image);
+    if (hasEmpty) {
+      toast.error(lang === 'ar' ? 'كل خيار يجب أن يحتوي على نص أو صورة' : 'Each option must have text or an image');
+      return;
     }
+  }
 
     if (isEditing) {
       setQuestions(prev => prev.map(q => q.id === questionForm.id ? questionForm : q));
@@ -166,32 +168,47 @@ export const QuestionBuilder: React.FC<QuestionBuilderProps> = ({ examId, onSucc
 
   const totalMarks = questions.reduce((sum, q) => sum + q.mark, 0);
 
-  const updateOption = (index: number, value: string) => {
-    const newOptions = [...(questionForm.options || [])];
-    newOptions[index].option_text = value;
-    setQuestionForm({ ...questionForm, options: newOptions });
-  };
+ // تحديث option text
+const updateOption = (index: number, value: string) => {
+  const newOptions = [...(questionForm.options || [])];
+  newOptions[index] = { ...newOptions[index], option_text: value };
+  setQuestionForm({ ...questionForm, options: newOptions });
+};
 
-  const setCorrectOption = (index: number) => {
-    const newOptions = questionForm.options?.map((opt, i) => ({
-      ...opt,
-      is_correct: i === index,
-    }));
-    setQuestionForm({ ...questionForm, options: newOptions });
-  };
+const updateOptionImage = (index: number, imageId: number) => {
+  const newOptions = [...(questionForm.options || [])];
+  newOptions[index] = { ...newOptions[index], image: imageId };
+  setQuestionForm({ ...questionForm, options: newOptions });
+};
 
-  const addOption = () => {
-    setQuestionForm({
-      ...questionForm,
-      options: [...(questionForm.options || []), { option_text: '', is_correct: false }],
-    });
-  };
+// حذف صورة الخيار
+const removeOptionImage = (index: number) => {
+  const newOptions = [...(questionForm.options || [])];
+  newOptions[index] = { ...newOptions[index], image: null };
+  setQuestionForm({ ...questionForm, options: newOptions });
+};
 
-  const removeOption = (index: number) => {
-    const newOptions = questionForm.options?.filter((_, i) => i !== index);
-    setQuestionForm({ ...questionForm, options: newOptions });
-  };
+// تعيين الخيار الصحيح
+const setCorrectOption = (index: number) => {
+  const newOptions = questionForm.options?.map((opt, i) => ({
+    ...opt,
+    is_correct: i === index,
+  }));
+  setQuestionForm({ ...questionForm, options: newOptions });
+};
 
+// إضافة خيار جديد
+const addOption = () => {
+  setQuestionForm({
+    ...questionForm,
+    options: [...(questionForm.options || []), { option_text: '', is_correct: false, image: null }],
+  });
+};
+
+const removeOption = (index: number) => {
+  const newOptions = questionForm.options?.filter((_, i) => i !== index);
+  setQuestionForm({ ...questionForm, options: newOptions });
+};
   const hasCorrectOption = questionForm.options?.some(opt => opt.is_correct) || false;
 
   return (
@@ -248,7 +265,9 @@ export const QuestionBuilder: React.FC<QuestionBuilderProps> = ({ examId, onSucc
                 exit={{ opacity: 0, x: 50, scale: 0.9 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
               >
-                <Card className="p-5 border-2 hover:border-primary/50 transition-all shadow-lg cursor-pointer hover:shadow-xl" onClick={() => openEditModal(q)}>
+                <Card 
+                
+                className="p-5 border-2 hover:border-primary/50 transition-all shadow-lg cursor-pointer hover:shadow-xl" onClick={() => openEditModal(q)}>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
@@ -417,61 +436,75 @@ export const QuestionBuilder: React.FC<QuestionBuilderProps> = ({ examId, onSucc
             )}
 
             {/* Multiple Choice Options */}
-            {questionForm.question_type === 'multiple_choice' && (
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <Label className="text-sm font-semibold flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                    {lang === 'ar' ? 'الخيارات' : 'Options'}
-                  </Label>
-                  <Button type="button" size="sm" variant="outline" onClick={addOption} className="gap-1 rounded-xl">
-                    <Plus className="h-3 w-3" /> {lang === 'ar' ? 'إضافة خيار' : 'Add Option'}
-                  </Button>
-                </div>
-                <div className="space-y-3 p-4 bg-muted/30 rounded-xl">
-                  {questionForm.options?.map((opt, idx) => (
-                    <div key={idx} className="bg-white dark:bg-gray-800 rounded-lg p-3">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="mc"
-                          checked={opt.is_correct}
-                          onChange={() => setCorrectOption(idx)}
-                          className="w-4 h-4 accent-primary shrink-0"
-                        />
-                        <div className="flex-1">
-                          <Input
-                            value={opt.option_text}
-                            onChange={(e) => updateOption(idx, e.target.value)}
-                            placeholder={`${lang === 'ar' ? 'خيار' : 'Option'} ${idx + 1}`}
-                            className="rounded-lg"
-                          />
-                        </div>
-                        {questionForm.options!.length > 2 && (
-                          <button
-                            type="button"
-                            onClick={() => removeOption(idx)}
-                            className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                      {opt.is_correct && (
-                        <p className="text-xs text-green-600 mt-2 mr-7">
-                          ✓ {lang === 'ar' ? 'هذا هو الخيار الصحيح' : 'This is the correct option'}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                  {!hasCorrectOption && questionForm.options && questionForm.options.length > 0 && (
-                    <p className="text-xs text-amber-600 mt-2 text-center">
-                      ⚠️ {lang === 'ar' ? 'يرجى تحديد خيار صحيح واحد على الأقل' : 'Please select at least one correct option'}
-                    </p>
-                  )}
-                </div>
-              </div>
+           {/* Multiple Choice Options */}
+{questionForm.question_type === 'multiple_choice' && (
+  <div>
+    <div className="flex justify-between items-center mb-3">
+      <Label className="text-sm font-semibold flex items-center gap-2">
+        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+        {lang === 'ar' ? 'الخيارات' : 'Options'}
+      </Label>
+      <Button type="button" size="sm" variant="outline" onClick={addOption} className="gap-1 rounded-xl">
+        <Plus className="h-3 w-3" /> {lang === 'ar' ? 'إضافة خيار' : 'Add Option'}
+      </Button>
+    </div>
+    <div className="space-y-4 p-4 bg-muted/30 rounded-xl">
+      {questionForm.options?.map((opt, idx) => (
+        <div key={idx} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-start gap-3">
+            <input
+              type="radio"
+              name="mc"
+              checked={opt.is_correct}
+              onChange={() => setCorrectOption(idx)}
+              className="w-4 h-4 accent-primary shrink-0 mt-3"
+            />
+            <div className="flex-1 space-y-3">
+              <Input
+                value={opt.option_text}
+                onChange={(e) => updateOption(idx, e.target.value)}
+                placeholder={`${lang === 'ar' ? 'نص الخيار' : 'Option text'} ${idx + 1}`}
+                className="rounded-lg"
+              />
+              
+              {/* 🔥 رفع صورة للخيار */}
+              <FileUploader
+                label={lang === 'ar' ? 'صورة الخيار (اختياري)' : 'Option image (optional)'}
+                onUploadSuccess={(id) => updateOptionImage(idx, id)}
+                onRemoveImage={() => removeOptionImage(idx)}
+                multiple={false}
+                accept="image/*"
+                preview
+                uniqueId={`option-image-${questionForm.id}-${idx}`}
+                maxFiles={1}
+                defaultImageId={opt.image as number | undefined}
+              />
+            </div>
+            {questionForm.options!.length > 2 && (
+              <button
+                type="button"
+                onClick={() => removeOption(idx)}
+                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors shrink-0 mt-2"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             )}
+          </div>
+          {opt.is_correct && (
+            <p className="text-xs text-green-600 mt-2 mr-7">
+              ✓ {lang === 'ar' ? 'هذا هو الخيار الصحيح' : 'This is the correct option'}
+            </p>
+          )}
+        </div>
+      ))}
+      {!hasCorrectOption && questionForm.options && questionForm.options.length > 0 && (
+        <p className="text-xs text-amber-600 mt-2 text-center">
+          ⚠️ {lang === 'ar' ? 'يرجى تحديد خيار صحيح واحد على الأقل' : 'Please select at least one correct option'}
+        </p>
+      )}
+    </div>
+  </div>
+)}
 
             {/* Essay placeholder */}
             {questionForm.question_type === 'essay' && (

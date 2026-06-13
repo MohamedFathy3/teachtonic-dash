@@ -43,7 +43,12 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     // ✅ إضافة customFetcher لدعم الفلترة حسب المرحلة
     customFetcher: async (params) => {
       const { page, perPage, search, extraFilters } = params;
-      
+        console.log('🔥🔥🔥 Subjects customFetcher called with:', { 
+    page, 
+    perPage, 
+    search, 
+    extraFilters 
+  });
       const requestBody: any = {
         filters: {},
         orderBy: 'position',

@@ -280,6 +280,43 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
   const { examId: paramExamId } = useParams<{ examId: string }>();
   const examId = propExamId || (paramExamId ? parseInt(paramExamId) : null);
 
+
+const handleGradeEssay = async (answerId: number, mark: number) => {
+  await api.post('/exam/grade-essay', { answer_id: answerId, mark });
+  setRefreshKey(prev => prev + 1);
+};
+
+// 👇 هنا اكتب الفانكشن الجديدة
+const handlePassStudent = async (studentId: number, studentName: string) => {
+  if (!examId) return;
+  
+  const confirmPass = window.confirm(
+    lang === 'ar' 
+      ? `هل أنت متأكد من انجاح الطالب "${studentName}"؟`
+      : `Are you sure you want to pass "${studentName}"?`
+  );
+  
+  if (!confirmPass) return;
+  
+  try {
+    await api.post('/pass-student', {
+      exam_id: examId,
+      student_id: studentId
+    });
+    toast.success(
+      lang === 'ar' 
+        ? `✅ تم ${studentName} بنجاح!`
+        : `✅ ${studentName} passed successfully!`
+    );
+    setRefreshKey(prev => prev + 1);
+  } catch (error: any) {
+    toast.error(
+      lang === 'ar'
+        ? `❌ فشل الترقية: ${error.response?.data?.message || error.message}`
+        : `❌ Failed to pass student: ${error.response?.data?.message || error.message}`
+    );
+  }
+};
   // ✅ جميع الـ Hooks في البداية (قبل أي return)
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState<any>(null);
@@ -311,10 +348,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
     }
   };
 
-  const handleGradeEssay = async (answerId: number, mark: number) => {
-    await api.post('/exam/grade-essay', { answer_id: answerId, mark });
-    setRefreshKey(prev => prev + 1);
-  };
+
 
   const handleBack = () => {
     if (propOnBack) {
@@ -777,14 +811,27 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
                                 {student.name?.charAt(0)?.toUpperCase() || 'S'}
                               </div>
                             </div>
-                            {hasPending && (
-                              <div className="absolute top-3 right-3">
-                                <Badge className="bg-amber-500 text-white gap-1">
-                                  <AlertCircle className="h-3 w-3" />
-                                  {lang === 'ar' ? 'بانتظار' : 'Pending'}
-                                </Badge>
-                              </div>
-                            )}
+                          <div className="absolute top-3 right-3 flex gap-2">
+  {/* زر الترقية الجديد */}
+  <Button
+    size="sm"
+    className="bg-green-500 hover:bg-green-600 text-white shadow-lg gap-1"
+    onClick={(e) => {
+      e.stopPropagation();
+      handlePassStudent(student.id, student.name);
+    }}
+  >
+    <Trophy className="h-3.5 w-3.5" />
+    {lang === 'ar' ? 'تنجيح الطالب' : 'Pass'}
+  </Button>
+  
+  {hasPending && (
+    <Badge className="bg-amber-500 text-white gap-1">
+      <AlertCircle className="h-3 w-3" />
+      {lang === 'ar' ? 'بانتظار' : 'Pending'}
+    </Badge>
+  )}
+</div>
                           </div>
                           <div className="p-4 pt-10">
                             <h3 className="font-bold text-lg text-gray-800 dark:text-white">{student.name}</h3>

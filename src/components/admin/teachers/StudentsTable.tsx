@@ -2,10 +2,12 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
 import { StatusBadge } from '@/components/lms/StatusBadge';
 import { motion } from 'framer-motion';
-import { Users } from 'lucide-react';
+import { Users, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface Student {
   id: number;
@@ -24,6 +26,44 @@ interface StudentsTableProps {
 }
 
 export const StudentsTable: React.FC<StudentsTableProps> = ({ students, loading }) => {
+  // دالة تصدير البيانات إلى Excel
+  const exportToExcel = () => {
+    // تحويل البيانات إلى الصيغة المطلوبة للإكسل
+    const exportData = students.map(student => ({
+      'Student Name': student.name,
+      'Stage': student.stage?.name || '-',
+      'Attendance Type': student.type_of_attendance === 'online' ? 'Online' : 
+                        student.type_of_attendance === 'center' ? 'Center' : '-',
+      'Phone': student.phone || '-',
+      'Status': student.active ? 'Active' : 'Inactive',
+      'Progress (%)': student.progress || 0,
+    }));
+
+    // إنشاء ورقة عمل
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    
+    // تعيين عرض الأعمدة
+    worksheet['!cols'] = [
+      { wch: 25 }, // Student Name
+      { wch: 20 }, // Stage
+      { wch: 15 }, // Attendance Type
+      { wch: 15 }, // Phone
+      { wch: 10 }, // Status
+      { wch: 12 }, // Progress
+    ];
+
+    // إنشاء مصنف
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+
+    // إنشاء اسم الملف مع التاريخ
+    const date = new Date();
+    const fileName = `students_${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}_${date.getHours()}-${date.getMinutes()}.xlsx`;
+
+    // تحميل الملف
+    XLSX.writeFile(workbook, fileName);
+  };
+
   if (loading) {
     return (
       <Card className="rounded-2xl overflow-hidden">
@@ -44,6 +84,17 @@ export const StudentsTable: React.FC<StudentsTableProps> = ({ students, loading 
               Showing {students.length} students
             </p>
           </div>
+          {students.length > 0 && (
+            <Button 
+              onClick={exportToExcel}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export to Excel
+            </Button>
+          )}
         </div>
       </div>
 

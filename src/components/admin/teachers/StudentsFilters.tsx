@@ -64,6 +64,7 @@ export const StudentsFilters: React.FC<StudentsFiltersProps> = ({
   return (
     <>
       <div className="flex flex-col sm:flex-row justify-between gap-4">
+        
         <div className="flex gap-2">
           <Button
             variant="outline"

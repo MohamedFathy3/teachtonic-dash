@@ -308,7 +308,7 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
                 onUploadSuccess={(id) => setFormData(prev => ({ ...prev, image: id }))}
                 multiple={false}
                 accept="image/*,video/*"
-                maxVideoSize={5}
+                maxVideoSize={50}
                 label="Upload Image or Video"
                 defaultImageUrl={editingAbout?.image?.fullUrl}
                 defaultImageId={editingAbout?.image?.id}

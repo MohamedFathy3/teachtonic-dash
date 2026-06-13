@@ -6,8 +6,8 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { useCenterHours } from '@/hooks/useCenterHours';
 import { useApp } from '@/contexts/AppContext';
-import { AsyncSelect } from '@/components/ui/AsyncSelect';
-import { X, Calendar, Clock, BookOpen, FileText, Save } from 'lucide-react';
+import { useTeacherMeta } from '@/hooks/useTeacherMeta'; // 🔥 استخدم الـ hook بتاعك
+import { X, Calendar, Clock, BookOpen, FileText, Save, GraduationCap, BookMarked, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -17,7 +17,6 @@ interface CenterHourModalProps {
   onSuccess: () => void;
   editingItem?: any;
   isDarkMode?: boolean;
-
 }
 
 export const CenterHourModal: React.FC<CenterHourModalProps> = ({
@@ -31,43 +30,20 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
   const { useCreate, useUpdate } = useCenterHours();
   const createMutation = useCreate();
   const updateMutation = useUpdate();
+
+  // 🔥 استخدام hook teacher meta بتاعك
+  const { stages, subjects } = useTeacherMeta(user?.id);
+
   const weekDays = [
-    {
-      value: 'Saturday',
-      ar: 'السبت',
-      en: 'Saturday',
-    },
-    {
-      value: 'Sunday',
-      ar: 'الأحد',
-      en: 'Sunday',
-    },
-    {
-      value: 'Monday',
-      ar: 'الإثنين',
-      en: 'Monday',
-    },
-    {
-      value: 'Tuesday',
-      ar: 'الثلاثاء',
-      en: 'Tuesday',
-    },
-    {
-      value: 'Wednesday',
-      ar: 'الأربعاء',
-      en: 'Wednesday',
-    },
-    {
-      value: 'Thursday',
-      ar: 'الخميس',
-      en: 'Thursday',
-    },
-    {
-      value: 'Friday',
-      ar: 'الجمعة',
-      en: 'Friday',
-    },
+    { value: 'Saturday', ar: 'السبت', en: 'Saturday' },
+    { value: 'Sunday', ar: 'الأحد', en: 'Sunday' },
+    { value: 'Monday', ar: 'الإثنين', en: 'Monday' },
+    { value: 'Tuesday', ar: 'الثلاثاء', en: 'Tuesday' },
+    { value: 'Wednesday', ar: 'الأربعاء', en: 'Wednesday' },
+    { value: 'Thursday', ar: 'الخميس', en: 'Thursday' },
+    { value: 'Friday', ar: 'الجمعة', en: 'Friday' },
   ];
+
   const [formData, setFormData] = useState({
     title: '',
     date: '',
@@ -77,7 +53,24 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
     phone: '',
     address: '',
     teacher_id: null as number | null,
+    stage_id: null as number | null,
+    subject_id: null as number | null,
   });
+
+  // فلترة المواد حسب المرحلة المختارة
+  const [filteredSubjects, setFilteredSubjects] = useState<any[]>([]);
+
+  // تحديث المواد عندما تتغير المرحلة أو الـ subjects
+  useEffect(() => {
+    if (formData.stage_id) {
+      const filtered = subjects.filter(
+        (subject: any) => subject.stage_id === formData.stage_id
+      );
+      setFilteredSubjects(filtered);
+    } else {
+      setFilteredSubjects([]);
+    }
+  }, [formData.stage_id, subjects]);
 
   useEffect(() => {
     if (editingItem) {
@@ -90,10 +83,10 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
         phone: editingItem.phone || '',
         address: editingItem.address || '',
         teacher_id: editingItem.teacher_id || null,
+        stage_id: editingItem.stage_id || null,
+        subject_id: editingItem.subject_id || null,
       });
     } else {
-      // تعيين التاريخ والوقت الحالي افتراضياً
-      const now = new Date();
       setFormData({
         title: '',
         date: '',
@@ -103,6 +96,8 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
         phone: '',
         address: '',
         teacher_id: user?.id || null,
+        stage_id: null,
+        subject_id: null,
       });
     }
   }, [editingItem, user?.id]);
@@ -134,7 +129,11 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
       phone: formData.phone,
       address: formData.address,
       teacher_id: formData.teacher_id,
+      stage_id: formData.stage_id,
+      subject_id: formData.subject_id,
     };
+
+    console.log('📤 Submitting center hour payload:', payload);
 
     if (editingItem) {
       await updateMutation.mutateAsync({ id: editingItem.id, data: payload });
@@ -145,7 +144,6 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
     onSuccess();
     onClose();
     if (!editingItem) {
-      const now = new Date();
       setFormData({
         title: '',
         date: '',
@@ -155,6 +153,8 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
         phone: '',
         address: '',
         teacher_id: user?.id || null,
+        stage_id: null,
+        subject_id: null,
       });
     }
   };
@@ -218,31 +218,82 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       {lang === 'ar' ? 'السنتر' : 'Center'} *
                     </label>
-
                     <div className="relative">
-                      <BookOpen
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        size={18}
-                      />
-
+                      <BookOpen className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                       <input
                         type="text"
                         value={formData.title}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            title: e.target.value,
-                          })
-                        }
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         className="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder={
-                          lang === 'ar'
-                            ? 'مثال: سنتر ألف مسكن'
-                            : 'e.g., Center Alfe Maskan'
-                        }
+                        placeholder={lang === 'ar' ? 'مثال: سنتر ألف مسكن' : 'e.g., Center Alfe Maskan'}
                         required
                       />
                     </div>
+                  </div>
+
+                  {/* 🔥 Stage - مرحلة (من useTeacherMeta) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <GraduationCap className="inline h-4 w-4 mr-1" />
+                      {lang === 'ar' ? 'المرحلة' : 'Stage'}
+                    </label>
+                    <select
+                      value={formData.stage_id || ''}
+                      onChange={(e) => {
+                        const stageId = e.target.value ? Number(e.target.value) : null;
+                        setFormData({ 
+                          ...formData, 
+                          stage_id: stageId, 
+                          subject_id: null  // إعادة تعيين المادة عند تغيير المرحلة
+                        });
+                      }}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">
+                        {lang === 'ar' ? 'اختر المرحلة' : 'Select stage'}
+                      </option>
+                      {stages.map((stage: any) => (
+                        <option key={stage.id} value={stage.id}>
+                          {lang === 'ar' ? stage.name_ar || stage.name : stage.name}
+                        </option>
+                      ))}
+                    </select>
+                    {stages.length === 0 && (
+                      <p className="text-xs text-amber-500 mt-1">
+                        {lang === 'ar' ? 'لا توجد مراحل متاحة' : 'No stages available'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 🔥 Subject - مادة (من useTeacherMeta مع فلتر حسب المرحلة) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <BookMarked className="inline h-4 w-4 mr-1" />
+                      {lang === 'ar' ? 'المادة' : 'Subject'}
+                    </label>
+                    <select
+                      value={formData.subject_id || ''}
+                      onChange={(e) => setFormData({ ...formData, subject_id: e.target.value ? Number(e.target.value) : null })}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                      disabled={!formData.stage_id}
+                    >
+                      <option value="">
+                        {!formData.stage_id 
+                          ? (lang === 'ar' ? 'اختر المرحلة أولاً' : 'Select stage first')
+                          : (lang === 'ar' ? 'اختر المادة' : 'Select subject')
+                        }
+                      </option>
+                      {filteredSubjects.map((subject: any) => (
+                        <option key={subject.id} value={subject.id}>
+                          {lang === 'ar' ? subject.name_ar || subject.name : subject.name}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.stage_id && filteredSubjects.length === 0 && (
+                      <p className="text-xs text-amber-500 mt-1">
+                        {lang === 'ar' ? 'لا توجد مواد لهذه المرحلة' : 'No subjects for this stage'}
+                      </p>
+                    )}
                   </div>
 
                   {/* Day */}
@@ -250,29 +301,18 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       {lang === 'ar' ? 'اليوم' : 'Day'} *
                     </label>
-
                     <select
                       value={formData.date}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          date: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
                       required
                     >
                       <option value="">
-                        {lang === 'ar'
-                          ? 'اختر اليوم'
-                          : 'Select Day'}
+                        {lang === 'ar' ? 'اختر اليوم' : 'Select Day'}
                       </option>
-
                       {weekDays.map((day) => (
                         <option key={day.value} value={day.ar}>
-                          {lang === 'ar'
-                            ? day.ar
-                            : day.en}
+                          {lang === 'ar' ? day.ar : day.en}
                         </option>
                       ))}
                     </select>
@@ -280,29 +320,16 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
 
                   {/* Start Time + End Time */}
                   <div className="grid grid-cols-2 gap-3">
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {lang === 'ar'
-                          ? 'وقت البداية'
-                          : 'Start Time'} *
+                        {lang === 'ar' ? 'وقت البداية' : 'Start Time'} *
                       </label>
-
                       <div className="relative">
-                        <Clock
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                          size={16}
-                        />
-
+                        <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                         <input
                           type="time"
                           value={formData.hours_start}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              hours_start: e.target.value,
-                            })
-                          }
+                          onChange={(e) => setFormData({ ...formData, hours_start: e.target.value })}
                           className="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
                           required
                         />
@@ -311,130 +338,74 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {lang === 'ar'
-                          ? 'وقت النهاية'
-                          : 'End Time'} *
+                        {lang === 'ar' ? 'وقت النهاية' : 'End Time'} *
                       </label>
-
                       <div className="relative">
-                        <Clock
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                          size={16}
-                        />
-
+                        <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                         <input
                           type="time"
                           value={formData.hours_end}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              hours_end: e.target.value,
-                            })
-                          }
+                          onChange={(e) => setFormData({ ...formData, hours_end: e.target.value })}
                           className="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
                           required
                         />
                       </div>
                     </div>
-
                   </div>
 
                   {/* Phone */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {lang === 'ar'
-                        ? 'رقم الهاتف'
-                        : 'Phone'}
+                      {lang === 'ar' ? 'رقم الهاتف' : 'Phone'}
                     </label>
-
                     <input
                       type="text"
                       value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          phone: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                      placeholder={
-                        lang === 'ar'
-                          ? 'أدخل رقم الهاتف'
-                          : 'Enter phone number'
-                      }
+                      placeholder={lang === 'ar' ? 'أدخل رقم الهاتف' : 'Enter phone number'}
                     />
                   </div>
 
                   {/* Address */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {lang === 'ar'
-                        ? 'العنوان'
-                        : 'Address'}
+                      {lang === 'ar' ? 'العنوان' : 'Address'}
                     </label>
-
                     <input
                       type="text"
                       value={formData.address}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          address: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                      placeholder={
-                        lang === 'ar'
-                          ? 'أدخل العنوان'
-                          : 'Enter address'
-                      }
+                      placeholder={lang === 'ar' ? 'أدخل العنوان' : 'Enter address'}
                     />
                   </div>
 
                   {/* Notes */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {lang === 'ar'
-                        ? 'ملاحظات'
-                        : 'Notes'}
+                      {lang === 'ar' ? 'ملاحظات' : 'Notes'}
                     </label>
-
                     <div className="relative">
-                      <FileText
-                        className="absolute right-3 top-3 text-gray-400"
-                        size={16}
-                      />
-
+                      <FileText className="absolute right-3 top-3 text-gray-400" size={16} />
                       <textarea
                         value={formData.note}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            note: e.target.value,
-                          })
-                        }
+                        onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                         rows={3}
                         className="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder={
-                          lang === 'ar'
-                            ? 'أي ملاحظات إضافية...'
-                            : 'Any additional notes...'
-                        }
+                        placeholder={lang === 'ar' ? 'أي ملاحظات إضافية...' : 'Any additional notes...'}
                       />
                     </div>
                   </div>
 
                   {/* Buttons */}
                   <div className="flex gap-3 pt-4">
-
                     <button
                       type="button"
                       onClick={onClose}
                       className="flex-1 px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                     >
-                      {lang === 'ar'
-                        ? 'إلغاء'
-                        : 'Cancel'}
+                      {lang === 'ar' ? 'إلغاء' : 'Cancel'}
                     </button>
 
                     <motion.button
@@ -446,10 +417,8 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                     >
                       {isLoading ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          {lang === 'ar'
-                            ? 'جاري الحفظ...'
-                            : 'Saving...'}
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          {lang === 'ar' ? 'جاري الحفظ...' : 'Saving...'}
                         </>
                       ) : (
                         <>
@@ -460,7 +429,6 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                         </>
                       )}
                     </motion.button>
-
                   </div>
 
                 </form>

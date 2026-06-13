@@ -40,10 +40,11 @@ class ExamService extends BaseService<Exam> {
         // الطريقة الثانية: بحث في title و description
         baseFilters.title = search.trim();
         // baseFilters.description = search.trim(); // اختياري
+
       }
 
       const requestBody: Record<string, any> = {
-        filters: baseFilters,
+        filters: { ...baseFilters, type: 'exam' },
         orderBy: 'created_at',
         orderByDirection: 'desc',
         perPage,
