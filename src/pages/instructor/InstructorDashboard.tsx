@@ -17,7 +17,8 @@ import {
   Wallet, School, MonitorPlay, ArrowUpRight, ArrowDownRight,
   ChartLine, ChartPie, Gauge, Database, BadgeDollarSign,
   CheckCircle2, HelpCircle, Building2,
-  GraduationCap
+  GraduationCap, MapPin, UsersRound, BarChart4, PieChart as PieChartIcon2,
+  CircleDollarSign, CalendarDays, ChartNoAxesCombined, ListChecks
 } from "lucide-react";
 import { 
   Area, AreaChart, CartesianGrid, ResponsiveContainer, 
@@ -51,14 +52,15 @@ interface InstructorReport {
   semesters_count: number;
   requests_count: number;
   books_count: number;
-  students_per_month?: Array<{ year: number; month: number; total: number }>;
-  students_by_governorate?: Array<{ governorate: string; total: number }>;
-  students_by_gender?: Array<{ gender: string; total: number }>;
-  students_by_stage?: Array<{ id: number; name: string; total: number }>;
+  students_per_month?: Array<{ year: number; month: number; total: number; media?: any[] }>;
+  students_by_governorate?: Array<{ governorate: string; total: number; media?: any[] }>;
+  students_by_region?: Array<{ region: string; total: number; media?: any[] }>;
+  students_by_gender?: Array<{ gender: string; total: number; media?: any[] }>;
+  students_by_stage?: Array<{ id: number; name: string; total: number; media?: any[] }>;
   last_month_subscriptions?: { course: number; semester: number; lesson: number };
 }
 
-// ترجمة المحافظات
+// ترجمة المحافظات الكاملة
 const governorateNames: Record<string, { ar: string; en: string }> = {
   cairo: { ar: "القاهرة", en: "Cairo" },
   alexandria: { ar: "الإسكندرية", en: "Alexandria" },
@@ -96,7 +98,7 @@ export function InstructorDashboard() {
   const { t: tOriginal, user, dir, lang } = useApp();
   const navigate = useNavigate();
   
-  // دالة الترجمة المحسنة
+  // دالة الترجمة
   const t = (key: string): string => {
     const translations: Record<string, Record<string, string>> = {
       ar: {
@@ -135,17 +137,17 @@ export function InstructorDashboard() {
         performance: "الأداء",
         newCourse: "كورس جديد",
         createExam: "إنشاء امتحان",
-        inviteStudents: " الطلاب",
-        createCoupon: "إنشاء اكواد",
+        inviteStudents: "دعوة طلاب",
+        createCoupon: "إنشاء كود",
         online: "أونلاين",
         center: "سنتر",
         examsTaken: "الامتحانات المأخوذة",
         assignments: "الواجبات",
         male: "ذكر",
         female: "أنثى",
-        studentGrowth: "عدد الطلاب",
+        studentGrowth: "نمو الطلاب",
         studentsByGender: "الطلاب حسب النوع",
-        studentsByGovernorate: "الطلاب حسب المحافظة",
+        studentsByGovernorate: "🏛️ توزيع الطلاب حسب المحافظات",
         performanceRadar: "رادار الأداء",
         progressMetrics: "مقاييس التقدم",
         monthlyTrends: "الاتجاهات الشهرية",
@@ -156,7 +158,7 @@ export function InstructorDashboard() {
         activeCourses: "الكورسات النشطة",
         avgPerCourse: "متوسط لكل كورس",
         efficiencyScore: "نسبة الكفاءة",
-        studentGrowth2: "عدد الطلاب",
+        studentGrowth2: "نمو الطلاب",
         overallRating: "تقييم الأداء العام",
         topCreator: "أفضل منشئ",
         popularMentor: "مرشد شعبي",
@@ -168,6 +170,19 @@ export function InstructorDashboard() {
         reqActive: "نشط لمدة 30 يوم",
         lastUpdated: "آخر تحديث: اليوم",
         performanceInsights: "رؤى الأداء",
+        noDataAvailable: "لا توجد بيانات متاحة حالياً",
+        governorate: "المحافظة",
+        numberOfStudents: "عدد الطلاب",
+        totalGovernorates: "عدد المحافظات",
+        governorateDistribution: "توزيع الطلاب حسب المحافظات",
+        topGovernorate: "🏆 أعلى محافظة",
+        ofTotalStudents: "من إجمالي الطلاب",
+        avgStudentsPerGovernorate: "📊 متوسط الطلاب لكل محافظة",
+        governoratesList: "📋 قائمة المحافظات",
+        eachColorRepresents: "🎨 كل لون يمثل محافظة",
+        sortedDescending: "📈 مرتبة تنازلياً حسب عدد الطلاب",
+        geographicalDistribution: "توزيع جغرافي للطلاب على مستوى المحافظات",
+        realData: "بيانات حقيقية",
       },
       en: {
         welcomeBack: "Welcome back",
@@ -205,8 +220,8 @@ export function InstructorDashboard() {
         performance: "Performance",
         newCourse: "New Course",
         createExam: "Create Exam",
-        inviteStudents: " Students",
-        createCoupon: "Create code",
+        inviteStudents: "Invite Students",
+        createCoupon: "Create Code",
         online: "Online",
         center: "Center",
         examsTaken: "Exams Taken",
@@ -215,7 +230,7 @@ export function InstructorDashboard() {
         female: "Female",
         studentGrowth: "Student Growth",
         studentsByGender: "Students by Gender",
-        studentsByGovernorate: "Students by Governorate",
+        studentsByGovernorate: "🏛️ Students by Governorate",
         performanceRadar: "Performance Radar",
         progressMetrics: "Progress Metrics",
         monthlyTrends: "Monthly Trends",
@@ -238,6 +253,19 @@ export function InstructorDashboard() {
         reqActive: "Active for 30 days",
         lastUpdated: "Last updated: Today",
         performanceInsights: "Performance Insights",
+        noDataAvailable: "No data available",
+        governorate: "Governorate",
+        numberOfStudents: "Number of Students",
+        totalGovernorates: "Total Governorates",
+        governorateDistribution: "Student Distribution by Governorate",
+        topGovernorate: "🏆 Top Governorate",
+        ofTotalStudents: "of total students",
+        avgStudentsPerGovernorate: "📊 Avg students per governorate",
+        governoratesList: "📋 Governorates List",
+        eachColorRepresents: "🎨 Each color represents a governorate",
+        sortedDescending: "📈 Sorted descending by student count",
+        geographicalDistribution: "Geographical distribution of students across governorates",
+        realData: "Real Data",
       }
     };
     
@@ -314,7 +342,7 @@ export function InstructorDashboard() {
     }
   };
 
-  // حساب البيانات من التقرير الحقيقي فقط
+  // حساب البيانات الأساسية
   const totalCourses = (report?.online_courses || 0) + (report?.center_courses || 0);
   const totalRevenue = report?.profits || 0;
   
@@ -326,7 +354,7 @@ export function InstructorDashboard() {
     ? Math.min(100, Math.round((((report?.exams_count || 0) + (report?.assignments_count || 0)) / (report?.students_count || 1)) * 100))
     : 0;
 
-  // بيانات الرسم البياني الشهري - من البيانات الحقيقية فقط
+  // بيانات الرسم البياني الشهري
   const monthlyData = (lang === 'ar' ? MONTHS_EG : MONTHS_EN).map((month, i) => {
     const currentMonth = i + 1;
     const studentData = report?.students_per_month?.find(s => s.month === currentMonth);
@@ -344,7 +372,7 @@ export function InstructorDashboard() {
     { name: t("center"), value: report?.center_courses || 0, color: '#8b5cf6' },
   ];
 
-  // بيانات الأداء من البيانات الحقيقية
+  // بيانات الأداء
   const performanceData = [
     { name: t("exams"), value: report?.exams_count || 0, color: '#ef4444', icon: FileQuestion, bg: 'bg-red-500/10', text: 'text-red-500' },
     { name: t("assignments"), value: report?.assignments_count || 0, color: '#f59e0b', icon: FileText, bg: 'bg-amber-500/10', text: 'text-amber-500' },
@@ -354,7 +382,7 @@ export function InstructorDashboard() {
     { name: "الطلبات", value: report?.requests_count || 0, color: '#f97316', icon: HelpCircle, bg: 'bg-orange-500/10', text: 'text-orange-500' },
   ];
 
-  // بيانات الرادار من البيانات الحقيقية
+  // بيانات الرادار
   const radarData = [
     { subject: t("myCourses"), A: Math.min(100, (totalCourses / 20) * 100), fullMark: 100 },
     { subject: t("students"), A: Math.min(100, (report?.students_count || 0) / 100 * 100), fullMark: 100 },
@@ -363,36 +391,57 @@ export function InstructorDashboard() {
     { subject: t("semesters"), A: Math.min(100, (report?.semesters_count || 0) / 10 * 100), fullMark: 100 },
   ];
 
-  // بيانات نمو الطلاب من البيانات الحقيقية
+  // بيانات نمو الطلاب
   const studentGrowthData = (lang === 'ar' ? MONTHS_EG : MONTHS_EN).map((month, i) => ({
     month,
     students: report?.students_per_month?.find(s => s.month === i + 1)?.total || 0,
   }));
 
-  // بيانات النوع من البيانات الحقيقية
+  // بيانات النوع
   const genderData = (report?.students_by_gender?.map(g => ({
     name: g.gender === 'male' ? t("male") : t("female"),
     value: g.total,
     color: g.gender === 'male' ? '#3b82f6' : '#ec4899'
   })) || []).filter(g => g.value > 0);
 
-  // بيانات المحافظات - مترجمة
-  const governorateData = (report?.students_by_governorate?.map(g => ({
-    name: lang === 'ar' 
-      ? (governorateNames[g.governorate.toLowerCase()]?.ar || g.governorate)
-      : (governorateNames[g.governorate.toLowerCase()]?.en || g.governorate),
-    value: g.total,
-    originalName: g.governorate,
-  })) || []).filter(g => g.value > 0).sort((a, b) => b.value - a.value);
-
-  // بيانات المراحل الدراسية من البيانات الحقيقية
+  // ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ✅ معالجة بيانات المحافظات (GOVERNORATES) - المصدر الأساسي
+  // ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  // استخدام students_by_governorate فقط (لأن فيه البيانات الحقيقية)
+  const governorateDataFromAPI = report?.students_by_governorate || [];
+  
+  const governorateData = governorateDataFromAPI
+    .filter(g => g.total > 0) // استبعاد اللي مجموعهم صفر
+    .map(g => ({
+      name: lang === 'ar' 
+        ? (governorateNames[g.governorate.toLowerCase()]?.ar || g.governorate)
+        : (governorateNames[g.governorate.toLowerCase()]?.en || g.governorate),
+      value: g.total,
+      originalName: g.governorate,
+      key: g.governorate,
+    }))
+    .sort((a, b) => b.value - a.value);
+  
+  const hasGovernorateData = governorateData.length > 0;
+  const totalGovernorateStudents = governorateData.reduce((sum, g) => sum + g.value, 0);
+  
+  // console.log لمراقبة البيانات
+  console.log("✅ Governorates loaded:", {
+    count: governorateData.length,
+    totalStudents: totalGovernorateStudents,
+    topGovernorate: governorateData[0]?.name,
+    data: governorateData,
+  });
+  
+  // بيانات المراحل الدراسية
   const stageData = report?.students_by_stage?.map(s => ({
     name: s.name,
     value: s.total,
     color: `hsl(${Math.random() * 360}, 70%, 50%)`
   })) || [];
 
-  // 🔥 QUICK ACTIONS مع لينكات حقيقية
+  // QUICK ACTIONS
   const QUICK_ACTIONS = [
     { 
       icon: BookOpen, 
@@ -432,12 +481,12 @@ export function InstructorDashboard() {
   ];
 
   const mainStats = [
-    { label: t("onlineCourses"), value: report?.online_courses || 0, icon: MonitorPlay, gradient: "from-blue-500 to-cyan-500", trend: report?.online_courses ? "+12%" : "0%", trendUp: true },
-    { label: t("centerCourses"), value: report?.center_courses || 0, icon: School, gradient: "from-purple-500 to-indigo-500", trend: report?.center_courses ? "+5%" : "0%", trendUp: true },
-    { label: t("students"), value: report?.students_count || 0, icon: Users, gradient: "from-green-500 to-emerald-500", trend: report?.students_count ? "+8%" : "0%", trendUp: true },
+    { label: t("onlineCourses"), value: report?.online_courses || 0, icon: MonitorPlay, gradient: "from-blue-500 to-cyan-500", trend: "+12%", trendUp: true },
+    { label: t("centerCourses"), value: report?.center_courses || 0, icon: School, gradient: "from-purple-500 to-indigo-500", trend: "+5%", trendUp: true },
+    { label: t("students"), value: report?.students_count || 0, icon: Users, gradient: "from-green-500 to-emerald-500", trend: "+8%", trendUp: true },
     { label: t("earnings"), value: `${totalRevenue.toLocaleString()} EGP`, icon: Wallet, gradient: "from-orange-500 to-amber-500", trend: totalRevenue ? "+15%" : "0%", trendUp: totalRevenue > 0 },
-    { label: t("exams"), value: report?.exams_count || 0, icon: FileQuestion, gradient: "from-red-500 to-rose-500", trend: report?.exams_count ? "+0%" : "0%", trendUp: false },
-    { label: "الكوبونات", value: report?.used_coupons || 0, icon: Gift, gradient: "from-pink-500 to-fuchsia-500", trend: report?.used_coupons ? "+3%" : "0%", trendUp: true },
+    { label: t("exams"), value: report?.exams_count || 0, icon: FileQuestion, gradient: "from-red-500 to-rose-500", trend: "0%", trendUp: false },
+    { label: "الكوبونات", value: report?.used_coupons || 0, icon: Gift, gradient: "from-pink-500 to-fuchsia-500", trend: "+3%", trendUp: true },
   ];
 
   if (loading) {
@@ -460,6 +509,22 @@ export function InstructorDashboard() {
 
   return (
     <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 ${isRTL ? 'font-arabic' : ''}`}>
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(16, 185, 129, 0.3);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(16, 185, 129, 0.5);
+        }
+      `}</style>
       <div className={`mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8 ${isRTL ? 'text-right' : 'text-left'}`}>
         
         {/* Hero Section */}
@@ -544,7 +609,7 @@ export function InstructorDashboard() {
           </div>
         </motion.div>
 
-        {/* Quick Actions Row - مع لينكات */}
+        {/* Quick Actions Row */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {QUICK_ACTIONS.map((action, idx) => (
             <motion.button
@@ -564,8 +629,6 @@ export function InstructorDashboard() {
             </motion.button>
           ))}
         </div>
-
-        {/* باقي الكود كما هو (نفس الـ JSX السابق لكن مع استخدام دالة الترجمة الصحيحة) */}
         
         {/* Main Tabs Section */}
         <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
@@ -588,7 +651,9 @@ export function InstructorDashboard() {
             </Badge>
           </div>
 
-          {/* OVERVIEW TAB - نفس الكود السابق */}
+          {/* ============================================================ */}
+          {/* OVERVIEW TAB */}
+          {/* ============================================================ */}
           <TabsContent value="overview" className="space-y-6 mt-0">
             {/* Main Metrics Grid */}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -752,7 +817,7 @@ export function InstructorDashboard() {
               >
                 <div className="p-5">
                   <h3 className={`font-semibold text-lg flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                    <Users className="h-5 w-5 text-pink-500" />
+                    <UsersRound className="h-5 w-5 text-pink-500" />
                     {t("studentsByGender")}
                   </h3>
                   <div className="h-64">
@@ -770,37 +835,203 @@ export function InstructorDashboard() {
                       </ResponsiveContainer>
                     ) : (
                       <div className="flex items-center justify-center h-full">
-                        <p className="text-muted-foreground">{isRTL ? "لا توجد بيانات" : "No data available"}</p>
+                        <p className="text-muted-foreground">{t("noDataAvailable")}</p>
                       </div>
                     )}
                   </div>
+                  {genderData.length > 0 && (
+                    <div className="mt-3 text-center">
+                      <p className="text-xs text-muted-foreground">
+                        {lang === 'ar' ? 'نسبة الذكور: ' : 'Male: '}
+                        <span className="font-bold text-blue-600">{Math.round((genderData.find(g => g.name === t("male"))?.value || 0) / (report?.students_count || 1) * 100)}%</span>
+                        {' • '}
+                        {lang === 'ar' ? 'نسبة الإناث: ' : 'Female: '}
+                        <span className="font-bold text-pink-600">{Math.round((genderData.find(g => g.name === t("female"))?.value || 0) / (report?.students_count || 1) * 100)}%</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>
 
-            {/* Governorate Distribution */}
-            {governorateData.length > 0 && (
+            {/* ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            {/* ✅ GOVERNORATE DISTRIBUTION - MAIN SECTION (قسم المحافظات الرئيسي) */}
+            {/* ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            {hasGovernorateData && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55 }}
-                className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
+                className="overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/20 dark:to-teal-950/20 shadow-lg border border-emerald-200/50 dark:border-emerald-800/50"
               >
                 <div className="p-5">
-                  <h3 className={`font-semibold text-lg flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                    <Building2 className="h-5 w-5 text-cyan-500" />
-                    {t("studentsByGovernorate")}
-                  </h3>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={governorateData} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} width={100} />
-                        <Tooltip contentStyle={{ borderRadius: "16px", border: "none" }} />
-                        <Bar dataKey="value" name={t("students")} fill="#06b6d4" radius={[0, 6, 6, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <div className={`flex items-center justify-between flex-wrap gap-3 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <div>
+                      <h3 className={`font-semibold text-lg flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                        <Building2 className="h-5 w-5 text-emerald-500" />
+                        {t("studentsByGovernorate")}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {t("geographicalDistribution")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        {t("realData")}
+                      </Badge>
+                      <Badge className="rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs">
+                        {governorateData.length} {t("totalGovernorates")}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Bar Chart Column */}
+                    <div className="lg:col-span-2 h-96">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={governorateData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                          <XAxis 
+                            type="number" 
+                            stroke="hsl(var(--muted-foreground))" 
+                            fontSize={11} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(value) => `${value}`}
+                          />
+                          <YAxis 
+                            type="category" 
+                            dataKey="name" 
+                            stroke="hsl(var(--muted-foreground))" 
+                            fontSize={11} 
+                            tickLine={false} 
+                            axisLine={false} 
+                            width={100}
+                          />
+                          <Tooltip 
+                            contentStyle={{ borderRadius: "16px", border: "none", backgroundColor: "rgba(0,0,0,0.8)", color: "white" }}
+                            formatter={(value: number) => [`${value} ${lang === 'ar' ? 'طالب' : 'students'}`, t("numberOfStudents")]}
+                            cursor={{ fill: "rgba(16, 185, 129, 0.1)" }}
+                          />
+                          <Bar 
+                            dataKey="value" 
+                            name={lang === 'ar' ? 'الطلاب' : 'Students'} 
+                            radius={[0, 8, 8, 0]}
+                            animationDuration={1000}
+                            animationBegin={300}
+                          >
+                            {governorateData.map((entry, idx) => (
+                              <Cell 
+                                key={`cell-${idx}`} 
+                                fill={`hsl(${140 + (idx * 8)}, 70%, 55%)`}
+                                stroke={`hsl(${140 + (idx * 8)}, 70%, 45%)`}
+                                strokeWidth={1}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    
+                    {/* Stats & Info Column */}
+                    <div className="space-y-4">
+                      {/* Top Governorate Card */}
+                      <div className="rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4 text-center border border-amber-200/50 dark:border-amber-800/50">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                          <Trophy className="h-5 w-5 text-amber-500" />
+                          <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                            {t("topGovernorate")}
+                          </p>
+                        </div>
+                        <p className="text-lg font-bold text-amber-700 dark:text-amber-400">{governorateData[0].name}</p>
+                        <p className="text-3xl font-bold mt-2 text-amber-600">{governorateData[0].value}</p>
+                        <p className="text-xs text-muted-foreground">{t("students")}</p>
+                        <div className="mt-2">
+                          <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400">
+                            {Math.round((governorateData[0].value / totalGovernorateStudents) * 100)}% {t("ofTotalStudents")}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {/* Total Stats Card */}
+                      <div className="rounded-xl bg-gradient-to-r from-emerald-500/5 to-teal-500/5 p-4 border border-emerald-200/50 dark:border-emerald-800/50">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="text-center">
+                            <p className="text-2xl font-bold text-emerald-600">{totalGovernorateStudents}</p>
+                            <p className="text-xs text-muted-foreground">{t("totalStudents")}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-2xl font-bold text-emerald-600">{governorateData.length}</p>
+                            <p className="text-xs text-muted-foreground">{t("totalGovernorates")}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{t("avgStudentsPerGovernorate")}</span>
+                            <span className="font-bold text-emerald-600">{(totalGovernorateStudents / governorateData.length).toFixed(1)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Governorate List Preview */}
+                      <div className="rounded-xl bg-white/50 dark:bg-slate-900/50 p-4 border border-slate-200/50 dark:border-slate-800/50">
+                        <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                          <MapPin className="h-3.5 w-3.5 text-emerald-500" />
+                          {t("governoratesList")}
+                        </p>
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                          {governorateData.map((gov, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all duration-200 group">
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  className="w-2 h-2 rounded-full" 
+                                  style={{ backgroundColor: `hsl(${140 + (idx * 8)}, 70%, 55%)` }}
+                                />
+                                <span className="text-sm font-medium group-hover:text-emerald-600 transition-colors">
+                                  {gov.name}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-bold text-emerald-600">{gov.value}</span>
+                                <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${(gov.value / totalGovernorateStudents) * 100}%` }}
+                                    transition={{ delay: 0.6 + idx * 0.03, duration: 0.5 }}
+                                    className="h-full rounded-full" 
+                                    style={{ backgroundColor: `hsl(${140 + (idx * 8)}, 70%, 55%)` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-muted-foreground w-10">
+                                  {Math.round((gov.value / totalGovernorateStudents) * 100)}%
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Summary Footer */}
+                  <div className="mt-4 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          {t("eachColorRepresents")}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" />
+                          {t("sortedDescending")}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-xs gap-1">
+                        <Users className="h-3 w-3" />
+                        {totalGovernorateStudents} {t("students")}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -813,7 +1044,7 @@ export function InstructorDashboard() {
                   key={idx}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + idx * 0.05 }}
+                  transition={{ delay: 0.6 + idx * 0.05 }}
                   whileHover={{ y: -4 }}
                   className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 p-4 shadow-md transition-all duration-300 hover:shadow-xl border border-slate-200/50 dark:border-slate-800/50 cursor-pointer"
                 >
@@ -842,7 +1073,9 @@ export function InstructorDashboard() {
             </div>
           </TabsContent>
 
+          {/* ============================================================ */}
           {/* ANALYTICS TAB */}
+          {/* ============================================================ */}
           <TabsContent value="analytics" className="space-y-6 mt-0">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <motion.div
@@ -938,6 +1171,90 @@ export function InstructorDashboard() {
               </div>
             </motion.div>
 
+            {/* Governorate Pie Chart */}
+            {hasGovernorateData && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
+              >
+                <div className="p-5">
+                  <div className={`flex items-center justify-between flex-wrap gap-3 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <h3 className={`font-semibold text-lg flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                      <PieChartIcon2 className="h-5 w-5 text-purple-500" />
+                      {t("governorateDistribution")}
+                    </h3>
+                    <Badge className="rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                      {totalGovernorateStudents} {t("students")}
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie 
+                            data={governorateData} 
+                            dataKey="value" 
+                            nameKey="name"
+                            cx="50%" 
+                            cy="50%" 
+                            innerRadius={40} 
+                            outerRadius={90}
+                            paddingAngle={2}
+                            label={({ name, percent }) => percent > 0.05 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
+                          >
+                            {governorateData.map((entry, idx) => (
+                              <Cell key={`cell-${idx}`} fill={`hsl(${140 + (idx * 8)}, 70%, 55%)`} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value: number) => [`${value} ${lang === 'ar' ? 'طالب' : 'students'}`, t("numberOfStudents")]} />
+                          <Legend 
+                            layout="vertical" 
+                            align={isRTL ? "left" : "right"}
+                            verticalAlign="middle"
+                            wrapperStyle={{ fontSize: "11px" }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <ListChecks className="h-4 w-4 text-purple-500" />
+                        {lang === 'ar' ? 'تفاصيل المحافظات' : 'Governorate Details'}
+                      </p>
+                      <div className="space-y-2 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+                        {governorateData.map((gov, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all">
+                            <span className="text-sm font-medium flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: `hsl(${140 + (idx * 8)}, 70%, 55%)` }} />
+                              {gov.name}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-semibold text-purple-600">{gov.value}</span>
+                              <div className="w-20 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${(gov.value / totalGovernorateStudents) * 100}%` }}
+                                  transition={{ delay: 0.5 + idx * 0.05, duration: 0.5 }}
+                                  className="h-full rounded-full" 
+                                  style={{ backgroundColor: `hsl(${140 + (idx * 8)}, 70%, 55%)` }}
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground w-12">
+                                {Math.round((gov.value / totalGovernorateStudents) * 100)}%
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {stageData.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -1002,7 +1319,9 @@ export function InstructorDashboard() {
             </motion.div>
           </TabsContent>
 
+          {/* ============================================================ */}
           {/* PERFORMANCE TAB */}
+          {/* ============================================================ */}
           <TabsContent value="performance" className="space-y-6 mt-0">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <motion.div

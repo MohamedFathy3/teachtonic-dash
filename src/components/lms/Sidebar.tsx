@@ -64,6 +64,7 @@ const instructorNav: NavItem[] = [
   { to: "bank-questions", labelKey: "bankQuestions", icon: ClipboardList },
   { to: "center-hours", labelKey: "centerhours", icon: TagIcon },
   { to: "books", labelKey: "books", icon: BookOpen },
+  { to: "offers", labelKey: "offers", icon: TagIcon },
   { to: "payment-codes", labelKey: "paymentCodes", icon: TagIcon },
   { to: "assignments", labelKey: "assignments", icon: FileEdit },
 ];

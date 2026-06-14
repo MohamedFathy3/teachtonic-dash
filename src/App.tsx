@@ -30,6 +30,7 @@ import { AdminReviews } from "./pages/admin/AdminReviews";
 import { SettingsPage } from "./pages/shared/SettingsPage";
 import { SemestersPage } from "./components/admin/SemestersPage";
 import { BooksPage } from "./components/admin/books/BooksPage";
+import { OffersPage } from "@/components/offers/OffersPage";
 import { CenterHoursPage } from "./components/admin/center-hours/CenterHoursPage";
 import { PaymentCodesPage } from "./components/admin/payment-codes/PaymentCodesPage";
 import { InstructorRedeemRequests } from "./components/redeem-requests/RedeemRequestsPage";
@@ -104,6 +105,7 @@ const App = () => {
                 <Route path="settings" element={<SettingsPage />} />
                <Route path="lesson/:lessonId" element={<LessonDetailsPage />} />
                <Route path="books/:id" element={<BookDetailsPage />} />
+<Route path="offers" element={<OffersPage />} />
 
               </Route>
 
