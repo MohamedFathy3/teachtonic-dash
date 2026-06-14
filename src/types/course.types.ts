@@ -71,6 +71,7 @@ export interface CourseImage {
     title_ar: string;
     description: string;
     description_ar: string;
+    star:number;
     about: string;
     about_ar: string;
     hour_time_course: string;

@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 
 interface WebsiteThemeState {
   activeTheme: string | null;
-  backgroundColor: string;
-  fontColor: string;
+  backgroundColor: string | null;  // ✅ changed to allow null
+  fontColor: string | null;        // ✅ changed to allow null
   isLoading: boolean;
   error: string | null;
 }
@@ -44,8 +44,8 @@ export type ThemeConfig = typeof THEMES_CONFIG[0];
 export const useTeacherTheme = (teacherId: number) => {
   const [state, setState] = useState<WebsiteThemeState>({
     activeTheme: null,
-    backgroundColor: "#ffffff",
-    fontColor: "#1e293b",
+    backgroundColor: null,      // ✅ changed to null
+    fontColor: null,            // ✅ changed to null
     isLoading: false,
     error: null
   });
@@ -64,8 +64,8 @@ export const useTeacherTheme = (teacherId: number) => {
       if (response?.status) {
         setState({
           activeTheme: response.active_theme,
-          backgroundColor: response.active_backgroud_color || "#ffffff",
-          fontColor: response.active_font_color || "#1e293b",
+          backgroundColor: response.active_backgroud_color || null,    // ✅ null if not set
+          fontColor: response.active_font_color || null,              // ✅ null if not set
           isLoading: false,
           error: null
         });
@@ -83,50 +83,55 @@ export const useTeacherTheme = (teacherId: number) => {
   }, [teacherId]);
   
   // تفعيل الثيم (مع أو بدون ألوان)
-  const activateTheme = useCallback(async (
-    themeName: string,
-    backgroundColor?: string,
-    fontColor?: string
-  ): Promise<ThemeActionResult> => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+// في activateTheme داخل useTeacherTheme
+const activateTheme = useCallback(async (
+  themeName: string,
+  backgroundColor?: string | null,
+  fontColor?: string | null
+): Promise<ThemeActionResult> => {
+  setState(prev => ({ ...prev, isLoading: true, error: null }));
+  
+  try {
+    // ✅ نحول null لـ "null" عشان نبعتها كـ string
+    const bgColor = backgroundColor === null ? "null" : backgroundColor;
+    const fColor = fontColor === null ? "null" : fontColor;
     
-    try {
-      const response = await teacherWebsiteThemeService.activateWebsiteTheme(
-        teacherId,
-        themeName,
-        backgroundColor,
-        fontColor
-      );
+    const response = await teacherWebsiteThemeService.activateWebsiteTheme(
+      teacherId,
+      themeName,
+      bgColor,
+      fColor
+    );
+    
+    console.log("Activation response:", response);
+    
+    if (response?.status && response?.data) {
+      setState({
+        activeTheme: response.data.active_theme,
+        // ✅ لو الراجع "null" نحوله لـ null في الـ state
+        backgroundColor: response.data.active_backgroud_color === "null" ? null : response.data.active_backgroud_color,
+        fontColor: response.data.active_font_color === "null" ? null : response.data.active_font_color,
+        isLoading: false,
+        error: null
+      });
       
-      console.log("Activation response:", response);
-      
-      // ✅ التصحيح: response.data فيه البيانات بعد التفعيل
-      if (response?.status && response?.data) {
-        setState({
-          activeTheme: response.data.active_theme,
-          backgroundColor: response.data.active_backgroud_color,
-          fontColor: response.data.active_font_color,
-          isLoading: false,
-          error: null
-        });
-        
-        toast.success(response.message);
-        return { success: true, message: response.message };
-      }
-      
-      setState(prev => ({ ...prev, isLoading: false }));
-      return { success: false, message: response?.message || "Failed to activate theme" };
-    } catch (error: any) {
-      console.error("Error activating theme:", error);
-      const errorMsg = error.response?.data?.message || "Failed to activate theme";
-      setState(prev => ({ ...prev, isLoading: false, error: errorMsg }));
-      toast.error(errorMsg);
-      return { success: false, message: errorMsg };
+      toast.success(response.message);
+      return { success: true, message: response.message };
     }
-  }, [teacherId]);
+    
+    setState(prev => ({ ...prev, isLoading: false }));
+    return { success: false, message: response?.message || "Failed to activate theme" };
+  } catch (error: any) {
+    console.error("Error activating theme:", error);
+    const errorMsg = error.response?.data?.message || "Failed to activate theme";
+    setState(prev => ({ ...prev, isLoading: false, error: errorMsg }));
+    toast.error(errorMsg);
+    return { success: false, message: errorMsg };
+  }
+}, [teacherId]);
   
   // تحديث الألوان فقط
-  const updateColors = useCallback(async (backgroundColor: string, fontColor: string): Promise<ThemeActionResult> => {
+  const updateColors = useCallback(async (backgroundColor: string | null, fontColor: string | null): Promise<ThemeActionResult> => {
     if (!state.activeTheme) {
       toast.error("Please select a theme first");
       return { success: false, message: "No active theme" };

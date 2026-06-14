@@ -89,7 +89,10 @@ export class BaseService<T> {
     const response = await api.put(`/${this.endpoint}/${id}/active`);
     return response.data; 
   }
-
+  async courseseActive(id: number): Promise<{ message: string }> {
+    const response = await api.put(`/${this.endpoint}/${id}/star`);
+    return response.data; 
+  }
   async getDeleted(params?: PaginationParams): Promise<any> {
     return this.getAll({ ...params, delete: true });
   }

@@ -271,7 +271,23 @@ class CourseService extends BaseService<Course> {
       throw error;
     }
   }
-
+ async CourseActive(id: number, newStarValue: number): Promise<{ message: string }> {
+    try {
+      const result = await this.courseseActive(id);
+      toast({
+        title: "Success",
+        description: result.message || "Course status changed successfully",
+      });
+      return result;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to toggle course status",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }
   // ✅ حذف جماعي
   async bulkDeleteCourses(ids: number[]): Promise<void> {
     try {

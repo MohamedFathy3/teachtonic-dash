@@ -33,6 +33,7 @@ import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import { Label } from '@/components/ui/label';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { Select } from '@/components/ui/select';
+import { toast } from "sonner";
 
 
 
@@ -124,7 +125,7 @@ export const InstructorCourses: React.FC = () => {
 const fetchCourses = useCallback(async (page = 1) => {
   if (!activeTab) return;
 
-  setLoading(true);
+  setLoading(false);
   setError(null);
 
   const filters: Record<string, any> = {
@@ -234,6 +235,20 @@ const fetchCourses = useCallback(async (page = 1) => {
     await fetchCourses(pagination.currentPage);
     await refreshCourses();
   };
+const handleToggleStar = async (course: Course) => {
+  try {
+    const newStarValue = course.star === 1 ? 0 : 1;
+    await courseService.CourseActive(course.id, newStarValue);
+    await refreshCourses();
+    toast.success(
+      newStarValue === 1 
+        ? (lang === "ar" ? "تم تفعيل التقييم للكورس" : "Course rating enabled")
+        : (lang === "ar" ? "تم إلغاء تفعيل التقييم للكورس" : "Course rating disabled")
+    );
+  } catch (error) {
+    toast.error(lang === "ar" ? "حدث خطأ" : "An error occurred");
+  }
+};
 
   const handleDelete = async (course: Course) => {
     await courseService.deleteCourse(course.id);
@@ -686,6 +701,7 @@ const fetchCourses = useCallback(async (page = 1) => {
                           onRestore={() => setRestoringCourse(course)}
                           onForceDelete={() => setForceDeletingCourse(course)}
                           onToggleActive={handleToggleActive}
+                          onToggleStar={handleToggleStar} 
                           isDeleted={isDeletedTab}
                           showActions={true}
                         />

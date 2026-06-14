@@ -37,12 +37,6 @@ class TeacherWebsiteThemeService {
     return TeacherWebsiteThemeService.instance;
   }
   
-  /**
-   * Get current theme settings for teacher's website
-   * POST {{api}}/teachers/theme
-   * Body: { teacher_id: 7 }
-   * Response: { status: true, teacher_id: 7, active_theme: "theme2", active_backgroud_color: "#5343", active_font_color: "#5643" }
-   */
   async getWebsiteTheme(teacherId: number): Promise<WebsiteThemeData> {
     const response = await api.post(`/teachers/theme`, { 
       teacher_id: teacherId 
@@ -50,30 +44,35 @@ class TeacherWebsiteThemeService {
     return response.data;
   }
   
-  /**
-   * Activate theme for teacher's public website
-   * POST {{api}}/activate/theme
-   * Body: { theme: "theme2", teacher_id: 7, backgroud_color: "#5343", font_color: "#5643" }
-   */
   async activateWebsiteTheme(
     teacherId: number,
     theme: string,
-    backgroundColor?: string,
-    fontColor?: string
+    backgroundColor?: string | null,
+    fontColor?: string | null
   ): Promise<ActivateThemeResponse> {
     const payload: any = {
       theme: theme,
       teacher_id: teacherId
     };
     
-    if (backgroundColor) {
+    // ✅ لو اللون null أو undefined أو "null" → نبعت string "null"
+    if (backgroundColor === null || backgroundColor === undefined || backgroundColor === 'null') {
+      payload.backgroud_color = "null";
+    } else if (backgroundColor && backgroundColor.trim() !== '') {
       payload.backgroud_color = backgroundColor;
     }
-    if (fontColor) {
+    
+    if (fontColor === null || fontColor === undefined || fontColor === 'null') {
+      payload.font_color = "null";
+    } else if (fontColor && fontColor.trim() !== '') {
       payload.font_color = fontColor;
     }
     
+    console.log("📤 Activate theme payload:", payload);
+    
     const response = await api.post<ActivateThemeResponse>('/activate/theme', payload);
+    console.log("📥 Activate theme response:", response.data);
+    
     return response.data;
   }
 }
