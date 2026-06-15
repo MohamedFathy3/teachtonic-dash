@@ -16,6 +16,7 @@ export interface Semester {
   courses: any[];
   createdAt: string;
   subject_id: number | null;
+  offer_id: number;
   image: number | null;
   imageUrl?: string | null;
 }
@@ -28,6 +29,7 @@ export interface SemesterFormData {
   teacher_id: number;
   image: number | null;
   subject_id: number | null;
+  offer_id: number | null;
 }
 
 export interface SemesterFilters {
@@ -39,6 +41,18 @@ export interface SemesterFilters {
   from_date?: string;
   to_date?: string;
   has_image?: boolean | '';
+  offer_id?: number | null;
+}
+
+export interface Offer {
+  id: number;
+  title: string;
+  title_ar?: string;
+  description: string;
+  offer_discount: string;
+  type: 'offer' | 'banner';
+  active: boolean;
+  image: any;
 }
 
 class SemesterService extends BaseService<Semester> {
@@ -51,7 +65,6 @@ class SemesterService extends BaseService<Semester> {
     return user?.id;
   }
 
-  // ✅ جلب الأتربة مع فلتر ودعم البحث حسب اللغة
   async getAllSemesters(
     filters: Record<string, any> = {},
     perPage: number = 10,
@@ -68,7 +81,6 @@ class SemesterService extends BaseService<Semester> {
         baseFilters.teacher_id = finalTeacherId;
       }
 
-      // 🔥 البحث الذكي حسب اللغة
       if (search?.trim()) {
         if (lang === 'ar') {
           baseFilters.name_ar = search.trim();
@@ -77,7 +89,6 @@ class SemesterService extends BaseService<Semester> {
         }
       }
 
-      // تنظيف القيم الفاضية
       Object.keys(baseFilters).forEach((key) => {
         const value = baseFilters[key];
         if (value === '' || value === null || value === undefined) {
@@ -89,6 +100,7 @@ class SemesterService extends BaseService<Semester> {
       if (baseFilters.price === null || baseFilters.price === undefined || baseFilters.price === '') delete baseFilters.price;
       if (baseFilters.discount === null || baseFilters.discount === undefined || baseFilters.discount === '') delete baseFilters.discount;
       if (baseFilters.subject_id === null || baseFilters.subject_id === undefined || baseFilters.subject_id === '') delete baseFilters.subject_id;
+      if (baseFilters.offer_id === null || baseFilters.offer_id === undefined || baseFilters.offer_id === '') delete baseFilters.offer_id;
 
       const response = await api.post(`/${this.endpoint}/index`, {
         filters: baseFilters,
@@ -162,7 +174,6 @@ class SemesterService extends BaseService<Semester> {
     }
   }
 
-  // ✅ تصحيح دالة toggleActive
   async toggleActiveStatus(id: number): Promise<{ message: string }> {
     try {
       const response = await api.put(`/${this.endpoint}/${id}/active`);
@@ -171,6 +182,29 @@ class SemesterService extends BaseService<Semester> {
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.message || "Failed to toggle status", variant: "destructive" });
       throw error;
+    }
+  }
+
+  async getOffersForSelect(teacherId?: number): Promise<Offer[]> {
+    try {
+      const finalTeacherId = teacherId ?? this.getTeacherId();
+      
+      const response = await api.post('/offer/index', {
+        filters: {
+          teacher_id: finalTeacherId,
+          type: 'offer',
+          active: true,
+        },
+        orderByDirection: 'desc',
+        perPage: 100,
+        paginate: false,
+      });
+      
+      console.log('🎁 Offers for select:', response.data?.data);
+      return response.data?.data || [];
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+      return [];
     }
   }
 }

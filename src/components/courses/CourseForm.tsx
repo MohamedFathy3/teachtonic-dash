@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ChevronLeft, Save } from 'lucide-react';
+import { Loader2, ChevronLeft, Save, Gift } from 'lucide-react';
 import type { Course, CourseFormData } from '@/types/course.types';
 import { AsyncSelect } from '@/components/ui/AsyncSelect'; // 🔥 أضف هذا الاستيراد
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
@@ -28,13 +28,13 @@ interface CourseFormProps {
 export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCancel }) => {
   const { t, lang, user } = useApp();
   const teacherId = user?.id;
-  const { stages, subjects } = useTeacherMeta(teacherId);
+  const { stages, subjects,offers  } = useTeacherMeta(teacherId);
   const { createCourse, updateCourse, loading, error } = useCourses({ autoFetch: false });
   const [formData, setFormData] = useState<Partial<CourseFormData>>({
     teacher_id: user?.id || 1,
-    stage_id: 1,
-    subject_id: 1,
-    semester_id: 1,
+    stage_id: null,
+    subject_id: null,
+    semester_id :null ,
     image: course?.image?.id || 0, // ✅ استخدام ID الصورة الموجودة
     title: '',
     title_ar: '',
@@ -48,6 +48,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
     price: 0,
     start_date: '',
     end_date: '',
+    offer_id:1,
   });
 
   // ✅ تحميل بيانات الكورس عند التعديل
@@ -71,6 +72,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
         price: parseFloat(course.price),
         start_date: course.start_date,
         end_date: course.end_date,
+        offer_id: course.offer_id,
       });
     }
   }, [course]);
@@ -374,7 +376,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
                     configKey="semesters"
                     value={formData.semester_id}
                     onChange={(id, semester) => {
-                      handleChange('semester_id', id || 1);
+                      handleChange('semester_id', id );
                       console.log('Selected semester:', id, semester);
                     }}
                     label=""
@@ -383,6 +385,26 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
                     extraFilters={{ teacher_id: user?.id }}
                   />
                 </div>
+                <div>
+  <Label className="flex items-center gap-1">
+    <Gift className="h-4 w-4 text-orange-500" />
+    {lang === 'ar' ? 'عرض خصم' : 'Discount Offer'}
+  </Label>
+  <select
+    className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3 mt-1"
+    value={formData.offer_id ?? ''}
+    onChange={(e) => handleChange('offer_id', e.target.value ? Number(e.target.value) : null)}
+  >
+    <option value="">
+      {lang === 'ar' ? 'بدون عرض' : 'No Offer'}
+    </option>
+    {offers?.map((offer: any) => (
+      <option key={offer.id} value={offer.id}>
+        {lang === 'ar' ? (offer.title_ar || offer.title) : offer.title} - {offer.offer_discount}%
+      </option>
+    ))}
+  </select>
+</div>
               </div>
             </div>
 

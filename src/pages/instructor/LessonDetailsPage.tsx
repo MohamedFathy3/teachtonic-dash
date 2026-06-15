@@ -24,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { useApp } from '@/contexts/AppContext';
@@ -200,17 +200,52 @@ export const LessonDetailsPage: React.FC = () => {
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
   const [examLoading, setExamLoading] = useState(false);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+const [studentIdInput, setStudentIdInput] = useState('');
+const [attendanceLoading, setAttendanceLoading] = useState(false);
+const [attendanceSuccess, setAttendanceSuccess] = useState<{ studentName: string; status: string } | null>(null);
 const [studentFilters, setStudentFilters] = useState({
   search: '',
   typeOfAttendance: '',
   active: '',
-  attended: '', // حضور/غياب
+  attended: '', 
 });
 const [showStudentFilters, setShowStudentFilters] = useState(false);
 
-// أضف داخل المكون LessonDetailsPage مع باقي الدوال
+// ==================== تسجيل حضور الطالب ====================
+const handleMarkAttendance = async () => {
+  if (!studentIdInput.trim()) {
+    toast.error(lang === 'ar' ? 'الرجاء إدخال ID الطالب' : 'Please enter student ID');
+    return;
+  }
 
-// ✅ تصدير الطلاب إلى Excel
+  setAttendanceLoading(false);
+  try {
+    // البحث عن الطالب في القائمة
+    const foundStudent = lesson?.students?.find(s => s.id === parseInt(studentIdInput));
+    
+    await courseDetailService.markStudentAttendance(Number(lessonId), parseInt(studentIdInput));
+    
+    setAttendanceSuccess({
+      studentName: foundStudent?.name || `ID: ${studentIdInput}`,
+      status: 'تم تسجيل الحضور بنجاح'
+    });
+    
+    setStudentIdInput('');
+    
+    // إعادة تحميل بيانات الدرس لتحديث حالة الحضور
+    setTimeout(() => {
+      fetchLesson();
+      setAttendanceSuccess(null);
+      setShowAttendanceModal(false);
+    }, 2000);
+    
+  } catch (error) {
+    console.error('Error marking attendance:', error);
+  } finally {
+    setAttendanceLoading(false);
+  }
+};
 const exportStudentsToExcel = () => {
   const filteredData = filteredStudents.map((student, index) => ({
     [lang === 'ar' ? '#' : 'No']: index + 1,
@@ -223,7 +258,7 @@ const exportStudentsToExcel = () => {
     [lang === 'ar' ? 'الحالة' : 'Status']: student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
     [lang === 'ar' ? 'حضور الدرس' : 'Lesson Attendance']: student.attended ? (lang === 'ar' ? 'حاضر' : 'Attended') : (lang === 'ar' ? 'غائب' : 'Absent'),
     [lang === 'ar' ? 'المحافظة' : 'Governorate']: student.governorate || '—',
-    [lang === 'ar' ? 'المدرسة' : 'School']: student.school_name || '—',
+  [lang === 'ar' ? 'المدرسة' : 'School']: student.school_name || '—',
     [lang === 'ar' ? 'تاريخ التسجيل' : 'Registered Date']: new Date(student.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US'),
   }));
 
@@ -486,6 +521,20 @@ const studentStats = {
               </TooltipTrigger>
               <TooltipContent>{lang === 'ar' ? 'طباعة الصفحة' : 'Print page'}</TooltipContent>
             </Tooltip>
+            <Tooltip>
+  <TooltipTrigger asChild>
+    <Button 
+      variant="default" 
+      size="sm" 
+      onClick={() => setShowAttendanceModal(true)} 
+      className="gap-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+    >
+      <User className="h-4 w-4" />
+      {lang === 'ar' ? 'تسجيل حضور' : 'Mark Attendance'}
+    </Button>
+  </TooltipTrigger>
+  <TooltipContent>{lang === 'ar' ? 'تسجيل حضور طالب في الدرس' : 'Mark student attendance'}</TooltipContent>
+</Tooltip>
           </div>
         </div>
 
@@ -1174,6 +1223,120 @@ const studentStats = {
             </ScrollArea>
           </DialogContent>
         </Dialog>
+
+
+        {/* ==================== Attendance Modal ==================== */}
+<Dialog open={showAttendanceModal} onOpenChange={setShowAttendanceModal}>
+  <DialogContent className="max-w-md rounded-2xl">
+    <DialogHeader>
+      <DialogTitle className="text-xl font-bold bg-gradient-to-r from-green-500 to-emerald-600 bg-clip-text text-transparent flex items-center gap-2">
+        <User className="h-5 w-5 text-green-500" />
+        {lang === 'ar' ? 'تسجيل حضور طالب' : 'Mark Student Attendance'}
+      </DialogTitle>
+      <DialogDescription>
+        {lang === 'ar' 
+          ? 'أدخل ID الطالب لتسجيل حضوره في هذا الدرس'
+          : 'Enter student ID to mark their attendance for this lesson'}
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="space-y-5 py-3">
+      {/* درس معلومات */}
+      <div className="p-3 rounded-xl bg-muted/30 text-center">
+        <p className="text-sm text-muted-foreground">{lang === 'ar' ? 'الدرس' : 'Lesson'}</p>
+        <p className="font-semibold text-base">{title}</p>
+      </div>
+
+      {/* ID Input */}
+      <div>
+        <label className="block text-sm font-medium mb-2">
+          {lang === 'ar' ? 'ID الطالب' : 'Student ID'} *
+        </label>
+        <Input
+          type="number"
+          value={studentIdInput}
+          onChange={(e) => setStudentIdInput(e.target.value)}
+          placeholder={lang === 'ar' ? 'أدخل رقم الطالب...' : 'Enter student ID...'}
+          className="rounded-xl text-center text-lg font-mono"
+          autoFocus
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          {lang === 'ar' 
+            ? 'يمكنك إيجاد ID الطالب من قائمة الطلاب في الكورس'
+            : 'You can find student ID in the students list of the course'}
+        </p>
+      </div>
+
+      {/* Success Message */}
+      {attendanceSuccess && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-3 rounded-xl bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-center"
+        >
+          <CheckCircle2 className="h-5 w-5 mx-auto mb-1" />
+          <p className="font-medium">{attendanceSuccess.studentName}</p>
+          <p className="text-sm">{attendanceSuccess.status}</p>
+        </motion.div>
+      )}
+
+      {/* Student Preview (إذا كان الطالب موجود) */}
+      {studentIdInput && !attendanceSuccess && (
+        <div className="p-3 rounded-xl bg-muted/20">
+          <p className="text-xs text-muted-foreground mb-2">
+            {lang === 'ar' ? 'معلومات الطالب' : 'Student Info'}
+          </p>
+          {(() => {
+            const foundStudent = lesson?.students?.find(s => s.id === parseInt(studentIdInput));
+            if (foundStudent) {
+              return (
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-green-100 dark:bg-green-900/20 text-green-600">
+                      {foundStudent.name?.charAt(0)?.toUpperCase() || 'S'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{foundStudent.name}</p>
+                    <p className="text-xs text-muted-foreground">{foundStudent.phone}</p>
+                  </div>
+                  <Badge variant={foundStudent.active ? "default" : "secondary"} className="text-[10px] ml-auto">
+                    {foundStudent.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
+                  </Badge>
+                </div>
+              );
+            } else if (studentIdInput) {
+              return (
+                <div className="flex items-center gap-2 text-amber-600">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm">
+                    {lang === 'ar' ? 'لم يتم العثور على طالب بهذا ID' : 'No student found with this ID'}
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
+        </div>
+      )}
+    </div>
+
+    <DialogFooter className="flex gap-3">
+      <Button variant="outline" onClick={() => setShowAttendanceModal(false)} className="rounded-xl">
+        {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+      </Button>
+      <Button
+        onClick={handleMarkAttendance}
+        disabled={attendanceLoading || !studentIdInput.trim()}
+        className="gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+      >
+        {attendanceLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+        <CheckCircle2 className="h-4 w-4" />
+        {lang === 'ar' ? 'تسجيل الحضور' : 'Mark Attendance'}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
       </motion.div>
     </TooltipProvider>
   );

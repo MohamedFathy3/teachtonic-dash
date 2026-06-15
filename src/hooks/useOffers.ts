@@ -11,13 +11,15 @@ export const useOffers = (params?: any) => {
   const queryClient = useQueryClient();
 
   // جلب كل العروض
-  const getOffers = useQuery({
-    queryKey: ['offers', params],
-    queryFn: () => offerService.getAll({ ...params, teacher_id: user?.id }),
-    enabled: !!user?.id,
-  });
+// eslint-disable-next-line react-hooks/rules-of-hooks
+const getOffers = (type?: 'offer' | 'banner') => useQuery({
+  queryKey: ['offers', params, type],
+  queryFn: () => offerService.getAll({ ...params, teacher_id: user?.id, type }),
+  enabled: !!user?.id,
+});
 
   // جلب عرض بالمعرف
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const getOfferById = (id: number) => useQuery({
     queryKey: ['offer', id],
     queryFn: () => offerService.getById(id),

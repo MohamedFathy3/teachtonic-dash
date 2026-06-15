@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/components/offers/OffersPage.tsx
+// src/components/offers/BannersPage.tsx
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,9 +7,9 @@ import { useOffers } from '@/hooks/useOffers';
 import { OfferModal } from './OfferModal';
 import { useApp } from '@/contexts/AppContext';
 import { 
-  Plus, Trash2, Edit, Gift, Percent, Calendar, Search, Filter, 
-  Power, X, Image as ImageIcon, Tag, Clock, ChevronLeft, ChevronRight,
-  TrendingUp, AlertCircle
+  Plus, Trash2, Edit, Image as ImageIcon, Search, Filter, 
+  Power, X, Calendar, ChevronLeft, ChevronRight, Link as LinkIcon,
+  Eye, ExternalLink, LayoutGrid, TrendingUp
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { arSA, enUS } from 'date-fns/locale';
@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 
-export const OffersPage: React.FC = () => {
+export const BannersPage: React.FC = () => {
   const { lang, user } = useApp();
   const isRTL = lang === 'ar';
   
@@ -35,10 +35,8 @@ export const OffersPage: React.FC = () => {
   
   // فلترات
   const [filterActive, setFilterActive] = useState<string>('');
-  const [filterFromDate, setFilterFromDate] = useState('');
-  const [filterToDate, setFilterToDate] = useState('');
   
-  const [offers, setOffers] = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>([]);
   const [meta, setMeta] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -52,13 +50,12 @@ export const OffersPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // جلب العروض (نوعها offer بس)
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const fetchOffers = useCallback(async (page = 1) => {
+  const fetchBanners = useCallback(async (page = 1) => {
     setIsLoading(false);
     try {
       const filters: any = {
-        type: 'offer', // ✅ هنا الفلتر اللي يضمن يجيب العروض بس
+        type: 'banner', // ✅ هنا الفلتر اللي يضمن يجيب البانرات بس
       };
       
       if (debouncedSearch) {
@@ -75,14 +72,6 @@ export const OffersPage: React.FC = () => {
         filters.active = false;
       }
       
-      if (filterFromDate) {
-        filters.from_date = filterFromDate;
-      }
-      
-      if (filterToDate) {
-        filters.to_date = filterToDate;
-      }
-      
       const response = await api.post('/offer/index', {
         filters: filters,
         orderByDirection: 'desc',
@@ -91,48 +80,48 @@ export const OffersPage: React.FC = () => {
         paginate: true,
       });
       
-      console.log('🎁 Offers Response:', response.data);
+      console.log('🎨 Banners Response:', response.data);
       
-      setOffers(response.data?.data || []);
+      setBanners(response.data?.data || []);
       setMeta(response.data?.meta || null);
       setCurrentPage(page);
     } catch (error) {
-      console.error('Error fetching offers:', error);
-      toast.error(lang === 'ar' ? 'حدث خطأ في تحميل العروض' : 'Error loading offers');
+      console.error('Error fetching banners:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ في تحميل البانرات' : 'Error loading banners');
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, user?.id, filterActive, filterFromDate, filterToDate, lang]);
+  }, [debouncedSearch, user?.id, filterActive, lang]);
 
   useEffect(() => {
-    fetchOffers(1);
-  }, [fetchOffers]);
+    fetchBanners(1);
+  }, [fetchBanners]);
 
-  // حذف العروض المحددة
+  // حذف البانرات المحددة
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
-    if (confirm(lang === 'ar' ? `حذف ${selectedIds.length} عرض؟` : `Delete ${selectedIds.length} offer(s)?`)) {
+    if (confirm(lang === 'ar' ? `حذف ${selectedIds.length} بانر؟` : `Delete ${selectedIds.length} banner(s)?`)) {
       await bulkDeleteOffers.mutateAsync(selectedIds);
       setSelectedIds([]);
-      fetchOffers(currentPage);
+      fetchBanners(currentPage);
     }
   };
 
-  // تعديل عرض
+  // تعديل بانر
   const handleEdit = (item: any) => {
     setEditingItem(item);
     setIsModalOpen(true);
   };
 
-  // تبديل حالة العرض
+  // تبديل حالة البانر
   const handleToggleActive = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     await toggleActive.mutateAsync(id);
-    fetchOffers(currentPage);
+    fetchBanners(currentPage);
   };
 
-  // اختيار عرض
-  const handleSelectOffer = (id: number, checked: boolean) => {
+  // اختيار بانر
+  const handleSelectBanner = (id: number, checked: boolean) => {
     if (checked) {
       setSelectedIds(prev => [...prev, id]);
     } else {
@@ -143,7 +132,7 @@ export const OffersPage: React.FC = () => {
   // اختيار الكل
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(offers.map((o: any) => o.id));
+      setSelectedIds(banners.map((b: any) => b.id));
     } else {
       setSelectedIds([]);
     }
@@ -154,35 +143,39 @@ export const OffersPage: React.FC = () => {
     setSearchQuery('');
     setDebouncedSearch('');
     setFilterActive('');
-    setFilterFromDate('');
-    setFilterToDate('');
     setShowFilters(false);
   };
 
   // تطبيق الفلاتر
   const applyFilters = () => {
-    fetchOffers(1);
+    fetchBanners(1);
     setShowFilters(false);
   };
 
   // Pagination
   const goToPage = (page: number) => {
     if (page >= 1 && page <= (meta?.last_page || 1)) {
-      fetchOffers(page);
+      fetchBanners(page);
       setSelectedIds([]);
+    }
+  };
+
+  // فتح الرابط
+  const openLink = (url: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (url) {
+      window.open(url, '_blank');
     }
   };
 
   // إحصائيات
   const stats = {
-    total: offers.length,
-    active: offers.filter((o: any) => o.active === 1).length,
-    expired: offers.filter((o: any) => o.end_date && new Date(o.end_date) < new Date()).length,
-    totalDiscount: offers.reduce((sum, o) => sum + (parseInt(o.offer_discount) || 0), 0),
+    total: banners.length,
+    active: banners.filter((b: any) => b.active === 1).length,
   };
 
   // حالة التحميل الأولي
-  if (isLoading && offers.length === 0) {
+  if (isLoading && banners.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -200,11 +193,11 @@ export const OffersPage: React.FC = () => {
         {/* Header */}
         <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-              {lang === 'ar' ? 'عروض الخصم' : 'Discount Offers'}
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              {lang === 'ar' ? 'البانرات الترويجية' : 'Promotional Banners'}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {lang === 'ar' ? 'إدارة عروض الخصم والكوبونات' : 'Manage discount offers and coupons'}
+              {lang === 'ar' ? 'إدارة البانرات الترويجية والإعلانات' : 'Manage promotional banners and ads'}
             </p>
           </div>
           <div className="flex gap-3 flex-wrap">
@@ -227,7 +220,7 @@ export const OffersPage: React.FC = () => {
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={lang === 'ar' ? 'بحث عن عرض...' : 'Search offers...'}
+                placeholder={lang === 'ar' ? 'بحث عن بانر...' : 'Search banners...'}
                 className="pl-9 pr-8 rounded-xl w-64 bg-white dark:bg-gray-800"
               />
               {searchQuery && (
@@ -245,46 +238,41 @@ export const OffersPage: React.FC = () => {
               variant="outline"
               size="icon"
               onClick={() => setShowFilters(!showFilters)}
-              className={`rounded-xl ${showFilters ? 'bg-orange-600 text-white border-orange-600' : ''}`}
+              className={`rounded-xl ${showFilters ? 'bg-purple-600 text-white border-purple-600' : ''}`}
             >
               <Filter size={18} />
             </Button>
 
-            {/* إضافة عرض */}
+            {/* إضافة بانر */}
             <Button
               onClick={() => {
                 setEditingItem(null);
                 setIsModalOpen(true);
               }}
-              className="gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-md"
+              className="gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-md"
             >
               <Plus size={18} />
-              {lang === 'ar' ? 'إضافة عرض' : 'Add Offer'}
+              {lang === 'ar' ? 'إضافة بانر' : 'Add Banner'}
             </Button>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="p-4 text-center bg-gradient-to-r from-orange-500/10 to-red-500/10 border-0">
-            <Gift className="h-8 w-8 mx-auto text-orange-500 mb-2" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <Card className="p-4 text-center bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-0">
+            <ImageIcon className="h-8 w-8 mx-auto text-purple-500 mb-2" />
             <p className="text-2xl font-bold">{stats.total}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجمالي العروض' : 'Total Offers'}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجمالي البانرات' : 'Total Banners'}</p>
           </Card>
           <Card className="p-4 text-center bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-0">
             <TrendingUp className="h-8 w-8 mx-auto text-green-500 mb-2" />
             <p className="text-2xl font-bold">{stats.active}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'عروض نشطة' : 'Active Offers'}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'بانرات نشطة' : 'Active Banners'}</p>
           </Card>
-          <Card className="p-4 text-center bg-gradient-to-r from-red-500/10 to-rose-500/10 border-0">
-            <Clock className="h-8 w-8 mx-auto text-red-500 mb-2" />
-            <p className="text-2xl font-bold">{stats.expired}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'عروض منتهية' : 'Expired Offers'}</p>
-          </Card>
-          <Card className="p-4 text-center bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-0">
-            <Percent className="h-8 w-8 mx-auto text-purple-500 mb-2" />
-            <p className="text-2xl font-bold">{stats.totalDiscount}%</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'إجمالي الخصومات' : 'Total Discount'}</p>
+          <Card className="p-4 text-center bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-0">
+            <Eye className="h-8 w-8 mx-auto text-blue-500 mb-2" />
+            <p className="text-2xl font-bold">{banners.filter((b: any) => b.url).length}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{lang === 'ar' ? 'بها رابط' : 'With Links'}</p>
           </Card>
         </div>
 
@@ -298,11 +286,11 @@ export const OffersPage: React.FC = () => {
               className="mb-6 overflow-hidden"
             >
               <Card className="p-5 bg-white dark:bg-gray-800 border">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   
                   <div>
                     <Label className="flex items-center gap-1 text-sm font-medium">
-                      <Power className="h-4 w-4 text-orange-500" />
+                      <Power className="h-4 w-4 text-purple-500" />
                       {lang === 'ar' ? 'الحالة' : 'Status'}
                     </Label>
                     <select
@@ -315,32 +303,6 @@ export const OffersPage: React.FC = () => {
                       <option value="inactive">❌ {lang === 'ar' ? 'غير نشط' : 'Inactive'}</option>
                     </select>
                   </div>
-
-                  <div>
-                    <Label className="flex items-center gap-1 text-sm font-medium">
-                      <Calendar className="h-4 w-4 text-orange-500" />
-                      {lang === 'ar' ? 'من تاريخ' : 'From Date'}
-                    </Label>
-                    <Input
-                      type="date"
-                      value={filterFromDate}
-                      onChange={(e) => setFilterFromDate(e.target.value)}
-                      className="rounded-xl mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="flex items-center gap-1 text-sm font-medium">
-                      <Calendar className="h-4 w-4 text-orange-500" />
-                      {lang === 'ar' ? 'إلى تاريخ' : 'To Date'}
-                    </Label>
-                    <Input
-                      type="date"
-                      value={filterToDate}
-                      onChange={(e) => setFilterToDate(e.target.value)}
-                      className="rounded-xl mt-1"
-                    />
-                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 mt-5 pt-3 border-t">
@@ -348,7 +310,7 @@ export const OffersPage: React.FC = () => {
                     <X className="h-4 w-4" />
                     {lang === 'ar' ? 'إعادة تعيين' : 'Reset'}
                   </Button>
-                  <Button size="sm" onClick={applyFilters} className="gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl">
+                  <Button size="sm" onClick={applyFilters} className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl">
                     <Search className="h-4 w-4" />
                     {lang === 'ar' ? 'تطبيق' : 'Apply'}
                   </Button>
@@ -359,54 +321,55 @@ export const OffersPage: React.FC = () => {
         </AnimatePresence>
 
         {/* اختيار الكل */}
-        {offers.length > 0 && (
+        {banners.length > 0 && (
           <div className="flex items-center justify-end mb-3">
             <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
               <input
                 type="checkbox"
-                checked={selectedIds.length === offers.length && offers.length > 0}
+                checked={selectedIds.length === banners.length && banners.length > 0}
                 onChange={(e) => handleSelectAll(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                className="w-4 h-4 rounded border-gray-300 text-purple-500 focus:ring-purple-500"
               />
               {lang === 'ar' ? 'اختر الكل' : 'Select All'}
             </label>
           </div>
         )}
 
-        {/* شبكة العروض */}
+        {/* شبكة البانرات */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           <AnimatePresence>
-            {offers.map((offer: any, index: number) => (
+            {banners.map((banner: any, index: number) => (
               <motion.div
-                key={offer.id}
+                key={banner.id}
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ delay: index * 0.05 }}
                 whileHover={{ y: -5 }}
-                className="group"
+                className="group cursor-pointer"
+                onClick={() => banner.url && openLink(banner.url, {} as any)}
               >
-                <Card className="overflow-hidden rounded-xl hover:shadow-xl transition-all duration-300 dark:bg-gray-800 cursor-pointer border border-gray-100 dark:border-gray-700">
+                <Card className="overflow-hidden rounded-xl hover:shadow-xl transition-all duration-300 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                   {/* الصورة */}
-                  <div className="relative h-40 bg-gradient-to-r from-orange-500 to-red-500">
-                    {offer.image?.fullUrl ? (
+                  <div className="relative h-48 bg-gradient-to-r from-purple-500 to-pink-500">
+                    {banner.image?.fullUrl ? (
                       <img
-                        src={offer.image.fullUrl}
-                        alt={offer.title}
+                        src={banner.image.fullUrl}
+                        alt={banner.title}
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center">
-                        <Gift className="h-12 w-12 text-white/40" />
+                        <ImageIcon className="h-12 w-12 text-white/40" />
                         <span className="text-white/40 text-xs mt-2">No Image</span>
                       </div>
                     )}
 
                     {/* حالة النشاط */}
                     <div className="absolute top-2 right-2">
-                      <Badge variant={offer.active ? "default" : "secondary"} className="gap-1 backdrop-blur-sm bg-black/50 border-none">
-                        <span className={`w-1.5 h-1.5 rounded-full ${offer.active ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} />
-                        {offer.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
+                      <Badge variant={banner.active ? "default" : "secondary"} className="gap-1 backdrop-blur-sm bg-black/50 border-none">
+                        <span className={`w-1.5 h-1.5 rounded-full ${banner.active ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} />
+                        {banner.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
                       </Badge>
                     </div>
 
@@ -416,7 +379,7 @@ export const OffersPage: React.FC = () => {
                         size="icon"
                         variant="secondary"
                         className="h-8 w-8 rounded-lg bg-black/60 hover:bg-black/80"
-                        onClick={(e) => handleToggleActive(offer.id, e)}
+                        onClick={(e) => handleToggleActive(banner.id, e)}
                       >
                         <Power size={14} className="text-white" />
                       </Button>
@@ -426,28 +389,19 @@ export const OffersPage: React.FC = () => {
                         className="h-8 w-8 rounded-lg bg-black/60 hover:bg-black/80"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleEdit(offer);
+                          handleEdit(banner);
                         }}
                       >
                         <Edit size={14} className="text-white" />
                       </Button>
                     </div>
 
-                    {/* شارة الخصم */}
-                    {offer.offer_discount && (
-                      <div className="absolute bottom-2 left-2">
-                        <Badge className="bg-red-500 text-white border-none text-sm px-2 py-1 shadow-lg">
-                          -{offer.offer_discount}%
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* حالة انتهاء العرض */}
-                    {offer.end_date && new Date(offer.end_date) < new Date() && (
+                    {/* شارة الرابط */}
+                    {banner.url && (
                       <div className="absolute bottom-2 right-2">
-                        <Badge variant="destructive" className="gap-1">
-                          <AlertCircle size={12} />
-                          {lang === 'ar' ? 'منتهي' : 'Expired'}
+                        <Badge className="bg-blue-500/80 text-white border-none gap-1 backdrop-blur-sm">
+                          <LinkIcon size={12} />
+                          {lang === 'ar' ? 'رابط' : 'Link'}
                         </Badge>
                       </div>
                     )}
@@ -457,72 +411,41 @@ export const OffersPage: React.FC = () => {
                       <div className="flex items-center gap-2 text-white">
                         <input
                           type="checkbox"
-                          checked={selectedIds.includes(offer.id)}
-                          onChange={(e) => handleSelectOffer(offer.id, e.target.checked)}
+                          checked={selectedIds.includes(banner.id)}
+                          onChange={(e) => handleSelectBanner(banner.id, e.target.checked)}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-4 h-4 rounded border-white/30 bg-white/20 checked:bg-orange-500 checked:border-orange-500"
+                          className="w-4 h-4 rounded border-white/30 bg-white/20 checked:bg-purple-500 checked:border-purple-500"
                         />
                         <span className="text-xs text-white/80">{lang === 'ar' ? 'تحديد' : 'Select'}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* معلومات العرض */}
+                  {/* معلومات البانر */}
                   <div className="p-4">
                     <h3 className="font-bold text-lg mb-1 line-clamp-1 dark:text-white">
-                      {offer.title}
+                      {banner.title}
                     </h3>
-                    {offer.description && (
+                    {banner.description && (
                       <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">
-                        {offer.description}
+                        {banner.description}
                       </p>
                     )}
                     
-                    <div className="space-y-2 text-sm">
-                      {offer.offer_discount && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                            <Percent size={14} />
-                            {lang === 'ar' ? 'الخصم' : 'Discount'}
-                          </span>
-                          <span className="font-bold text-red-500">-{offer.offer_discount}%</span>
-                        </div>
-                      )}
-                      
-                      {offer.start_date && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                            <Calendar size={14} />
-                            {lang === 'ar' ? 'الفترة' : 'Period'}
-                          </span>
-                          <span className="text-xs">
-                            {format(new Date(offer.start_date), 'dd/MM')} - {format(new Date(offer.end_date), 'dd/MM/yyyy')}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* شريط تقدم الوقت المتبقي */}
-                      {offer.end_date && new Date(offer.end_date) > new Date() && (
-                        <div className="mt-2">
-                          <div className="flex justify-between text-xs mb-1">
-                            <span>{lang === 'ar' ? 'متبقي' : 'Remaining'}</span>
-                            <span>{Math.ceil((new Date(offer.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} {lang === 'ar' ? 'يوم' : 'days'}</span>
-                          </div>
-                          <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
-                              style={{ 
-                                width: `${Math.max(0, Math.min(100, ((new Date(offer.end_date).getTime() - new Date().getTime()) / (new Date(offer.end_date).getTime() - new Date(offer.start_date).getTime()) * 100)))}%` 
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    {/* الرابط */}
+                    {banner.url && (
+                      <div className="flex items-center gap-2 text-sm bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2 mb-3">
+                        <LinkIcon size={14} className="text-purple-500 flex-shrink-0" />
+                        <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1">
+                          {banner.url}
+                        </span>
+                        <ExternalLink size={12} className="text-gray-400 flex-shrink-0" />
+                      </div>
+                    )}
                     
                     <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                       <p className="text-xs text-gray-400">
-                        {format(new Date(offer.createdAt), 'dd/MM/yyyy', {
+                        {format(new Date(banner.createdAt), 'dd/MM/yyyy', {
                           locale: lang === 'ar' ? arSA : enUS,
                         })}
                       </p>
@@ -535,17 +458,17 @@ export const OffersPage: React.FC = () => {
         </div>
 
         {/* حالة عدم وجود بيانات */}
-        {offers.length === 0 && !isLoading && (
+        {banners.length === 0 && !isLoading && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="text-center py-16"
           >
             <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <Gift size={48} className="text-gray-400 dark:text-gray-600" />
+              <ImageIcon size={48} className="text-gray-400 dark:text-gray-600" />
             </div>
             <p className="text-gray-500 dark:text-gray-400 text-lg">
-              {lang === 'ar' ? 'لا توجد عروض' : 'No offers found'}
+              {lang === 'ar' ? 'لا توجد بانرات' : 'No banners found'}
             </p>
             <Button
               onClick={() => setIsModalOpen(true)}
@@ -553,7 +476,7 @@ export const OffersPage: React.FC = () => {
               className="mt-4 gap-2 rounded-xl"
             >
               <Plus size={18} />
-              {lang === 'ar' ? 'أضف أول عرض' : 'Add First Offer'}
+              {lang === 'ar' ? 'أضف أول بانر' : 'Add First Banner'}
             </Button>
           </motion.div>
         )}
@@ -585,7 +508,7 @@ export const OffersPage: React.FC = () => {
           </div>
         )}
 
-        {/* Modal للعروض */}
+        {/* Modal للبانرات */}
         <OfferModal
           isOpen={isModalOpen}
           onClose={() => {
@@ -593,15 +516,15 @@ export const OffersPage: React.FC = () => {
             setEditingItem(null);
           }}
           onSuccess={() => {
-            fetchOffers(currentPage);
+            fetchBanners(currentPage);
             setSelectedIds([]);
           }}
           editingItem={editingItem}
-          defaultType="offer"
+          defaultType="banner"
         />
       </div>
     </div>
   );
 };
 
-export default OffersPage;
+export default BannersPage;

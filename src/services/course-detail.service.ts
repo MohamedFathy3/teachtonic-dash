@@ -1,6 +1,7 @@
 // src/services/course-detail.service.ts
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { toast } from 'sonner';
 import { BaseService } from './base.service';
 import api from '@/lib/api';
 
@@ -48,7 +49,19 @@ class CourseDetailService extends BaseService<CourseDetail> {
 
     return response.data;
   }
-
+async markStudentAttendance(courseDetailId: number, studentId: number): Promise<any> {
+  try {
+    const response = await api.post('/course-detail-attendance', {
+      course_detail_id: courseDetailId,
+      student_id: studentId
+    });
+    toast.success('تم تسجيل حضور الطالب بنجاح');
+    return response.data;
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || 'فشل في تسجيل الحضور');
+    throw error;
+  }
+}
   async create(data: any): Promise<CourseDetail> {
     const response = await api.post(`/${this.endpoint}`, data);
     return response.data.data;

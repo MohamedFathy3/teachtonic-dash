@@ -41,6 +41,8 @@ import {
   Save,
   SlidersHorizontal,
   Image as ImageIcon,
+  Gift,
+  Percent,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -50,7 +52,7 @@ export const SemestersPage: React.FC = () => {
   const teacherId = user?.id;
   const isRTL = lang === 'ar';
 
-  const { subjects } = useTeacherMeta(teacherId);
+  const { subjects, offers } = useTeacherMeta(teacherId);
 
   // State
   const [semesters, setSemesters] = useState<Semester[]>([]);
@@ -60,6 +62,8 @@ export const SemestersPage: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [offersList, setOffersList] = useState<any[]>([]);
+  const [loadingOffers, setLoadingOffers] = useState(false);
 
   // Filters State
   const [filters, setFilters] = useState<SemesterFilters>({
@@ -71,6 +75,7 @@ export const SemestersPage: React.FC = () => {
     from_date: '',
     to_date: '',
     has_image: '',
+    offer_id: null,
   });
 
   // Modal State
@@ -86,8 +91,28 @@ export const SemestersPage: React.FC = () => {
     teacher_id: user?.id || 1,
     subject_id: null,
     image: null,
+    offer_id: null,
   });
   const [submitting, setSubmitting] = useState(false);
+
+  // Fetch offers directly
+  useEffect(() => {
+    const fetchOffersDirect = async () => {
+      if (!teacherId) return;
+      setLoadingOffers(true);
+      try {
+        const response = await semesterService.getOffersForSelect(teacherId);
+        console.log('🎁 Direct offers fetch:', response);
+        setOffersList(response);
+      } catch (error) {
+        console.error('Error fetching offers directly:', error);
+      } finally {
+        setLoadingOffers(false);
+      }
+    };
+    
+    fetchOffersDirect();
+  }, [teacherId]);
 
   // Pagination
   const [pagination, setPagination] = useState({
@@ -203,7 +228,6 @@ export const SemestersPage: React.FC = () => {
     }
   };
 
-  // 🔥 دالة تبديل الحالة باستخدام Switch
   const handleToggleActive = async (semester: Semester) => {
     try {
       await semesterService.toggleActiveStatus(semester.id);
@@ -260,6 +284,7 @@ export const SemestersPage: React.FC = () => {
         teacher_id: fullSemester.teacher_id,
         subject_id: fullSemester.subject_id,
         image: fullSemester.image,
+        offer_id: fullSemester.offer_id || null,
       });
       setEditingSemester(semester);
       setShowModal(true);
@@ -282,6 +307,7 @@ export const SemestersPage: React.FC = () => {
       teacher_id: user?.id || 1,
       subject_id: null,
       image: null,
+      offer_id: null,
     });
     setShowModal(true);
   }, [user?.id]);
@@ -297,6 +323,7 @@ export const SemestersPage: React.FC = () => {
       teacher_id: user?.id || 1,
       subject_id: null,
       image: null,
+      offer_id: null,
     });
   };
 
@@ -331,17 +358,26 @@ export const SemestersPage: React.FC = () => {
       from_date: '',
       to_date: '',
       has_image: '',
+      offer_id: null,
     });
     fetchSemesters(1);
   };
 
   // Stats
-const stats = {
-  total: pagination.total,
-  active: semesters.filter(s => s.active).length,
-  inactive: semesters.filter(s => !s.active).length, // 🔥 أضف هذا
-  totalPrice: semesters.reduce((sum, s) => sum + parseFloat(s.price), 0),
-};
+  const stats = {
+    total: pagination.total,
+    active: semesters.filter(s => s.active).length,
+    inactive: semesters.filter(s => !s.active).length,
+    totalPrice: semesters.reduce((sum, s) => sum + parseFloat(s.price), 0),
+  };
+
+  // الحصول على اسم العرض من الـ ID
+  const getOfferName = (offerId: number | null) => {
+    if (!offerId) return null;
+    const offer = offers?.find((o: any) => o.id === offerId);
+    if (!offer) return null;
+    return isRTL ? offer.title_ar || offer.title : offer.title;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
@@ -398,13 +434,13 @@ const stats = {
           </div>
         </div>
 
-        {/* Stats Cards - غيرنا العملة لـ EGP */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
             { label: isRTL ? 'إجمالي الترمات' : 'Total Semesters', value: stats.total, icon: Calendar, color: 'from-purple-500 to-pink-500' },
             { label: isRTL ? 'الترمات النشطة' : 'Active Semesters', value: stats.active, icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
-{ label: isRTL ? 'الترمات الغير نشطة' : 'Inactive Semesters', value: stats.inactive, icon: XCircle, color: 'from-red-500 to-rose-500' }, 
- { label: isRTL ? 'إجمالي السعر' : 'Total Price', value: `${stats.totalPrice.toFixed(2)} ${isRTL ? 'جنيه' : 'EGP'}`, icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
+            { label: isRTL ? 'الترمات الغير نشطة' : 'Inactive Semesters', value: stats.inactive, icon: XCircle, color: 'from-red-500 to-rose-500' },
+            { label: isRTL ? 'إجمالي السعر' : 'Total Price', value: `${stats.totalPrice.toFixed(2)} ${isRTL ? 'جنيه' : 'EGP'}`, icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
             { label: isRTL ? 'متوسط السعر' : 'Average Price', value: `${(stats.totalPrice / (stats.total || 1)).toFixed(2)} ${isRTL ? 'جنيه' : 'EGP'}`, icon: Tag, color: 'from-blue-500 to-cyan-500' },
           ].map((stat, idx) => (
             <motion.div
@@ -488,7 +524,7 @@ const stats = {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">
                       {isRTL ? 'المادة' : 'Subject'}
@@ -506,7 +542,7 @@ const stats = {
                       <option value="">
                         {isRTL ? 'كل المواد' : 'All Subjects'}
                       </option>
-                      {subjects.map((sub: any) => (
+                      {subjects?.map((sub: any) => (
                         <option key={sub.id} value={sub.id}>
                           {isRTL ? sub.name_ar : sub.name}
                         </option>
@@ -550,6 +586,33 @@ const stats = {
                       className="rounded-xl"
                       placeholder="0"
                     />
+                  </div>
+
+                  {/* فلتر العرض */}
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Gift className="h-3 w-3" />
+                      {isRTL ? 'عرض خصم' : 'Offer'}
+                    </Label>
+                    <select
+                      className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3"
+                      value={filters.offer_id ?? ''}
+                      onChange={(e) =>
+                        setFilters(prev => ({
+                          ...prev,
+                          offer_id: e.target.value ? Number(e.target.value) : null,
+                        }))
+                      }
+                    >
+                      <option value="">
+                        {isRTL ? 'كل العروض' : 'All Offers'}
+                      </option>
+                      {offersList.map((offer: any) => (
+                        <option key={offer.id} value={offer.id}>
+                          {isRTL ? (offer.title_ar || offer.title) : offer.title} - {offer.offer_discount}%
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -624,6 +687,7 @@ const stats = {
                     <TableHead>{isRTL ? 'الاسم (إنجليزي)' : 'Name (English)'}</TableHead>
                     <TableHead className="text-center">{isRTL ? 'السعر' : 'Price'}</TableHead>
                     <TableHead className="text-center">{isRTL ? 'الخصم' : 'Discount'}</TableHead>
+                    <TableHead className="text-center">{isRTL ? 'العرض' : 'Offer'}</TableHead>
                     <TableHead className="text-center">{isRTL ? 'الحالة' : 'Status'}</TableHead>
                     <TableHead className="text-center">{isRTL ? 'الإجراءات' : 'Actions'}</TableHead>
                   </TableRow>
@@ -675,6 +739,16 @@ const stats = {
                           <span className="text-sm">
                             {parseFloat(semester.discount).toFixed(2)}%
                           </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {semester.offer_id ? (
+                            <span className="inline-flex items-center gap-1 text-xs bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-700 dark:text-orange-400 px-2 py-1 rounded-full">
+                              <Percent className="h-3 w-3" />
+                              {getOfferName(semester.offer_id)}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex justify-center">
@@ -808,7 +882,7 @@ const stats = {
                     <option value="">
                       {isRTL ? 'اختر المادة' : 'Select Subject'}
                     </option>
-                    {subjects.map((sub: any) => (
+                    {subjects?.map((sub: any) => (
                       <option key={sub.id} value={sub.id}>
                         {isRTL ? sub.name_ar : sub.name}
                       </option>
@@ -868,6 +942,38 @@ const stats = {
                       max="100"
                     />
                   </div>
+                </div>
+
+                {/* Offer Select - حقل العرض */}
+                <div>
+                  <Label className="flex items-center gap-1">
+                    <Gift className="h-4 w-4 text-orange-500" />
+                    {isRTL ? 'عرض خصم' : 'Discount Offer'}
+                  </Label>
+                  <select
+                    className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3 mt-1"
+                    value={formData.offer_id ?? ''}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        offer_id: e.target.value ? Number(e.target.value) : null,
+                      }))
+                    }
+                  >
+                    <option value="">
+                      {isRTL ? 'بدون عرض' : 'No Offer'}
+                    </option>
+                    {offersList.map((offer: any) => (
+                      <option key={offer.id} value={offer.id}>
+                        {isRTL ? (offer.title_ar || offer.title) : offer.title} - {offer.offer_discount}%
+                      </option>
+                    ))}
+                  </select>
+                  <p className={`text-xs mt-1 ${isRTL ? 'text-right' : 'text-left'} text-muted-foreground`}>
+                    {isRTL 
+                      ? 'اختر عرض خصم لتطبيقه على هذا الترم'
+                      : 'Select a discount offer to apply to this semester'}
+                  </p>
                 </div>
 
                 {/* Actions */}

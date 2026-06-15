@@ -6,7 +6,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { useOffers } from '@/hooks/useOffers';
 import { useApp } from '@/contexts/AppContext';
-import { X, Gift, Percent, Calendar, ImageIcon, Save, Type, FileText, Tag } from 'lucide-react';
+import { X, Gift, Percent, Calendar, ImageIcon, Save, Type, FileText, Link as LinkIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import FileUploader from '@/components/FileUploader';
@@ -16,7 +16,7 @@ interface OfferModalProps {
   onClose: () => void;
   onSuccess: () => void;
   editingItem?: any;
-  isDarkMode?: boolean;
+  defaultType?: 'offer' | 'banner';
 }
 
 export const OfferModal: React.FC<OfferModalProps> = ({
@@ -24,7 +24,7 @@ export const OfferModal: React.FC<OfferModalProps> = ({
   onClose,
   onSuccess,
   editingItem,
-  isDarkMode = false,
+  defaultType = 'offer',
 }) => {
   const { lang, user } = useApp();
   const { createOffer, updateOffer } = useOffers();
@@ -32,26 +32,29 @@ export const OfferModal: React.FC<OfferModalProps> = ({
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    type: 'offer' as 'offer' | 'banner',
+    type: defaultType as 'offer' | 'banner',
     offer_discount: '',
     start_date: '',
     end_date: '',
+    url: '',
     teacher_id: null as number | null,
     image_id: null as number | null,
   });
   
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const isDarkMode = document.documentElement.classList.contains('dark');
 
   useEffect(() => {
     if (editingItem) {
       setFormData({
         title: editingItem.title || '',
         description: editingItem.description || '',
-        type: editingItem.type || 'offer',
+        type: editingItem.type || defaultType,
         offer_discount: editingItem.offer_discount || '',
         start_date: editingItem.start_date?.split('T')[0] || '',
         end_date: editingItem.end_date?.split('T')[0] || '',
+        url: editingItem.url || '',
         teacher_id: editingItem.teacher_id || user?.id,
         image_id: editingItem.image?.id || null,
       });
@@ -63,17 +66,18 @@ export const OfferModal: React.FC<OfferModalProps> = ({
       setFormData({
         title: '',
         description: '',
-        type: 'offer',
+        type: defaultType,
         offer_discount: '',
         start_date: '',
         end_date: '',
+        url: '',
         teacher_id: user?.id,
         image_id: null,
       });
       setSelectedImageId(null);
       setSelectedImageUrl(null);
     }
-  }, [editingItem, user]);
+  }, [editingItem, user, defaultType]);
 
   const handleImageUpload = (imageId: number) => {
     setSelectedImageId(imageId);
@@ -91,7 +95,7 @@ export const OfferModal: React.FC<OfferModalProps> = ({
     e.preventDefault();
 
     if (!formData.title) {
-      toast.error(lang === 'ar' ? 'يرجى إدخال عنوان العرض' : 'Please enter offer title');
+      toast.error(lang === 'ar' ? 'يرجى إدخال عنوان' : 'Please enter title');
       return;
     }
 
@@ -103,15 +107,20 @@ export const OfferModal: React.FC<OfferModalProps> = ({
       image: formData.image_id,
     };
 
-    // إضافة الخصم فقط إذا كان النوع offer
+    // إضافة URL للبانرات
+    if (formData.type === 'banner' && formData.url) {
+      payload.url = formData.url;
+    }
+
+    // إضافة الخصم والفترة للعروض
     if (formData.type === 'offer') {
       if (!formData.offer_discount) {
         toast.error(lang === 'ar' ? 'يرجى إدخال نسبة الخصم' : 'Please enter discount percentage');
         return;
       }
       payload.offer_discount = formData.offer_discount;
-      payload.start_date = formData.start_date;
-      payload.end_date = formData.end_date;
+      if (formData.start_date) payload.start_date = formData.start_date;
+      if (formData.end_date) payload.end_date = formData.end_date;
     }
 
     if (editingItem) {
@@ -125,6 +134,7 @@ export const OfferModal: React.FC<OfferModalProps> = ({
   };
 
   const isLoading = createOffer.isPending || updateOffer.isPending;
+  const isOffer = formData.type === 'offer';
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -155,7 +165,11 @@ export const OfferModal: React.FC<OfferModalProps> = ({
               <Dialog.Panel className={`w-full max-w-md transform overflow-hidden rounded-2xl shadow-xl transition-all ${
                 isDarkMode ? 'bg-gray-800' : 'bg-white'
               }`}>
-                <div className="relative bg-gradient-to-r from-orange-500 to-red-500 p-6 text-white">
+                <div className={`relative p-6 text-white ${
+                  isOffer 
+                    ? 'bg-gradient-to-r from-orange-500 to-red-500'
+                    : 'bg-gradient-to-r from-purple-500 to-pink-500'
+                }`}>
                   <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
@@ -163,67 +177,38 @@ export const OfferModal: React.FC<OfferModalProps> = ({
                     <X size={20} />
                   </button>
                   <div className="flex items-center gap-3">
-                    <Gift size={28} />
+                    {isOffer ? <Gift size={28} /> : <ImageIcon size={28} />}
                     <div>
                       <Dialog.Title className="text-xl font-bold">
                         {editingItem
-                          ? (lang === 'ar' ? 'تعديل عرض' : 'Edit Offer')
-                          : (lang === 'ar' ? 'إضافة عرض جديد' : 'Add New Offer')}
+                          ? (lang === 'ar' ? 'تعديل' : 'Edit')
+                          : (lang === 'ar' ? 'إضافة جديد' : 'Add New')}
+                        {' '}
+                        {isOffer 
+                          ? (lang === 'ar' ? 'عرض خصم' : 'Offer')
+                          : (lang === 'ar' ? 'بانر' : 'Banner')}
                       </Dialog.Title>
                       <p className="text-white/80 text-sm mt-1">
-                        {lang === 'ar' ? 'أدخل تفاصيل العرض' : 'Enter offer details'}
+                        {lang === 'ar' ? 'أدخل التفاصيل' : 'Enter details'}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                  {/* نوع العرض */}
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {lang === 'ar' ? 'نوع العرض' : 'Offer Type'} *
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, type: 'offer' })}
-                        className={`px-4 py-2 rounded-xl border transition-all flex items-center justify-center gap-2 ${
-                          formData.type === 'offer'
-                            ? 'bg-orange-500 text-white border-orange-500'
-                            : isDarkMode
-                            ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
-                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        <Percent size={16} />
-                        {lang === 'ar' ? 'عرض خصم' : 'Offer'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, type: 'banner' })}
-                        className={`px-4 py-2 rounded-xl border transition-all flex items-center justify-center gap-2 ${
-                          formData.type === 'banner'
-                            ? 'bg-orange-500 text-white border-orange-500'
-                            : isDarkMode
-                            ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
-                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        <ImageIcon size={16} />
-                        {lang === 'ar' ? 'بانر' : 'Banner'}
-                      </button>
-                    </div>
-                  </div>
-
                   {/* العنوان */}
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {lang === 'ar' ? 'العنوان' : 'Title'} *
+                      <div className="flex items-center gap-1">
+                        <Type size={14} />
+                        {lang === 'ar' ? 'العنوان' : 'Title'} *
+                      </div>
                     </label>
                     <input
                       type="text"
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      placeholder={lang === 'ar' ? 'مثال: عرض خاص' : 'Example: Special Offer'}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 ${
                         isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300'
                       }`}
@@ -234,24 +219,57 @@ export const OfferModal: React.FC<OfferModalProps> = ({
                   {/* الوصف */}
                   <div>
                     <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {lang === 'ar' ? 'الوصف' : 'Description'}
+                      <div className="flex items-center gap-1">
+                        <FileText size={14} />
+                        {lang === 'ar' ? 'الوصف' : 'Description'}
+                      </div>
                     </label>
                     <textarea
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={3}
+                      placeholder={lang === 'ar' ? 'وصف مختصر...' : 'Brief description...'}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 ${
                         isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300'
                       }`}
                     />
                   </div>
 
-                  {/* حقول الخصم (تظهر فقط إذا كان النوع offer) */}
+                  {/* URL للبانرات */}
+                  {formData.type === 'banner' && (
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <div className="flex items-center gap-1">
+                          <LinkIcon size={14} />
+                          {lang === 'ar' ? 'رابط البانر' : 'Banner URL'}
+                        </div>
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.url}
+                        onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                        placeholder="https://example.com/page"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 ${
+                          isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300'
+                        }`}
+                      />
+                      <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {lang === 'ar' 
+                          ? 'الرابط الذي سينتقل إليه المستخدم عند النقر على البانر' 
+                          : 'The link the user will be redirected to when clicking the banner'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* حقول الخصم للعروض */}
                   {formData.type === 'offer' && (
                     <>
                       <div>
                         <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {lang === 'ar' ? 'نسبة الخصم (%)' : 'Discount (%)'} *
+                          <div className="flex items-center gap-1">
+                            <Percent size={14} />
+                            {lang === 'ar' ? 'نسبة الخصم (%)' : 'Discount (%)'} *
+                          </div>
                         </label>
                         <input
                           type="number"
@@ -263,6 +281,7 @@ export const OfferModal: React.FC<OfferModalProps> = ({
                           min="0"
                           max="100"
                           step="1"
+                          placeholder="مثال: 30"
                           required
                         />
                       </div>
@@ -270,7 +289,10 @@ export const OfferModal: React.FC<OfferModalProps> = ({
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            {lang === 'ar' ? 'تاريخ البداية' : 'Start Date'}
+                            <div className="flex items-center gap-1">
+                              <Calendar size={14} />
+                              {lang === 'ar' ? 'تاريخ البداية' : 'Start Date'}
+                            </div>
                           </label>
                           <input
                             type="date"
@@ -283,7 +305,10 @@ export const OfferModal: React.FC<OfferModalProps> = ({
                         </div>
                         <div>
                           <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            {lang === 'ar' ? 'تاريخ النهاية' : 'End Date'}
+                            <div className="flex items-center gap-1">
+                              <Calendar size={14} />
+                              {lang === 'ar' ? 'تاريخ النهاية' : 'End Date'}
+                            </div>
                           </label>
                           <input
                             type="date"
@@ -300,7 +325,7 @@ export const OfferModal: React.FC<OfferModalProps> = ({
 
                   {/* رفع الصورة */}
                   <FileUploader
-                    label={lang === 'ar' ? 'صورة العرض (اختياري)' : 'Offer Image (Optional)'}
+                    label={lang === 'ar' ? 'الصورة (اختياري)' : 'Image (Optional)'}
                     onUploadSuccess={handleImageUpload}
                     multiple={false}
                     accept="image/*"
@@ -329,7 +354,11 @@ export const OfferModal: React.FC<OfferModalProps> = ({
                       disabled={isLoading}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                      className={`flex-1 px-4 py-2 rounded-lg text-white flex items-center justify-center gap-2 disabled:opacity-50 ${
+                        isOffer
+                          ? 'bg-gradient-to-r from-orange-500 to-red-500'
+                          : 'bg-gradient-to-r from-purple-500 to-pink-500'
+                      }`}
                     >
                       {isLoading ? (
                         <>

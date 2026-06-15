@@ -85,6 +85,7 @@ export interface CourseImage {
     imageUrl: string;
     image: CourseImage;
     createdAt: string;
+    offer_id:number
   }
 export interface CourseStudent {
   id: number;
@@ -135,6 +136,7 @@ export interface CourseFormData {
   price: number;
   start_date: string;
   end_date: string;
+  offer_id :number | null
 }
 
 
