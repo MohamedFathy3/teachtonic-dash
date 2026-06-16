@@ -126,7 +126,8 @@ export function AdminCourses() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCourses, setTotalCourses] = useState(0);
-  
+  const [perPage, setPerPage] = useState(12);
+
   const [filters, setFilters] = useState<FilterState>({
     type: "all",
     status: "all",
@@ -136,43 +137,57 @@ export function AdminCourses() {
   });
   
   // Fetch courses
-  const fetchCourses = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: any = {
-        perPage: 12,
-        page: currentPage,
-      };
-      
-      const filtersObj: any = {};
-      if (filters.type && filters.type !== "all") filtersObj.type = filters.type;
-      if (filters.status && filters.status !== "all") filtersObj.active = filters.status === "active" ? 1 : 0;
-      if (filters.search) filtersObj.search = filters.search;
-      
-      params.filters = filtersObj;
-      
-      const response = await api.post("/course/index", params);
-      
-      let courseData = response.data?.data || [];
-      
-      // Apply local price filters
-      if (filters.price_min) {
-        courseData = courseData.filter((c: Course) => parseFloat(c.price) >= parseFloat(filters.price_min));
-      }
-      if (filters.price_max) {
-        courseData = courseData.filter((c: Course) => parseFloat(c.price) <= parseFloat(filters.price_max));
-      }
-      
-      setCourses(courseData);
-      setTotalPages(response.data?.meta?.last_page || 1);
-      setTotalCourses(response.data?.meta?.total || courseData.length);
-    } catch (error: any) {
-      console.error("Error fetching courses:", error);
-      toast.error(t("error") + ": " + (error.response?.data?.message || t("tryAgain")));
-    } finally {
-      setLoading(false);
+// src/pages/admin/AdminCourses.tsx
+
+const fetchCourses = useCallback(async () => {
+  setLoading(true);
+  try {
+    const filtersObj: any = {};
+    
+    if (filters.type && filters.type !== "all") {
+      filtersObj.type = filters.type;
     }
-  }, [filters, currentPage, t]);
+    if (filters.status && filters.status !== "all") {
+      filtersObj.active = filters.status === "active" ? 1 : 0;
+    }
+    if (filters.search && filters.search.trim()) {
+      filtersObj.search = filters.search.trim();
+    }
+    
+    // ✅ بناء الـ Request Body مع الـ Pagination
+    const requestBody: any = {
+      filters: filtersObj,
+      orderBy: 'id',
+      orderByDirection: 'desc',
+      perPage: 12, // ✅ عدد العناصر في الصفحة
+      page: currentPage,
+      paginate: true,
+      delete: false,
+    };
+
+    console.log('📤 Request Body:', requestBody);
+
+    const response = await api.post("/course/index", requestBody);
+    
+    console.log('📥 Response:', response.data);
+
+    // ✅ استخراج البيانات من الـ Response
+    const courseData = response.data?.data || [];
+    const meta = response.data?.meta || {};
+    const links = response.data?.links || {};
+    
+    setCourses(courseData);
+    setTotalPages(meta.last_page || 1);
+    setTotalCourses(meta.total || courseData.length);
+    setCurrentPage(meta.current_page || 1);
+    
+  } catch (error: any) {
+    console.error("Error fetching courses:", error);
+    toast.error(t("error") + ": " + (error.response?.data?.message || t("tryAgain")));
+  } finally {
+    setLoading(false);
+  }
+}, [filters, currentPage, t]);
 
   // Reset filters
   const resetFilters = () => {
@@ -611,16 +626,24 @@ export function AdminCourses() {
                           {course.count_student}
                         </span>
                       </div>
-                      <div className="text-right">
-                        {parseFloat(course.discount) > 0 ? (
-                          <>
-                            <span className="text-xs line-through text-muted-foreground">{formatPrice(course.price)}</span>
-                            <span className="text-base font-bold text-orange-600 ml-1">{formatPrice(course.price_before_discount.toString())}</span>
-                          </>
-                        ) : (
-                          <span className="text-base font-bold text-orange-600">{formatPrice(course.price)}</span>
-                        )}
-                      </div>
+
+
+<div className="text-right">
+  {parseFloat(course.discount) > 0 ? (
+    <>
+      <span className="text-xs line-through text-muted-foreground">
+        {formatPrice(course.price || "0")}
+      </span>
+      <span className="text-base font-bold text-orange-600 ml-1">
+        {formatPrice((course.price_before_discount || course.price || "0").toString())}
+      </span>
+    </>
+  ) : (
+    <span className="text-base font-bold text-orange-600">
+      {formatPrice(course.price || "0")}
+    </span>
+  )}
+</div>
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-border/50">
                       <DropdownMenu>

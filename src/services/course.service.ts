@@ -22,74 +22,75 @@ class CourseService extends BaseService<Course> {
     const res = await api.get(`/teacher/${id}`);
     return res.data.data;
   }
-  // ✅ الدالة الأساسية لجلب الكورسات مع فلتر متقدم
-  async getAllCourses(
-    filters?: Record<string, any>,
-    perPage: number = 12,
-    page: number = 1,
-    search?: string,
-    showDeleted: boolean = false
-  ): Promise<PaginatedResponse<Course>> {
-    try {
-      const baseFilters: Record<string, any> = { ...(filters || {}) };
 
-      // 🔥 إضافة البحث في title و title_ar
-      if (search && search.trim()) {
+async getAllCourses(
+  filters?: Record<string, any>,
+  perPage: number = 12,
+  page: number = 1,
+  search?: string,
+  showDeleted: boolean = false
+): Promise<PaginatedResponse<Course>> {
+  try {
+    const baseFilters: Record<string, any> = {};
 
-        // الطريقة الثانية: إضافة فلتر title (لو الـ API بيدعم filters.title)
-        baseFilters.title = search.trim();
-        baseFilters.title_ar = search.trim();
-        baseFilters.search = search.trim(); // لو الـ API بيدعم فلتر بحث عام (search) بيبحث في كل الحقول القابلة للبحث
-        baseFilters.title_ar = search.trim();
-      }
-      if (filters.price !== undefined && filters.price !== null) {
-        baseFilters.price = filters.price;
-      }
-      if (filters.type) {
-        baseFilters.type = filters.type;
-      }
-      if (filters.start_date) {
-        baseFilters.start_date = filters.start_date;
-      }
-
-      if (filters.end_date) {
-        baseFilters.end_date = filters.end_date;
-      }
-
-      const requestBody: Record<string, any> = {
-        filters: baseFilters,
-        orderBy: 'id',
-        orderByDirection: 'desc',
-        perPage,
-        page,
-        paginate: true,
-        delete: showDeleted,
-      };
-
-      const response = await api.post(`/${this.endpoint}/index`, requestBody);
-
-      return {
-        data: response.data?.data || [],
-        links: response.data?.links || { first: '', last: '', prev: null, next: null },
-        meta: response.data?.meta || {
-          current_page: page,
-          from: 1,
-          last_page: 1,
-          links: [],
-          path: '',
-          per_page: perPage,
-          to: 1,
-          total: 0,
-        },
-        result: response.data?.result || 'Success',
-        message: response.data?.message || 'Success',
-        status: response.data?.status || 200,
-      };
-    } catch (error: any) {
-      console.error('API Error in getAllCourses:', error);
-      throw error;
+    // ✅ 1. تصفية الفلاتر: نضيف فقط القيم اللي مش null/undefined/empty
+    if (filters) {
+      Object.keys(filters).forEach(key => {
+        const value = filters[key];
+        // ❌ تجاهل القيم الفارغة
+        if (value !== null && value !== undefined && value !== '' && value !== 'all') {
+          baseFilters[key] = value;
+        }
+      });
     }
+
+    // ✅ 2. إضافة teacher_id إذا كان موجود
+    if (filters?.teacher_id) {
+      baseFilters.teacher_id = filters.teacher_id;
+    }
+
+    // ✅ 3. البحث الذكي
+    if (search && search.trim()) {
+      baseFilters.search = search.trim();
+    }
+
+    // ✅ 4. بناء الـ Request Body
+    const requestBody: Record<string, any> = {
+      filters: baseFilters,
+      orderBy: 'id',
+      orderByDirection: 'desc',
+      perPage,
+      page,
+      paginate: true,
+      delete: showDeleted,
+    };
+
+    console.log('📤 Request Body:', requestBody); // ✅ للتأكد
+
+    const response = await api.post(`/${this.endpoint}/index`, requestBody);
+
+    return {
+      data: response.data?.data || [],
+      links: response.data?.links || { first: '', last: '', prev: null, next: null },
+      meta: response.data?.meta || {
+        current_page: page,
+        from: 1,
+        last_page: 1,
+        links: [],
+        path: '',
+        per_page: perPage,
+        to: 1,
+        total: 0,
+      },
+      result: response.data?.result || 'Success',
+      message: response.data?.message || 'Success',
+      status: response.data?.status || 200,
+    };
+  } catch (error: any) {
+    console.error('API Error in getAllCourses:', error);
+    throw error;
   }
+}
 
   // ✅ جلب الكورسات المحذوفة
   async getDeletedCourses(
