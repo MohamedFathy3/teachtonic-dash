@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
+import { AssistantPermissionsModal } from '@/components/admin/assistant-teachers/AssistantPermissionsModal';
 import { 
   Search, 
   Plus, 
@@ -14,14 +15,12 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Edit, 
+  Shield ,
   Trash2, 
   Users, 
-  Trash, 
-  Archive, 
   RotateCcw,
   Mail,
   Phone,
-  Eye,
   UserCog
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -74,7 +73,8 @@ export function AssistantTeachersPage() {
   const [forceDeletingAssistant, setForceDeletingAssistant] = useState<any>(null);
   const [bulkActionDialog, setBulkActionDialog] = useState<{ type: 'delete' | 'restore' | 'forceDelete' | null; open: boolean }>({ type: null, open: false });
   const [actionLoading, setActionLoading] = useState(false);
-
+const [permissionsModalOpen, setPermissionsModalOpen] = useState(false);
+const [selectedAssistantForPermissions, setSelectedAssistantForPermissions] = useState<any>(null);
   const text = {
     searchPlaceholder: dir === 'rtl' ? 'البحث بالاسم أو البريد...' : 'Search by name or email...',
     addAssistant: dir === 'rtl' ? 'إضافة مساعد' : 'Add Assistant',
@@ -389,6 +389,7 @@ export function AssistantTeachersPage() {
                     <TableCell className="text-center">
                       {showDeleted ? (
                         <div className="flex justify-center gap-1">
+                          
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -408,7 +409,18 @@ export function AssistantTeachersPage() {
                         </div>
                       ) : (
                         <div className="flex justify-center gap-1">
-                       
+                        <Button 
+      variant="ghost" 
+      size="icon" 
+      onClick={() => {
+        setSelectedAssistantForPermissions(assistant);
+        setPermissionsModalOpen(true);
+      }} 
+      className="text-purple-600"
+      title={lang === 'ar' ? 'الصلاحيات' : 'Permissions'}
+    >
+      <Shield className="h-4 w-4" />
+    </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -479,6 +491,16 @@ export function AssistantTeachersPage() {
       </Card>
 
       {/* Dialogs */}
+      <AssistantPermissionsModal
+  open={permissionsModalOpen}
+  onClose={() => {
+    setPermissionsModalOpen(false);
+    setSelectedAssistantForPermissions(null);
+  }}
+  assistantId={selectedAssistantForPermissions?.id}
+  assistantName={selectedAssistantForPermissions?.name || ''}
+  onSuccess={() => {
+  }}/>
       <AssistantTeacherForm 
         open={formOpen} 
         onClose={() => {

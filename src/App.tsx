@@ -80,6 +80,7 @@ const App = () => {
                 <Route path="reviews" element={<AdminReviews />} />
                 <Route path="teachers/profile" element={<TeacherProfileView />} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="role" element={<SettingsPage />} />
               </Route>
 
               {/* Instructor Routes - داخل Layout */}
