@@ -930,18 +930,7 @@ export const SemestersPage: React.FC = () => {
                       step="0.01"
                     />
                   </div>
-                  <div>
-                    <Label>{isRTL ? 'الخصم (%)' : 'Discount (%)'}</Label>
-                    <Input
-                      type="number"
-                      value={formData.discount}
-                      onChange={(e) => setFormData({ ...formData, discount: parseFloat(e.target.value) || 0 })}
-                      placeholder="0"
-                      className="rounded-xl mt-1"
-                      min="0"
-                      max="100"
-                    />
-                  </div>
+               
                 </div>
 
                 {/* Offer Select - حقل العرض */}
