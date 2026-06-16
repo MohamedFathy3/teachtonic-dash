@@ -31,19 +31,18 @@ export interface AsyncSelectOption {
   [key: string]: any;
 }
 
-// 🔥修正: إضافة extraFilters إلى الـ params
 interface FetchParams {
   page: number;
   perPage: number;
   search?: string;
-  extraFilters?: Record<string, any>; // 🔥 أضفنا هذا
+  extraFilters?: Record<string, any>;
 }
 
 interface AsyncSelectProps {
   value?: number | null;
-  onChange: (value: number | null, item?: any) => void; // 🔥 خليها تستقبل item اختياري
+  onChange: (value: number | null, item?: any) => void;
   configKey?: keyof typeof SELECT_CONFIGS;
-  fetchFn?: (params: FetchParams) => Promise<{ data: AsyncSelectOption[]; meta: any }>; // 🔥 استخدم FetchParams
+  fetchFn?: (params: FetchParams) => Promise<{ data: AsyncSelectOption[]; meta: any }>;
   placeholder?: string;
   searchPlaceholder?: string;
   label?: string;
@@ -116,6 +115,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
     const scrollRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const isFirstOpenRef = useRef(true);
+    const prevExtraFiltersRef = useRef<string>();
 
     const fetchFn = configKey
       ? selectFactory.createSelectFetcher(configKey)
@@ -129,69 +129,103 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       return `${configKey || 'custom'}:${pageNum}:${perPageNum}:${searchTerm}:${JSON.stringify(filters)}`;
     }, [configKey]);
 
-    const fetchOptions = useCallback(async (
-      pageNum: number,
-      perPageNum: number,
-      searchTerm: string,
-      append = false
-    ) => {
-      if (!fetchFn) return;
+// src/components/ui/AsyncSelect.tsx
 
-      const cacheKey = getCacheKey(pageNum, perPageNum, searchTerm, extraFilters);
+const fetchOptions = useCallback(async (
+  pageNum: number,
+  perPageNum: number,
+  searchTerm: string,
+  append = false
+) => {
+  if (!fetchFn) return;
 
-      if (cacheData && cacheRef.current.has(cacheKey) && !append) {
-        const cached = cacheRef.current.get(cacheKey)!;
-        setOptions(cached.data);
-        if (cached.meta) {
-          setTotal(cached.meta.total);
-          setLastPage(cached.meta.lastPage);
-        }
-        setInitialLoaded(true);
-        return;
-      }
+  const cacheKey = getCacheKey(pageNum, perPageNum, searchTerm, extraFilters);
 
-      if (append) {
-        setFetchingMore(true);
+  if (cacheData && cacheRef.current.has(cacheKey) && !append) {
+    const cached = cacheRef.current.get(cacheKey)!;
+    setOptions(cached.data);
+    if (cached.meta) {
+      setTotal(cached.meta.total);
+      setLastPage(cached.meta.lastPage);
+    }
+    setInitialLoaded(true);
+    return;
+  }
+
+  if (append) {
+    setFetchingMore(true);
+  } else {
+    setLoading(true);
+  }
+
+  try {
+    // ✅ بناء الـ searchFilters بناءً على extraFilters
+    const searchFilters = { ...extraFilters }; // 🔥 نبدأ بالـ extraFilters
+    
+    // ✅ إذا كان في searchTerm، نضيفه كـ filter
+    if (searchTerm && searchTerm.trim()) {
+      // ✅ حسب الـ configKey نحدد اسم حقل البحث
+      if (configKey === 'courses') {
+        searchFilters.title = searchTerm.trim();
+        searchFilters.title_ar = searchTerm.trim();
+      } else if (configKey === 'lessons' || configKey === 'courseLessons') {
+        searchFilters.titles = searchTerm.trim();
+        searchFilters.titles_ar = searchTerm.trim();
+        searchFilters.description = searchTerm.trim();
+        searchFilters.description_ar = searchTerm.trim();
+      } else if (configKey === 'stages' || configKey === 'subjects') {
+        searchFilters.name = searchTerm.trim();
+        searchFilters.name_ar = searchTerm.trim();
+      } else if (configKey === 'semesters') {
+        searchFilters.name = searchTerm.trim();
+        searchFilters.name_ar = searchTerm.trim();
       } else {
-        setLoading(true);
+        searchFilters.search = searchTerm.trim();
       }
+    }
 
-      try {
-        // 🔥 تمرير extraFilters
-        const response = await fetchFn({
-          page: pageNum,
-          perPage: perPageNum,
-          search: searchTerm || undefined,
-          extraFilters, // 🔥 هذا مهم!
-        });
+    console.log('🔍 AsyncSelect fetchOptions:', {
+      configKey,
+      searchTerm,
+      searchFilters,
+      extraFilters,
+      page: pageNum,
+      perPage: perPageNum,
+    });
 
-        const newOptions = response.data || [];
-        const meta = response.meta;
+    const response = await fetchFn({
+      page: pageNum,
+      perPage: perPageNum,
+      search: searchTerm || undefined, 
+      extraFilters: searchFilters, 
+    });
 
-        if (append) {
-          setOptions(prev => [...prev, ...newOptions]);
-        } else {
-          setOptions(newOptions);
-          if (cacheData) {
-            cacheRef.current.set(cacheKey, { data: newOptions, meta });
-          }
-        }
+    const newOptions = response.data || [];
+    const meta = response.meta;
 
-        if (meta) {
-          setTotal(meta.total);
-          setLastPage(meta.lastPage);
-        }
-      } catch (error) {
-        console.error('Failed to fetch options:', error);
-      } finally {
-        setLoading(false);
-        setFetchingMore(false);
-        setInitialLoaded(true);
+    if (append) {
+      setOptions(prev => [...prev, ...newOptions]);
+    } else {
+      setOptions(newOptions);
+      if (cacheData) {
+        cacheRef.current.set(cacheKey, { data: newOptions, meta });
       }
-    }, [fetchFn, cacheData, getCacheKey, extraFilters]);
+    }
 
-    // ... باقي الـ useEffect نفس ما هي ...
+    if (meta) {
+      setTotal(meta.total);
+      setLastPage(meta.lastPage);
+    }
+  } catch (error) {
+    console.error('Failed to fetch options:', error);
+  } finally {
+    setLoading(false);
+    setFetchingMore(false);
+    setInitialLoaded(true);
+  }
+}, [fetchFn, cacheData, getCacheKey, extraFilters, configKey]);
 
+    // ✅ Debounce للـ Search
     useEffect(() => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -201,6 +235,10 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
         if (searchDebounced !== search) {
           setSearchDebounced(search);
           setPage(1);
+          // ✅ نقوم بجلب البيانات بعد الـ Debounce
+          if (open) {
+            fetchOptions(1, perPage, search, false);
+          }
         }
       }, debounceDelay);
 
@@ -211,39 +249,49 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       };
     }, [search, debounceDelay]);
 
-
+    // ✅ جلب البيانات عند فتح الـ Popover
     useEffect(() => {
-      if (open) {
-        if (!initialLoaded || page > 1 || searchDebounced !== initialSearch) {
-          if (enableInfiniteScroll && page > 1) {
-            fetchOptions(page, perPage, searchDebounced, true);
-          } else {
-            fetchOptions(page, perPage, searchDebounced, false);
-          }
-        }
+      if (open && !initialLoaded) {
+        fetchOptions(page, perPage, searchDebounced, false);
       }
-    }, [open, page, perPage, searchDebounced, fetchOptions, enableInfiniteScroll, initialLoaded, extraFilters]);
+    }, [open]);
 
-
-
+    // ✅ جلب بيانات الصفحة التالية (Infinite Scroll)
     useEffect(() => {
-      if (configKey && isFirstOpenRef.current) {
-        fetchOptions(1, perPage, '', false);
+      if (open && page > 1 && enableInfiniteScroll) {
+        fetchOptions(page, perPage, searchDebounced, true);
       }
-    }, [configKey]);
+    }, [page, open, enableInfiniteScroll]);
 
-
+    // ✅ تغيير عدد العناصر في الصفحة
     useEffect(() => {
-      if (open) {
+      if (open && initialLoaded) {
+        setPage(1);
+        fetchOptions(1, perPage, searchDebounced, false);
+      }
+    }, [perPage]);
+
+    // ✅ تغيير extraFilters - فقط إذا تغير فعلاً
+    useEffect(() => {
+      const currentFilters = JSON.stringify(extraFilters || {});
+      const prevFilters = prevExtraFiltersRef.current;
+
+      if (open && currentFilters !== prevFilters) {
+        prevExtraFiltersRef.current = currentFilters;
         setInitialLoaded(false);
         setPage(1);
         setOptions([]);
-        // Optional: clear cache for this extraFilters? We rely on re-fetch.
         fetchOptions(1, perPage, searchDebounced, false);
       }
-    }, [extraFilters]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [extraFilters, open]);
 
-    // Also ensure fetchOptions depends on extraFilters (already does)
+    // ✅ جلب البيانات الأولية
+    useEffect(() => {
+      if (configKey && isFirstOpenRef.current) {
+        isFirstOpenRef.current = false;
+        // لا نجلب البيانات هنا، ننتظر حتى فتح الـ Popover
+      }
+    }, [configKey]);
 
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
       if (!enableInfiniteScroll) return;
@@ -282,7 +330,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
     };
 
     const handleSelect = (option: AsyncSelectOption) => {
-      onChange(option.id, option); // 🔥 تمرير الـ option كمان
+      onChange(option.id, option);
       if (closeOnSelect) {
         setOpen(false);
         setSearch('');
@@ -325,7 +373,6 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
               </span>
               <div className="flex items-center gap-1">
                 {clearable && selectedOption && (
-                  // ✅ الحل: استبدل button بـ span مع role="button"
                   <span
                     role="button"
                     tabIndex={0}

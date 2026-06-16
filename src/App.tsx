@@ -46,6 +46,7 @@ import InstructorStudents from "./pages/instructor/InstructorStudents";
 import { InstructorWebsite } from "./pages/instructor/InstructorWebsite";
 import { LessonDetailsPage } from "./pages/instructor/LessonDetailsPage";
 import { BookDetailsPage } from "./pages/instructor/BookDetailsPage";
+import { StudentAttendance } from "./pages/instructor/StudentAttendance";
 
 const queryClient = new QueryClient();
 
@@ -108,6 +109,7 @@ const App = () => {
                <Route path="books/:id" element={<BookDetailsPage />} />
 <Route path="offers" element={<OffersPage />} />
 <Route path="Notifications" element={<BannersPage />} />
+<Route path="attens" element={<StudentAttendance />} />
 
               </Route>
 

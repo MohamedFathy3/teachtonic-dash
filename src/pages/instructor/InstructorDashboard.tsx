@@ -1121,184 +1121,173 @@ export function InstructorDashboard() {
             {/* ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
             {/* ✅ REGION DISTRIBUTION - قسم المناطق الجديد */}
             {/* ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-            {hasRegionData && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-950/20 dark:to-indigo-950/20 shadow-lg border border-blue-200/50 dark:border-blue-800/50"
+        {/* ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+{/* ✅ REGION DISTRIBUTION - Pie Chart بدلاً من BarChart */}
+{/* ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+{hasRegionData && (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.6 }}
+    className="overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-950/20 dark:to-indigo-950/20 shadow-lg border border-blue-200/50 dark:border-blue-800/50"
+  >
+    <div className="p-5">
+      <div className={`flex items-center justify-between flex-wrap gap-3 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <div>
+          <h3 className={`font-semibold text-lg flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <MapPin className="h-5 w-5 text-blue-500" />
+            {t("studentsByRegion")}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {lang === 'ar' ? 'تفصيل جغرافي أدق داخل المحافظات' : 'Detailed geographical breakdown within governorates'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-300 gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            {t("realData")}
+          </Badge>
+          <Badge className="rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs">
+            {regionData.length} {lang === 'ar' ? 'منطقة' : 'Regions'}
+          </Badge>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ✅ Pie Chart بدلاً من BarChart */}
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie 
+                data={regionData} 
+                dataKey="value" 
+                nameKey="name"
+                cx="50%" 
+                cy="50%" 
+                innerRadius={40} 
+                outerRadius={90}
+                paddingAngle={2}
+                label={({ name, percent }) => percent > 0.05 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
               >
-                <div className="p-5">
-                  <div className={`flex items-center justify-between flex-wrap gap-3 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                    <div>
-                      <h3 className={`font-semibold text-lg flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                        <MapPin className="h-5 w-5 text-blue-500" />
-                        {t("studentsByRegion")}
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {lang === 'ar' ? 'تفصيل جغرافي أدق داخل المحافظات' : 'Detailed geographical breakdown within governorates'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-300 gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        {t("realData")}
-                      </Badge>
-                      <Badge className="rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs">
-                        {regionData.length} {lang === 'ar' ? 'منطقة' : 'Regions'}
-                      </Badge>
-                    </div>
+                {regionData.map((entry, idx) => (
+                  <Cell key={`cell-${idx}`} fill={`hsl(${200 + (idx * 15)}, 70%, 55%)`} />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ borderRadius: "16px", border: "none", backgroundColor: "rgba(0,0,0,0.8)", color: "white" }}
+                formatter={(value: number) => [`${value} ${lang === 'ar' ? 'طالب' : 'students'}`, t("numberOfStudentsInRegion")]}
+              />
+              <Legend 
+                layout="vertical" 
+                align={isRTL ? "left" : "right"}
+                verticalAlign="middle"
+                wrapperStyle={{ fontSize: "11px" }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        
+        {/* Stats & Info Column for Regions */}
+        <div className="space-y-4">
+          {/* Top Region Card */}
+          <div className="rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4 text-center border border-amber-200/50 dark:border-amber-800/50">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Trophy className="h-5 w-5 text-amber-500" />
+              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                {t("topRegion")}
+              </p>
+            </div>
+            <p className="text-lg font-bold text-amber-700 dark:text-amber-400">{regionData[0].name}</p>
+            <p className="text-3xl font-bold mt-2 text-amber-600">{regionData[0].value}</p>
+            <p className="text-xs text-muted-foreground">{t("students")}</p>
+            <div className="mt-2">
+              <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400">
+                {Math.round((regionData[0].value / totalRegionStudents) * 100)}% {t("ofTotalStudents")}
+              </Badge>
+            </div>
+          </div>
+          
+          {/* Total Stats Card for Regions */}
+          <div className="rounded-xl bg-gradient-to-r from-blue-500/5 to-indigo-500/5 p-4 border border-blue-200/50 dark:border-blue-800/50">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600">{totalRegionStudents}</p>
+                <p className="text-xs text-muted-foreground">{t("totalStudents")}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600">{regionData.length}</p>
+                <p className="text-xs text-muted-foreground">{t("totalRegions")}</p>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-blue-200/50 dark:border-blue-800/50">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">{t("avgStudentsPerRegion")}</span>
+                <span className="font-bold text-blue-600">{(totalRegionStudents / regionData.length).toFixed(1)}</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Region List Preview */}
+          <div className="rounded-xl bg-white/50 dark:bg-slate-900/50 p-4 border border-slate-200/50 dark:border-slate-800/50">
+            <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 text-blue-500" />
+              {t("regionsList")}
+            </p>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+              {regionData.map((region, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 group">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: `hsl(${200 + (idx * 15)}, 70%, 55%)` }}
+                    />
+                    <span className="text-sm font-medium group-hover:text-blue-600 transition-colors">
+                      {region.name}
+                    </span>
                   </div>
-                  
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Bar Chart for Regions */}
-                    <div className="lg:col-span-2 h-96">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={regionData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                          <XAxis 
-                            type="number" 
-                            stroke="hsl(var(--muted-foreground))" 
-                            fontSize={11} 
-                            tickLine={false} 
-                            axisLine={false}
-                            tickFormatter={(value) => `${value}`}
-                          />
-                          <YAxis 
-                            type="category" 
-                            dataKey="name" 
-                            stroke="hsl(var(--muted-foreground))" 
-                            fontSize={11} 
-                            tickLine={false} 
-                            axisLine={false} 
-                            width={120}
-                          />
-                          <Tooltip 
-                            contentStyle={{ borderRadius: "16px", border: "none", backgroundColor: "rgba(0,0,0,0.8)", color: "white" }}
-                            formatter={(value: number) => [`${value} ${lang === 'ar' ? 'طالب' : 'students'}`, t("numberOfStudentsInRegion")]}
-                            cursor={{ fill: "rgba(59, 130, 246, 0.1)" }}
-                          />
-                          <Bar 
-                            dataKey="value" 
-                            name={lang === 'ar' ? 'الطلاب' : 'Students'} 
-                            radius={[0, 8, 8, 0]}
-                            animationDuration={1000}
-                            animationBegin={300}
-                          >
-                            {regionData.map((entry, idx) => (
-                              <Cell 
-                                key={`cell-${idx}`} 
-                                fill={`hsl(${200 + (idx * 15)}, 70%, 55%)`}
-                                stroke={`hsl(${200 + (idx * 15)}, 70%, 45%)`}
-                                strokeWidth={1}
-                              />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-blue-600">{region.value}</span>
+                    <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(region.value / totalRegionStudents) * 100}%` }}
+                        transition={{ delay: 0.6 + idx * 0.03, duration: 0.5 }}
+                        className="h-full rounded-full" 
+                        style={{ backgroundColor: `hsl(${200 + (idx * 15)}, 70%, 55%)` }}
+                      />
                     </div>
-                    
-                    {/* Stats & Info Column for Regions */}
-                    <div className="space-y-4">
-                      {/* Top Region Card */}
-                      <div className="rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-4 text-center border border-amber-200/50 dark:border-amber-800/50">
-                        <div className="flex items-center justify-center gap-2 mb-2">
-                          <Trophy className="h-5 w-5 text-amber-500" />
-                          <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                            {t("topRegion")}
-                          </p>
-                        </div>
-                        <p className="text-lg font-bold text-amber-700 dark:text-amber-400">{regionData[0].name}</p>
-                        <p className="text-3xl font-bold mt-2 text-amber-600">{regionData[0].value}</p>
-                        <p className="text-xs text-muted-foreground">{t("students")}</p>
-                        <div className="mt-2">
-                          <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400">
-                            {Math.round((regionData[0].value / totalRegionStudents) * 100)}% {t("ofTotalStudents")}
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      {/* Total Stats Card for Regions */}
-                      <div className="rounded-xl bg-gradient-to-r from-blue-500/5 to-indigo-500/5 p-4 border border-blue-200/50 dark:border-blue-800/50">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="text-center">
-                            <p className="text-2xl font-bold text-blue-600">{totalRegionStudents}</p>
-                            <p className="text-xs text-muted-foreground">{t("totalStudents")}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-2xl font-bold text-blue-600">{regionData.length}</p>
-                            <p className="text-xs text-muted-foreground">{t("totalRegions")}</p>
-                          </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-blue-200/50 dark:border-blue-800/50">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">{t("avgStudentsPerRegion")}</span>
-                            <span className="font-bold text-blue-600">{(totalRegionStudents / regionData.length).toFixed(1)}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Region List Preview */}
-                      <div className="rounded-xl bg-white/50 dark:bg-slate-900/50 p-4 border border-slate-200/50 dark:border-slate-800/50">
-                        <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-2">
-                          <MapPin className="h-3.5 w-3.5 text-blue-500" />
-                          {t("regionsList")}
-                        </p>
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-                          {regionData.map((region, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 group">
-                              <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-2 h-2 rounded-full" 
-                                  style={{ backgroundColor: `hsl(${200 + (idx * 15)}, 70%, 55%)` }}
-                                />
-                                <span className="text-sm font-medium group-hover:text-blue-600 transition-colors">
-                                  {region.name}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-sm font-bold text-blue-600">{region.value}</span>
-                                <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                  <motion.div 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${(region.value / totalRegionStudents) * 100}%` }}
-                                    transition={{ delay: 0.6 + idx * 0.03, duration: 0.5 }}
-                                    className="h-full rounded-full" 
-                                    style={{ backgroundColor: `hsl(${200 + (idx * 15)}, 70%, 55%)` }}
-                                  />
-                                </div>
-                                <span className="text-xs text-muted-foreground w-10">
-                                  {Math.round((region.value / totalRegionStudents) * 100)}%
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 pt-3 border-t border-blue-200/50 dark:border-blue-800/50">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <div className="w-2 h-2 rounded-full bg-blue-500" />
-                          {lang === 'ar' ? 'كل لون يمثل منطقة' : 'Each color represents a region'}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <TrendingUp className="h-3 w-3" />
-                          {t("sortedDescending")}
-                        </span>
-                      </div>
-                      <Badge variant="outline" className="text-xs gap-1">
-                        <Users className="h-3 w-3" />
-                        {totalRegionStudents} {t("students")}
-                      </Badge>
-                    </div>
+                    <span className="text-xs text-muted-foreground w-10">
+                      {Math.round((region.value / totalRegionStudents) * 100)}%
+                    </span>
                   </div>
                 </div>
-              </motion.div>
-            )}
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-4 pt-3 border-t border-blue-200/50 dark:border-blue-800/50">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              {lang === 'ar' ? 'كل لون يمثل منطقة' : 'Each color represents a region'}
+            </span>
+            <span className="flex items-center gap-1">
+              <TrendingUp className="h-3 w-3" />
+              {t("sortedDescending")}
+            </span>
+          </div>
+          <Badge variant="outline" className="text-xs gap-1">
+            <Users className="h-3 w-3" />
+            {totalRegionStudents} {t("students")}
+          </Badge>
+        </div>
+      </div>
+    </div>
+  </motion.div>
+)}
 
             {/* Activity Cards */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">

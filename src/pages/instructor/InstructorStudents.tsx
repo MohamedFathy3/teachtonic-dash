@@ -19,7 +19,8 @@ import {
   ChevronLeft, ChevronRight, Award, Sparkles, Eye, Clock,
   Key, Lock, Save, AlertCircle,
   GraduationCap,
-  EyeOff
+  EyeOff,
+  MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
@@ -83,6 +84,7 @@ export const InstructorStudents: React.FC = () => {
   const isRTL = lang === 'ar';
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   // ✅ State
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
@@ -93,6 +95,10 @@ export const InstructorStudents: React.FC = () => {
 
   // ✅ فلتر المرحلة - المستوى الأول
   const [filterStageId, setFilterStageId] = useState<number | null>(null);
+  
+  // ✅ فلتر المنطقة - جديد (Select)
+  const [filterRegion, setFilterRegion] = useState<string>('');
+  
   // ✅ خيارات الساعات المركزية حسب المرحلة
   const [filteredCenterHours, setFilteredCenterHours] = useState<CenterHour[]>([]);
   const [filterAttendance, setFilterAttendance] = useState<string>('');
@@ -121,6 +127,7 @@ export const InstructorStudents: React.FC = () => {
   const [toggleActiveStudent, setToggleActiveStudent] = useState<Student | null>(null);
   const [togglingActive, setTogglingActive] = useState(false);
   const [filterTypeOfStudy, setFilterTypeOfStudy] = useState<string>('');
+  
   // ✅ Pagination
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -128,6 +135,14 @@ export const InstructorStudents: React.FC = () => {
     total: 0,
     perPage: 10,
   });
+
+  // ✅ استخراج المناطق الفريدة من الطلاب (لـ Select)
+  const uniqueRegions = useMemo(() => {
+    const regions = students
+      .map(s => s.region)
+      .filter((r): r is string => r !== null && r !== undefined && r.trim() !== '');
+    return [...new Set(regions)].sort();
+  }, [students]);
 
   // ✅ فلترة الساعات المركزية حسب المرحلة
   useEffect(() => {
@@ -218,8 +233,14 @@ export const InstructorStudents: React.FC = () => {
     if (filterCenterHourId) {
       result = result.filter(s => String(s.center_hour_id) === filterCenterHourId);
     }
+
     if (filterTypeOfStudy) {
       result = result.filter(s => s.type_of_study === filterTypeOfStudy);
+    }
+
+    // ✅ فلتر المنطقة (Select - مطابقة تامة)
+    if (filterRegion) {
+      result = result.filter(s => s.region === filterRegion);
     }
 
     return result;
@@ -233,11 +254,14 @@ export const InstructorStudents: React.FC = () => {
     filterPhone,
     filterCodeParent,
     filterCenterHourId,
+    filterTypeOfStudy,
+    filterRegion, // ✅ أضفناها
   ]);
 
   // ✅ Fetch students
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const fetchStudents = useCallback(async (page = 1) => {
-    setLoading(true);
+    setLoading(false);
     setError(null);
     try {
       const filters: any = {};
@@ -252,6 +276,7 @@ export const InstructorStudents: React.FC = () => {
       if (filterPhone) filters.phone = filterPhone;
       if (filterCodeParent) filters.code_parent = filterCodeParent;
       if (filterCenterHourId) filters.center_hour_id = Number(filterCenterHourId);
+      if (filterRegion) filters.region = filterRegion; // ✅ أضفناها
 
       const response = await studentService.getTeacherStudents(
         user?.id || undefined,
@@ -284,6 +309,7 @@ export const InstructorStudents: React.FC = () => {
     pagination.perPage,
     user?.id,
     filterTypeOfStudy,
+    filterRegion, // ✅ أضفناها
   ]);
 
   useEffect(() => {
@@ -308,6 +334,7 @@ export const InstructorStudents: React.FC = () => {
     setSearchQuery('');
     setDebouncedSearch('');
     setFilterTypeOfStudy('');
+    setFilterRegion(''); // ✅ أضفناها
     setShowFilters(false);
   };
 
@@ -509,7 +536,7 @@ export const InstructorStudents: React.FC = () => {
               <Filter className="h-4 w-4" />
               {t('filters') || 'فلاتر'}
             </Button>
-            {(filterStageId || filterAttendance || filterStatus || filterCenterHourId) && (
+            {(filterStageId || filterAttendance || filterStatus || filterCenterHourId || filterRegion) && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -552,7 +579,7 @@ export const InstructorStudents: React.FC = () => {
               <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
-                  {/* 🔹 Stage (المرحلة) - المستوى الأول */}
+                  {/* 🔹 Stage (المرحلة) */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1 text-sm font-medium">
                       <GraduationCap className="h-4 w-4 text-primary" />
@@ -563,7 +590,6 @@ export const InstructorStudents: React.FC = () => {
                       onChange={(e) => {
                         const value = e.target.value;
                         setFilterStageId(value ? Number(value) : null);
-                        // إعادة تعيين الساعة المركزية عند تغيير المرحلة
                         setFilterCenterHourId('');
                       }}
                       className="w-full px-3 py-2 rounded-xl border bg-background"
@@ -578,6 +604,7 @@ export const InstructorStudents: React.FC = () => {
                       ))}
                     </select>
                   </div>
+
                   {/* 🔹 نوع الدراسة */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
@@ -594,7 +621,35 @@ export const InstructorStudents: React.FC = () => {
                       <option value="azhar">🕌 {lang === 'ar' ? 'أزهر' : 'Azhar'}</option>
                     </select>
                   </div>
-                  {/* 🔹 نوع الحضور - المستوى الثاني */}
+
+                  {/* 🔹 المنطقة - NEW SELECT */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      {lang === 'ar' ? 'المنطقة' : 'Region'}
+                    </Label>
+                    <select
+                      value={filterRegion}
+                      onChange={(e) => setFilterRegion(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border bg-background"
+                    >
+                      <option value="">
+                        {lang === 'ar' ? 'جميع المناطق' : 'All Regions'}
+                      </option>
+                      {uniqueRegions.map((region) => (
+                        <option key={region} value={region}>
+                          {region}
+                        </option>
+                      ))}
+                    </select>
+                    {uniqueRegions.length === 0 && (
+                      <p className="text-xs text-amber-500 mt-1">
+                        {lang === 'ar' ? '⚠️ لا توجد مناطق متاحة' : '⚠️ No regions available'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 🔹 نوع الحضور */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <Monitor className="h-4 w-4" />
@@ -605,7 +660,6 @@ export const InstructorStudents: React.FC = () => {
                       onChange={(e) => {
                         const newValue = e.target.value;
                         setFilterAttendance(newValue);
-                        // إعادة تعيين الساعة المركزية عند تغيير نوع الحضور
                         if (newValue !== 'center') {
                           setFilterCenterHourId('');
                         }
@@ -632,7 +686,7 @@ export const InstructorStudents: React.FC = () => {
                         disabled={loadingCenterHours}
                       >
                         <option value="">
-                          {lang === 'ar' ? 'جميع  موعيد السناتر' : 'All Center Hours'}
+                          {lang === 'ar' ? 'جميع موعيد السناتر' : 'All Center Hours'}
                         </option>
                         {filteredCenterHours.map((hour) => (
                           <option key={hour.id} value={String(hour.id)}>
@@ -648,7 +702,7 @@ export const InstructorStudents: React.FC = () => {
                     </div>
                   )}
 
-                  {/* 🔹 باقي الفلاتر */}
+                  {/* 🔹 الحالة */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <CheckCircle className="h-4 w-4" />
@@ -665,6 +719,7 @@ export const InstructorStudents: React.FC = () => {
                     </select>
                   </div>
 
+                  {/* 🔹 الهاتف */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <Phone className="h-4 w-4" />
@@ -678,6 +733,7 @@ export const InstructorStudents: React.FC = () => {
                     />
                   </div>
 
+                  {/* 🔹 كود ولي الأمر */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <Award className="h-4 w-4" />
@@ -691,6 +747,7 @@ export const InstructorStudents: React.FC = () => {
                     />
                   </div>
 
+                  {/* 🔹 رقم الطالب */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <User className="h-4 w-4" />
@@ -719,7 +776,7 @@ export const InstructorStudents: React.FC = () => {
                 </div>
 
                 {/* عرض الفلاتر النشطة */}
-                {(filterStageId || filterAttendance || filterStatus || filterCenterHourId || filterPhone || filterCodeParent || filterId) && (
+                {(filterStageId || filterAttendance || filterStatus || filterCenterHourId || filterPhone || filterCodeParent || filterId || filterRegion) && (
                   <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
                     <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
                     {filterStageId && (
@@ -764,6 +821,13 @@ export const InstructorStudents: React.FC = () => {
                       <Badge variant="secondary" className="text-xs gap-1">
                         🆔 {filterId}
                         <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterId('')} />
+                      </Badge>
+                    )}
+                    {/* ✅ فلتر المنطقة النشط */}
+                    {filterRegion && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        📍 {filterRegion}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterRegion('')} />
                       </Badge>
                     )}
                   </div>
@@ -874,6 +938,13 @@ export const InstructorStudents: React.FC = () => {
                           <div className="flex items-center gap-2 text-sm">
                             <Award className="h-4 w-4 text-muted-foreground" />
                             <span>{t('parentCode') || 'كود ولي الأمر'}: {student.code_parent}</span>
+                          </div>
+                        )}
+                        {/* ✅ عرض المنطقة في البطاقة */}
+                        {student.region && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span>{lang === 'ar' ? 'المنطقة' : 'Region'}: {student.region}</span>
                           </div>
                         )}
                       </div>

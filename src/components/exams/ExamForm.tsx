@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/exams/ExamForm.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/contexts/AppContext';
 import { examService } from '@/services/exam.service';
@@ -31,9 +32,11 @@ interface ExamFormData {
   duration_minutes: number;
   course_detail_id: number | null;
   stage_id: number | null;
+  course_id: number | null;
   type_exam: 'center' | 'online' | '';
   time_start: string | null;
   time_end: string | null;
+  
 }
 
 export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
@@ -55,6 +58,7 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
     type_exam: '',
     time_start: null,
     time_end: null,
+    course_id:null,
   });
 
   // Load exam data if editing
@@ -81,6 +85,9 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
         type_exam: exam.type_exam || '',
         time_start: exam.time_start || null,
         time_end: exam.time_end || null,
+        course_id: exam.course_id?.id || exam.course_id || null,
+
+        
       });
       setImageId(exam.image?.id || null);
     } catch (error) {
@@ -162,7 +169,6 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
     return `${date}T${time}:00`;
   };
 
-  // بناء الفلاتر الإضافية لـ AsyncSelect
   const getLessonExtraFilters = () => {
     const filters: Record<string, any> = {};
     
@@ -171,15 +177,34 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
       filters.teacher_id = user.id;
     }
     
-    // إضافة stage_id إذا تم اختياره
     if (formData.stage_id) {
       filters.stage_id = formData.stage_id;
     }
-    
+     if (formData.course_id) {
+      filters.course_id = formData.course_id;
+    }
     console.log('📤 Lesson filters:', filters);
     return filters;
   };
 
+// eslint-disable-next-line react-hooks/preserve-manual-memoization
+const getCourseExtraFilters = useCallback(() => {
+  const filters: Record<string, any> = {};
+  
+  // ✅ teacher_id أساسي
+  if (user?.id) {
+    filters.teacher_id = user.id;
+  }
+  
+  // ✅ stage_id لو موجود
+  if (formData.stage_id) {
+    filters.stage_id = formData.stage_id;
+  }
+  
+  console.log('📤 Course extraFilters:', filters);
+  return filters;
+}, [user?.id, formData.stage_id]);
+  
   if (loading && examId) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -391,22 +416,49 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
                   ))}
                 </select>
               </div>
+<div className="space-y-2">
+  <Label>{t('course')}</Label>
+  <AsyncSelect
+    key={`course-${formData.stage_id}-${user?.id}`}
+    configKey="courses"
+    value={formData.course_id}
+    onChange={(id, course) => {
+      console.log('📚 Selected course:', { id, course });
+      setFormData({ 
+        ...formData, 
+        course_id: id,
+        course_detail_id: null // ✅ إعادة تعيين الدرس
+      });
+    }}
+    extraFilters={getCourseExtraFilters()} // ✅ استخدم الدالة
+    placeholder={lang === 'ar' ? 'اختر الكورس' : 'Select course'}
+    required
+  />
+</div>
 
-              <div className="space-y-2">
-                <Label>{t('lesson')}</Label>
-                <AsyncSelect
-                  key={`lesson-${formData.stage_id}-${user?.id}`}
-                  configKey="lessons"
-                  value={formData.course_detail_id}
-                  onChange={(id, lesson) => {
-                    console.log('📚 Selected lesson:', { id, lesson });
-                    setFormData({ ...formData, course_detail_id: id });
-                  }}
-                  extraFilters={getLessonExtraFilters()}
-                  placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select Lesson'}
-                  required
-                />
-              </div>
+
+            <div className="space-y-2">
+  <Label>{t('lesson')}</Label>
+  <AsyncSelect
+    key={`lesson-${formData.stage_id}-${formData.course_id}-${user?.id}`}
+    configKey="courseLessons" // ✅ استخدم Config جديد
+    value={formData.course_detail_id}
+    onChange={(id, lesson) => {
+      console.log('📚 Selected lesson:', { id, lesson });
+      setFormData({ ...formData, course_detail_id: id });
+    }}
+    extraFilters={getLessonExtraFilters()}
+    placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select lesson'}
+    required
+    disabled={!formData.course_id} // ✅ تعطيل إذا لم يتم اختيار كورس
+  />
+  {!formData.course_id && (
+    <p className="text-xs text-amber-500 mt-1">
+      {lang === 'ar' ? 'يرجى اختيار الكورس أولاً' : 'Please select a course first'}
+    </p>
+  )}
+</div>
+
             </div>
 
             {/* Exam Type */}
