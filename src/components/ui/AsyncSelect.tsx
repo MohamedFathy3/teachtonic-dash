@@ -175,10 +175,8 @@ const fetchOptions = useCallback(async (
         searchFilters.description_ar = searchTerm.trim();
       } else if (configKey === 'stages' || configKey === 'subjects') {
         searchFilters.name = searchTerm.trim();
-        searchFilters.name_ar = searchTerm.trim();
       } else if (configKey === 'semesters') {
         searchFilters.name = searchTerm.trim();
-        searchFilters.name_ar = searchTerm.trim();
       } else {
         searchFilters.search = searchTerm.trim();
       }

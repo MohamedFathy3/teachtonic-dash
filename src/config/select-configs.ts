@@ -31,7 +31,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     searchField: 'name',
     labelField: 'name',
     labelFieldAr: 'name_ar',
-    searchFields: ['name', 'name_ar']
+    searchFields: ['name']
   },
   
   subjects: {
@@ -41,7 +41,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     searchField: 'name',
     labelField: 'name',
     labelFieldAr: 'name_ar',
-    searchFields: ['name', 'name_ar'],
+    searchFields: ['name', ],
     
     // ✅ إضافة customFetcher لدعم الفلترة حسب المرحلة
     customFetcher: async (params) => {
@@ -63,7 +63,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
 
       if (search) {
         requestBody.search = search;
-        requestBody.searchFields = ['name', 'name_ar'];
+        requestBody.searchFields = ['name', ];
       }
 
       // 🔥 فلترة المواد حسب المرحلة (stage_id)

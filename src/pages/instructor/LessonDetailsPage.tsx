@@ -246,36 +246,71 @@ const handleMarkAttendance = async () => {
     setAttendanceLoading(false);
   }
 };
-const exportStudentsToExcel = () => {
-  const filteredData = filteredStudents.map((student, index) => ({
-    [lang === 'ar' ? '#' : 'No']: index + 1,
-    [lang === 'ar' ? 'الرقم' : 'ID']: student.id,
-    [lang === 'ar' ? 'الاسم' : 'Name']: student.name,
-    [lang === 'ar' ? 'الهاتف' : 'Phone']: student.phone,
-    [lang === 'ar' ? 'هاتف ولي الأمر' : 'Parent Phone']: student.phone_parent || '—',
-    [lang === 'ar' ? 'كود ولي الأمر' : 'Parent Code']: student.code_parent || '—',
-    [lang === 'ar' ? 'نوع الحضور' : 'Attendance Type']: student.type_of_attendance === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'سنتر' : 'Center'),
-    [lang === 'ar' ? 'الحالة' : 'Status']: student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
-    [lang === 'ar' ? 'حضور الدرس' : 'Lesson Attendance']: student.attended ? (lang === 'ar' ? 'حاضر' : 'Attended') : (lang === 'ar' ? 'غائب' : 'Absent'),
-    [lang === 'ar' ? 'المحافظة' : 'Governorate']: student.governorate || '—',
-  [lang === 'ar' ? 'المدرسة' : 'School']: student.school_name || '—',
-    [lang === 'ar' ? 'تاريخ التسجيل' : 'Registered Date']: new Date(student.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US'),
-  }));
 
-  const fileName = `lesson_${lessonId}_students_${new Date().toISOString().split('T')[0]}.xlsx`;
+const exportStudentsToExcel = () => {
+  const onlineStudents = lesson?.students?.filter(s => s.type_of_attendance === 'online') || [];
+  
+  // ✅ بناء بيانات كل طالب مع درجاته
+  const filteredData = onlineStudents.map((student, index) => {
+    // ✅ جلب درجات الامتحانات للطالب
+    const examMarks: Record<string, string> = {};
+    lesson?.exams?.forEach(exam => {
+      const studentExam = student.exam_marks?.find((em: any) => em.exam_id === exam.id);
+      const mark = studentExam?.mark ?? '—';
+      const total = exam.total_marks;
+      const passed = studentExam ? (studentExam.mark >= exam.total_must_pass_marks ? 'ناجح' : 'راسب') : '—';
+      examMarks[`امتحان: ${exam.title}`] = `${mark} / ${total} (${passed})`;
+    });
+
+    // ✅ جلب درجات الواجبات للطالب
+    const assignmentMarks: Record<string, string> = {};
+    lesson?.assignments?.forEach(assignment => {
+      const studentAssignment = student.assignment_marks?.find((am: any) => am.assignment_id === assignment.id);
+      const mark = studentAssignment?.mark ?? '—';
+      const total = assignment.total_marks;
+      const passed = studentAssignment ? (studentAssignment.mark >= assignment.total_must_pass_marks ? 'ناجح' : 'راسب') : '—';
+      assignmentMarks[`واجب: ${assignment.title}`] = `${mark} / ${total} (${passed})`;
+    });
+
+    return {
+      [lang === 'ar' ? '#' : 'No']: index + 1,
+      [lang === 'ar' ? 'الرقم' : 'ID']: student.id,
+      [lang === 'ar' ? 'الاسم' : 'Name']: student.name,
+      [lang === 'ar' ? 'الهاتف' : 'Phone']: student.phone,
+      [lang === 'ar' ? 'هاتف ولي الأمر' : 'Parent Phone']: student.phone_parent || '—',
+      [lang === 'ar' ? 'نوع الحضور' : 'Attendance Type']: 'أونلاين',
+      [lang === 'ar' ? 'الحالة' : 'Status']: student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
+      // ✅ للطلاب الأونلاين: بنحط "حاضر" لو حضر، ومبنحطش حاجة لو غائب
+      [lang === 'ar' ? 'حضور الدرس' : 'Lesson Attendance']: student.attended ? (lang === 'ar' ? 'حاضر' : 'Attended') : '—',
+      [lang === 'ar' ? 'المحافظة' : 'Governorate']: student.governorate || '—',
+      [lang === 'ar' ? 'المدرسة' : 'School']: student.school_name || '—',
+      [lang === 'ar' ? 'تاريخ التسجيل' : 'Registered Date']: new Date(student.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US'),
+      ...examMarks,
+      ...assignmentMarks,
+    };
+  });
+
+  if (filteredData.length === 0) {
+    toast.warning(lang === 'ar' ? 'لا يوجد طلاب أونلاين لعرض درجاتهم' : 'No online students to show their marks');
+    return;
+  }
+
+  const fileName = `lesson_${lessonId}_students_with_marks_${new Date().toISOString().split('T')[0]}.xlsx`;
   
   const worksheet = XLSX.utils.json_to_sheet(filteredData);
-  const colWidths = [{ wch: 6 }, { wch: 10 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 15 }];
+  const colWidths = Object.keys(filteredData[0] || {}).map((key) => ({
+    wch: Math.max(key.length * 2, 15)
+  }));
   worksheet['!cols'] = colWidths;
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, lang === 'ar' ? 'طلاب الدرس' : 'Lesson Students');
+  XLSX.utils.book_append_sheet(workbook, worksheet, lang === 'ar' ? 'طلاب الدرس مع الدرجات' : 'Lesson Students with Marks');
   
   const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
   const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   saveAs(blob, fileName);
   
-  toast.success(lang === 'ar' ? 'تم تصدير بيانات الطلاب بنجاح' : 'Students data exported successfully');
+  toast.success(lang === 'ar' ? 'تم تصدير بيانات الطلاب مع الدرجات بنجاح' : 'Students data with marks exported successfully');
 };
   // جلب تفاصيل الدرس
   const fetchLesson = async () => {
@@ -767,18 +802,53 @@ const studentStats = {
     </Button>
     
     {/* 🔥 زر تصدير Excel */}
-    {filteredStudents.length > 0 && (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={exportStudentsToExcel}
-        className="gap-2"
-      >
-        <Download className="h-4 w-4" />
-        {lang === 'ar' ? 'تصدير Excel' : 'Export Excel'}
-      </Button>
-    )}
-    
+// ✅ زر تصدير Excel الأساسي (كل الطلاب)
+{filteredStudents.length > 0 && (
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() => {
+      const baseData = filteredStudents.map((student, index) => {
+        const isOnline = student.type_of_attendance === 'online';
+        
+        const row: any = {
+          [lang === 'ar' ? '#' : 'No']: index + 1,
+          [lang === 'ar' ? 'الرقم' : 'ID']: student.id,
+          [lang === 'ar' ? 'الاسم' : 'Name']: student.name,
+          [lang === 'ar' ? 'الهاتف' : 'Phone']: student.phone,
+          [lang === 'ar' ? 'نوع الحضور' : 'Attendance Type']: student.type_of_attendance === 'online' ? (lang === 'ar' ? 'أونلاين' : 'Online') : (lang === 'ar' ? 'سنتر' : 'Center'),
+          [lang === 'ar' ? 'الحالة' : 'Status']: student.active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive'),
+        };
+        
+        // ✅ للطلاب الأونلاين: بنحط "حاضر" لو حضر، ومبنحطش حاجة لو غائب (نحط '—')
+        if (isOnline) {
+          row[lang === 'ar' ? 'حضور الدرس' : 'Lesson Attendance'] = student.attended ? (lang === 'ar' ? 'حاضر' : 'Attended') : '—';
+        } else {
+          // ✅ للطلاب السنتر: بنحط حاضر أو غائب عادي
+          row[lang === 'ar' ? 'حضور الدرس' : 'Lesson Attendance'] = student.attended ? (lang === 'ar' ? 'حاضر' : 'Attended') : (lang === 'ar' ? 'غائب' : 'Absent');
+        }
+        
+        row[lang === 'ar' ? 'المحافظة' : 'Governorate'] = student.governorate || '—';
+        row[lang === 'ar' ? 'المدرسة' : 'School'] = student.school_name || '—';
+        
+        return row;
+      });
+      
+      const fileName = `lesson_${lessonId}_students_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const worksheet = XLSX.utils.json_to_sheet(baseData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, lang === 'ar' ? 'طلاب الدرس' : 'Lesson Students');
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, fileName);
+      toast.success(lang === 'ar' ? 'تم تصدير بيانات الطلاب بنجاح' : 'Students data exported successfully');
+    }}
+    className="gap-2"
+  >
+    <Download className="h-4 w-4" />
+    {lang === 'ar' ? 'تصدير Excel' : 'Export Excel'}
+  </Button>
+)}
     {(studentFilters.search || studentFilters.typeOfAttendance || studentFilters.active || studentFilters.attended) && (
       <Button variant="ghost" size="sm" onClick={clearStudentFilters} className="gap-1 text-red-500">
         <X className="h-4 w-4" />
