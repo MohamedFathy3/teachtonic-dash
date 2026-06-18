@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Download, BarChart3, FileQuestion, FileText, BookMarked, Ticket } from 'lucide-react';
 import api from '@/lib/api';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { motion } from 'framer-motion';
 
 interface ReportsTabProps {

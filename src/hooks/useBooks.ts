@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookService } from '@/services/book.service';
 import { CreateBookRequest, GetAllBooksParams } from '@/types/book.types';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 
 export const useBooks = () => {
   const queryClient = useQueryClient();

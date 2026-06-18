@@ -3,7 +3,7 @@
 
 import { useState, useCallback } from 'react';
 import { assignmentService } from '@/services/assignment.service';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { useApp } from '@/contexts/AppContext';
 
 export const useAssignments = (teacherId: number, perPage: number = 12) => {

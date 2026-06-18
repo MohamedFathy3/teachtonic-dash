@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import api from '@/lib/api';
 import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 import { useQueryClient } from '@tanstack/react-query';

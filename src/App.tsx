@@ -47,6 +47,8 @@ import { InstructorWebsite } from "./pages/instructor/InstructorWebsite";
 import { LessonDetailsPage } from "./pages/instructor/LessonDetailsPage";
 import { BookDetailsPage } from "./pages/instructor/BookDetailsPage";
 import { StudentAttendance } from "./pages/instructor/StudentAttendance";
+import { MyAssistantPage } from "./pages/instructor/MyAssistantPage";
+
 
 const queryClient = new QueryClient();
 
@@ -81,6 +83,7 @@ const App = () => {
                 <Route path="teachers/profile" element={<TeacherProfileView />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="role" element={<SettingsPage />} />
+
               </Route>
 
               {/* Instructor Routes - داخل Layout */}
@@ -111,6 +114,7 @@ const App = () => {
 <Route path="offers" element={<OffersPage />} />
 <Route path="Notifications" element={<BannersPage />} />
 <Route path="attens" element={<StudentAttendance />} />
+                <Route path="my-AssistantIns" element={<MyAssistantPage />} />
 
               </Route>
 

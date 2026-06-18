@@ -34,7 +34,7 @@ import {
   KeyboardIcon,
   ListChecks,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { AttendanceService } from '@/services/Attendance.Service';
 import { QRScannerView } from './QRScannerView';
 import { BatchQRScanner } from './BatchQRScanner';

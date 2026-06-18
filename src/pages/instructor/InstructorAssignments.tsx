@@ -23,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import api from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Eye, Settings2, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { assignmentService } from '@/services/assignment.service';
 
 // Interface for Center Hour

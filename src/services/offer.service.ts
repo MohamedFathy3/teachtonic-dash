@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseService } from './base.service';
 import api from '@/lib/api';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 
 export interface Offer {
   id: number;

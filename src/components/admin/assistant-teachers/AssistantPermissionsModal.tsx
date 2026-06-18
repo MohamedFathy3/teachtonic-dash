@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Shield, Eye, Plus, Pencil, Trash2, Save, X, Search } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 
 interface Permission {
@@ -70,7 +70,11 @@ export function AssistantPermissionsModal({
       }
     } catch (error) {
       console.error('Failed to fetch permissions:', error);
-      toast.error(isRTL ? 'فشل تحميل الصلاحيات' : 'Failed to load permissions');
+      toast({
+        title: isRTL ? 'خطأ' : 'Error',
+        description: isRTL ? 'فشل تحميل الصلاحيات' : 'Failed to load permissions',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -78,6 +82,8 @@ export function AssistantPermissionsModal({
 
   // ✅ جلب صلاحيات المساعد الحالية
   const fetchAssistantPermissions = async () => {
+    if (!assistantId) return;
+    
     setLoading(true);
     try {
       const response = await api.get(`/assistant/permissions/${assistantId}`);
@@ -146,31 +152,60 @@ export function AssistantPermissionsModal({
     });
   };
 
-  // ✅ حفظ الصلاحيات
+  // ✅ حفظ الصلاحيات - 🔥 الطريقة الصحيحة
   const handleSave = async () => {
+    if (!assistantId) {
+      toast({
+        title: isRTL ? 'خطأ' : 'Error',
+        description: isRTL ? 'لم يتم العثور على المساعد' : 'Assistant not found',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSaving(true);
     try {
-      const payload = Object.values(assistantPermissions);
-      const response = await api.post('/assistant/permissions', {
-        assistant_teacher_id: assistantId,
-        permissions: payload,
-      });
+      // 🔥 بناء الـ payload بالشكل المطلوب
+      const permissionsPayload = Object.values(assistantPermissions).map((p) => ({
+        permission_id: p.permission_id,
+        view: p.view,
+        create: p.create,
+        update: p.update,
+        delete: p.delete,
+      }));
 
-      if (response.data?.message || response.status === 200) {
-        toast.success(
-          isRTL
+      const payload = {
+        assistant_teacher_id: assistantId,
+        permissions: permissionsPayload,
+      };
+
+      console.log('📤 Sending payload:', payload);
+
+      const response = await api.post('/assistant/permissions', payload);
+
+      if (response.data?.message || response.status === 200 || response.status === 201) {
+        toast({
+          title: isRTL ? 'نجاح' : 'Success',
+          description: isRTL
             ? `تم تحديث صلاحيات المساعد ${assistantName} بنجاح`
-            : `Permissions updated successfully for ${assistantName}`
-        );
+            : `Permissions updated successfully for ${assistantName}`,
+        });
         onSuccess?.();
         onClose();
       }
     } catch (error: any) {
       console.error('Failed to save permissions:', error);
-      toast.error(
-        error?.response?.data?.message ||
-        (isRTL ? 'فشل حفظ الصلاحيات' : 'Failed to save permissions')
-      );
+      
+      // 🔥 عرض رسالة الخطأ من الـ API
+      const errorMessage = error?.response?.data?.message || 
+                          error?.response?.data?.errors?.permission_id?.[0] ||
+                          (isRTL ? 'فشل حفظ الصلاحيات' : 'Failed to save permissions');
+      
+      toast({
+        title: isRTL ? 'خطأ' : 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
@@ -218,6 +253,7 @@ export function AssistantPermissionsModal({
 
         {/* 🔍 بحث */}
         <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
             placeholder={isRTL ? 'البحث عن صلاحية...' : 'Search permission...'}
@@ -225,7 +261,6 @@ export function AssistantPermissionsModal({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 pl-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
           />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         </div>
 
         {/* ✅ قائمة الصلاحيات */}
@@ -368,7 +403,7 @@ export function AssistantPermissionsModal({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || loading}
             className="bg-gradient-to-r from-purple-600 to-pink-600"
           >
             {saving ? (

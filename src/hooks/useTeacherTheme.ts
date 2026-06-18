@@ -2,7 +2,7 @@
 // ==================== src/hooks/useTeacherTheme.ts ====================
 import { useState, useCallback, useEffect } from 'react';
 import { teacherWebsiteThemeService } from '@/services/teacherTheme.service';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 
 interface WebsiteThemeState {
   activeTheme: string | null;

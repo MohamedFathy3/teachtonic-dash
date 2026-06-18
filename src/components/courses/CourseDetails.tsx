@@ -18,7 +18,7 @@ import { courseDetailService } from '@/services/course-detail.service';
 import { courseService } from '@/services/course.service';
 import { format } from 'date-fns';
 import { arSA, enUS } from 'date-fns/locale';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import type { Course } from '@/types/course.types';
 import type { CourseDetail } from '@/types/course-detail.types';
 import FileUploader from '@/components/FileUploader';

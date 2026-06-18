@@ -1,7 +1,7 @@
 // src/services/course-detail.service.ts
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { BaseService } from './base.service';
 import api from '@/lib/api';
 

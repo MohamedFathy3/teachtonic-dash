@@ -53,7 +53,7 @@ import {
   Zap,
   Repeat,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { AttendanceHeader } from '@/components/StudentAttendance/AttendanceHeader';
 import { CourseSelector } from '@/components/StudentAttendance/CourseSelector';
 import { LessonSelector } from '@/components/StudentAttendance/LessonSelector';

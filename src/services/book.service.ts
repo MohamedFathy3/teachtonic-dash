@@ -4,7 +4,7 @@
 import { BaseService } from './base.service';
 import api from '@/lib/api';
 import { Book, CreateBookRequest, GetAllBooksParams } from '@/types/book.types';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 
 class BookService extends BaseService<Book> {
   constructor() {

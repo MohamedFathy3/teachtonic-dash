@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import api from '@/lib/api';
 import { useNavigate, useParams } from 'react-router-dom';
 import { StudentLearningPage } from '@/pages/instructor/StudentLearningPage';

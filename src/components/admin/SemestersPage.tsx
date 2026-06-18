@@ -45,7 +45,7 @@ import {
   Percent,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 
 export const SemestersPage: React.FC = () => {
   const { lang, user } = useApp();

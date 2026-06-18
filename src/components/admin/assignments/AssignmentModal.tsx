@@ -15,7 +15,7 @@ import {
   ChevronRight, ChevronLeft, GraduationCap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 
 interface AssignmentModalProps {
   isOpen: boolean;

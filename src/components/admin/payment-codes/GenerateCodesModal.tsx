@@ -12,7 +12,7 @@ import { X, Gift, Download, FileSpreadsheet, CheckCircle, Copy, Eye, Wifi, Build
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 
 interface GenerateCodesModalProps {
   isOpen: boolean;

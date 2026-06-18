@@ -3,7 +3,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { examService } from '@/services/exam.service';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { useApp } from '@/contexts/AppContext';
 
 export const useExams = (teacherId: number, perPage: number = 12) => {

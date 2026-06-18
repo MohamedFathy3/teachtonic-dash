@@ -8,7 +8,7 @@ import { useBooks } from '@/hooks/useBooks';
 import { useApp } from '@/contexts/AppContext';
 import { X, BookOpen, User, DollarSign, FileText, Save, ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import FileUploader from '@/components/FileUploader';
 import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 

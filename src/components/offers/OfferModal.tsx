@@ -8,7 +8,7 @@ import { useOffers } from '@/hooks/useOffers';
 import { useApp } from '@/contexts/AppContext';
 import { X, Gift, Percent, Calendar, ImageIcon, Save, Type, FileText, Link as LinkIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import FileUploader from '@/components/FileUploader';
 
 interface OfferModalProps {

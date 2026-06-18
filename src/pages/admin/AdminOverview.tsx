@@ -16,7 +16,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import api from '@/lib/api';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 
 // ======================== الترجمة ========================

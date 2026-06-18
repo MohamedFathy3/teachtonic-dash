@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import FileUploader from '@/components/FileUploader';
 import { Loader2, Plus, Trash2, Save, HelpCircle, CheckCircle, List, FileText, ChevronLeft, X, Maximize2, Minimize2, Edit3 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,

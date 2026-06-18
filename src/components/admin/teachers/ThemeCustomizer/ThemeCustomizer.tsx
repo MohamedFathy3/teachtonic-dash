@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { useTeacherTheme, THEMES_CONFIG } from '@/hooks/useTeacherTheme';
 import { ThemeCard } from './ThemeCard';
 import { ColorPicker } from './ColorPicker';

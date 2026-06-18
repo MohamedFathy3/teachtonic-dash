@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import FileUploader from '@/components/FileUploader';
 import { Loader2, Sparkles, Save, ChevronLeft, Settings2, Calendar, Clock, Monitor, Building2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 
 interface AssignmentFormProps {
   assignmentId?: number | null;

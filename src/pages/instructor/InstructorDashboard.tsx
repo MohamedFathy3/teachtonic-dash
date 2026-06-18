@@ -27,7 +27,7 @@ import {
   PolarGrid, PolarAngleAxis, PolarRadiusAxis, ComposedChart
 } from "recharts";
 import api from '@/lib/api';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,

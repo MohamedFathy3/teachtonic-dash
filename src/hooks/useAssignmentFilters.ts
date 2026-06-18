@@ -2,7 +2,7 @@
 // src/hooks/useAssignmentFilters.ts
 
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { useApp } from '@/contexts/AppContext';
 
 interface AssignmentFilters {

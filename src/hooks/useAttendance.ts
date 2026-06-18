@@ -2,7 +2,7 @@
 // src/pages/instructor/StudentAttendance/hooks/useAttendance.ts
 
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { AttendanceService } from '@/services/Attendance.Service';
 
 export const useAttendance = () => {

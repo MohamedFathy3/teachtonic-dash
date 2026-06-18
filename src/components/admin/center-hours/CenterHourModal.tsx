@@ -9,7 +9,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useTeacherMeta } from '@/hooks/useTeacherMeta'; // 🔥 استخدم الـ hook بتاعك
 import { X, Calendar, Clock, BookOpen, FileText, Save, GraduationCap, BookMarked, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 
 interface CenterHourModalProps {
   isOpen: boolean;

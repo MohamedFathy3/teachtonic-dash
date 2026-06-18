@@ -1,15 +1,20 @@
-import * as React from "react";
+// hooks/use-toast.ts
 
+import * as React from "react";
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 
-const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_LIMIT = 5; // ✅ زيادة العدد المسموح به
+const TOAST_REMOVE_DELAY = 5000; // ✅ 5 ثواني وبعدين تشال تلقائي
+
+type ToastVariant = "success" | "error" | "warning" | "info";
 
 type ToasterToast = ToastProps & {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  variant?: ToastVariant;
+  duration?: number; // ✅ مدة ظهور مخصصة
 };
 
 const actionTypes = {
@@ -52,9 +57,11 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
-const addToRemoveQueue = (toastId: string) => {
+const addToRemoveQueue = (toastId: string, duration: number = TOAST_REMOVE_DELAY) => {
+  // ✅ إزالة أي timeout موجود
   if (toastTimeouts.has(toastId)) {
-    return;
+    clearTimeout(toastTimeouts.get(toastId));
+    toastTimeouts.delete(toastId);
   }
 
   const timeout = setTimeout(() => {
@@ -63,7 +70,7 @@ const addToRemoveQueue = (toastId: string) => {
       type: "REMOVE_TOAST",
       toastId: toastId,
     });
-  }, TOAST_REMOVE_DELAY);
+  }, duration);
 
   toastTimeouts.set(toastId, timeout);
 };
@@ -71,9 +78,17 @@ const addToRemoveQueue = (toastId: string) => {
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
+      const newToast = action.toast;
+      const duration = newToast.duration || TOAST_REMOVE_DELAY;
+      
+      // ✅ جدولة الإزالة التلقائية
+      setTimeout(() => {
+        addToRemoveQueue(newToast.id, duration);
+      }, 100);
+
       return {
         ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+        toasts: [newToast, ...state.toasts].slice(0, TOAST_LIMIT),
       };
 
     case "UPDATE_TOAST":
@@ -85,13 +100,11 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action;
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
       if (toastId) {
-        addToRemoveQueue(toastId);
+        addToRemoveQueue(toastId, 300); // ✅ إزالة سريعة عند الإغلاق
       } else {
         state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id);
+          addToRemoveQueue(toast.id, 300);
         });
       }
 
@@ -134,7 +147,7 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">;
 
-function toast({ ...props }: Toast) {
+function toast({ variant = "success", duration = TOAST_REMOVE_DELAY, ...props }: Toast) {
   const id = genId();
 
   const update = (props: ToasterToast) =>
@@ -149,6 +162,8 @@ function toast({ ...props }: Toast) {
     toast: {
       ...props,
       id,
+      variant,
+      duration,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss();
@@ -162,6 +177,43 @@ function toast({ ...props }: Toast) {
     update,
   };
 }
+
+// ✅ الـ Methods المحسنة
+toast.success = (message: string, options?: any) => {
+  return toast({
+    title: "🎉 نجحت العملية!",
+    description: message,
+    variant: "success",
+    ...options,
+  });
+};
+
+toast.error = (message: string, options?: any) => {
+  return toast({
+    title: "😅 حدث خطأ!",
+    description: message,
+    variant: "error",
+    ...options,
+  });
+};
+
+toast.warning = (message: string, options?: any) => {
+  return toast({
+    title: "⚠️ تنبيه!",
+    description: message,
+    variant: "warning",
+    ...options,
+  });
+};
+
+toast.info = (message: string, options?: any) => {
+  return toast({
+    title: "💡 معلومات",
+    description: message,
+    variant: "info",
+    ...options,
+  });
+};
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState);

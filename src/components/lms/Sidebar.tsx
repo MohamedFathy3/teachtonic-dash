@@ -59,6 +59,7 @@ const instructorNav: NavItem[] = [
   { to: "dashboard", labelKey: "dashboard", icon: LayoutDashboard },
   { to: "semesters", labelKey: "semesters", icon: GraduationCap },
   { to: "my-courses", labelKey: "myCourses", icon: BookOpen },
+  { to: "my-AssistantIns", labelKey: "AssistantIns", icon: BookOpen },
   // { to: "redeem-requests", labelKey: "redeemRequests", icon: Sparkles },
   { to: "students", labelKey: "students", icon: Users },
   { to: "attens", labelKey: "attens", icon: Users },

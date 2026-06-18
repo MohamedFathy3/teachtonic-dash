@@ -25,7 +25,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import api from '@/lib/api';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,

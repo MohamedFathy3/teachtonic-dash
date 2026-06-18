@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { offerService, CreateOfferRequest } from '@/services/offer.service';
 import { useApp } from '@/contexts/AppContext';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 
 export const useOffers = (params?: any) => {
   const { user } = useApp();

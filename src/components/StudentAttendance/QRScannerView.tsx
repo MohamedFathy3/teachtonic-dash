@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, ScanLine, XCircle, CheckCircle2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast  } from "@/hooks/use-toast";
 import { QRScannerViewProps } from '@/types/attendance.types';
 
 export const QRScannerView: React.FC<QRScannerViewProps> = ({
