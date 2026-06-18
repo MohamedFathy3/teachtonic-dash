@@ -128,7 +128,7 @@ class AttendanceService {
   static async getStudentById(studentId: number, teacherId: number) {
     const response = await api.post('/student/index', {
       filters: {
-        id: studentId,
+        barcode: studentId,
         teacher_id: teacherId,
       },
       orderBy: 'id',
