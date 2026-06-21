@@ -28,6 +28,7 @@ import { FootersPage } from "./pages/admin/FootersPage";
 import { FeaturesPage } from "./pages/admin/FeaturesPage";
 import { AdminReviews } from "./pages/admin/AdminReviews";
 import { SettingsPage } from "./pages/shared/SettingsPage";
+
 import { SemestersPage } from "./components/admin/SemestersPage";
 import { BooksPage } from "./components/admin/books/BooksPage";
 import { OffersPage } from "@/components/offers/OffersPage";
@@ -48,6 +49,7 @@ import { LessonDetailsPage } from "./pages/instructor/LessonDetailsPage";
 import { BookDetailsPage } from "./pages/instructor/BookDetailsPage";
 import { StudentAttendance } from "./pages/instructor/StudentAttendance";
 import { MyAssistantPage } from "./pages/instructor/MyAssistantPage";
+import SettingsPages from '@/pages/instructor/SettingsPage';
 
 
 const queryClient = new QueryClient();
@@ -108,13 +110,13 @@ const App = () => {
                 <Route path="redeem-requests" element={<InstructorRedeemRequests />} />
                 <Route path="semesters" element={<SemestersPage />} />
                 <Route path="center-hours" element={<CenterHoursPage />} />
-                <Route path="settings" element={<SettingsPage />} />
                <Route path="lesson/:lessonId" element={<LessonDetailsPage />} />
                <Route path="books/:id" element={<BookDetailsPage />} />
 <Route path="offers" element={<OffersPage />} />
 <Route path="Notifications" element={<BannersPage />} />
 <Route path="attens" element={<StudentAttendance />} />
                 <Route path="my-AssistantIns" element={<MyAssistantPage />} />
+                <Route path="settings" element={<SettingsPages  />} />
 
               </Route>
 

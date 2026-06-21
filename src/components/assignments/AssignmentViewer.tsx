@@ -115,6 +115,7 @@ const GradeEssayModal: React.FC<{
 };
 
 // Modal لعرض إجابات طالب واحد
+// Modal لعرض إجابات طالب واحد
 const StudentAnswersModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -202,7 +203,33 @@ const StudentAnswersModal: React.FC<{
               {questions.map((q, idx) => {
                 const answer = student.answers?.find((a: any) => a.question_id === q.id);
                 const isEssay = q.question_type === 'essay';
-                const needsGrading = isEssay && answer && answer.mark === null && answer.answer;
+                const needsGrading = isEssay && answer && answer.mark === null && (answer.answer || answer.image);
+
+                // 🔥 Get the answer display - check if it's an image or text
+                const getAnswerDisplay = () => {
+                  if (!answer) return null;
+                  
+                  // If there's an image, show it
+                  if (answer.image?.fullUrl) {
+                    return {
+                      type: 'image',
+                      url: answer.image.fullUrl,
+                      name: answer.image.name || 'Answer Image'
+                    };
+                  }
+                  
+                  // If there's text answer
+                  if (answer.answer) {
+                    return {
+                      type: 'text',
+                      content: answer.answer
+                    };
+                  }
+                  
+                  return null;
+                };
+
+                const answerDisplay = getAnswerDisplay();
 
                 return (
                   <motion.div
@@ -234,17 +261,41 @@ const StudentAnswersModal: React.FC<{
                           )}
                         </div>
                         <p className="font-medium mb-3">{q.question}</p>
+                        
                         {answer ? (
                           <div className={`p-3 rounded-lg ${isEssay ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200' : 'bg-muted/30'}`}>
                             <p className="text-xs text-muted-foreground mb-1">{lang === 'ar' ? 'إجابة الطالب:' : 'Answer:'}</p>
-                            <p className="text-sm">{answer.answer || '-'}</p>
+                            
+                            {/* 🔥 Show answer based on type */}
+                            {answerDisplay ? (
+                              answerDisplay.type === 'image' ? (
+                                <div className="mt-2">
+                                  <img 
+                                    src={answerDisplay.url} 
+                                    alt={answerDisplay.name}
+                                    className="max-h-64 rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                    onClick={() => window.open(answerDisplay.url, '_blank')}
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {lang === 'ar' ? 'اضغط للعرض بحجم أكبر' : 'Click to view larger'}
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-sm whitespace-pre-wrap">{answerDisplay.content}</p>
+                              )
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic">
+                                {lang === 'ar' ? 'لا توجد إجابة' : 'No answer provided'}
+                              </p>
+                            )}
                           </div>
                         ) : (
                           <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
                             <p className="text-sm text-muted-foreground">{lang === 'ar' ? 'لم يتم الإجابة' : 'Not answered'}</p>
                           </div>
                         )}
-                        {isEssay && answer?.answer && (
+                        
+                        {isEssay && answer && (answer.answer || answer.image) && (
                           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                             <Button
                               size="sm"

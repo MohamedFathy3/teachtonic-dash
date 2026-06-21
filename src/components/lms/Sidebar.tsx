@@ -71,6 +71,8 @@ const instructorNav: NavItem[] = [
   { to: "Notifications", labelKey: "Notifications", icon: BellIcon },
   { to: "payment-codes", labelKey: "paymentCodes", icon: TagIcon },
   { to: "assignments", labelKey: "assignments", icon: FileEdit },
+    { to: "settings", labelKey: "settings", icon: Settings },
+
 ];
 
 interface SidebarProps {

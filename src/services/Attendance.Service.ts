@@ -1,12 +1,30 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/instructor/StudentAttendance/services/AttendanceService.ts
 
 import api from '@/lib/api';
 
 export class AttendanceService {
   
-  static async getCourses(teacherId: number, page: number = 1, perPage: number = 10) {
+  // ✅ جلب الكورسات مع فلترة حسب المرحلة
+  static async getCourses(
+    teacherId: number, 
+    page: number = 1, 
+    perPage: number = 10,
+    stageId?: number | null  // ✅ إضافة فلترة المرحلة
+  ) {
+    // ✅ بناء الفلاتر
+    const filters: any = { 
+      teacher_id: teacherId, 
+      type: 'center' 
+    };
+
+    // ✅ إضافة فلترة المرحلة لو موجودة
+    if (stageId) {
+      filters.stage_id = stageId;
+    }
+
     const response = await api.post('/course/index', {
-      filters: { teacher_id: teacherId, type: 'center' },
+      filters,
       orderBy: 'id',
       orderByDirection: 'desc',
       perPage,
@@ -16,6 +34,10 @@ export class AttendanceService {
     });
     return response.data;
   }
+
+  // ❌ مش محتاجين getStages و getSemesters لأننا بنستخدم useTeacherMeta
+  // static async getStages() { ... }
+  // static async getSemesters() { ... }
 
   static async getLessons(courseId: number, page: number = 1, perPage: number = 10) {
     const response = await api.post('/course-detail/index', {
@@ -46,7 +68,6 @@ export class AttendanceService {
     return response.data;
   }
 
-  // O - Open/Closed: نقدر نضيف دوال جديدة من غير ما نعدل القديمة
   static async getStudentsByBatch(studentIds: number[], teacherId: number) {
     const response = await api.post('/student/batch', {
       filters: {
@@ -71,7 +92,6 @@ export class AttendanceService {
     return response.data;
   }
 
-  // Batch attendance recording
   static async recordBatchAttendance(lessonId: number, studentIds: number[], attended: boolean = true) {
     const response = await api.post('/course-detail-attendance/batch', {
       course_detail_id: lessonId,

@@ -1,4 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/pages/instructor/StudentAttendance/index.tsx
+
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -14,6 +17,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   RefreshCw,
   Users,
@@ -52,8 +62,9 @@ import {
   Sparkles,
   Zap,
   Repeat,
+  GraduationCap,
 } from 'lucide-react';
-import { toast  } from "@/hooks/use-toast";
+import { toast } from '@/hooks/use-toast';
 import { AttendanceHeader } from '@/components/StudentAttendance/AttendanceHeader';
 import { CourseSelector } from '@/components/StudentAttendance/CourseSelector';
 import { LessonSelector } from '@/components/StudentAttendance/LessonSelector';
@@ -62,7 +73,8 @@ import { StudentAttendanceModal } from '@/components/StudentAttendance/StudentAt
 import { useCourses } from '@/hooks/useCourseattens';
 import { useLessons } from '@/hooks/useLessons';
 import { useAttendance } from '@/hooks/useAttendance';
-import { Lesson, Student } from '@/types/attendance.types';
+import { useTeacherMeta } from '@/hooks/useTeacherMeta';
+import { Lesson, Student, Course } from '@/types/attendance.types';
 import api from '@/lib/api';
 
 // ============================================
@@ -101,7 +113,6 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
   const scannedIdsRef = useRef<Set<string>>(new Set());
   const vibrationRef = useRef<boolean>(true);
   const isProcessingRef = useRef<boolean>(false);
-  const errorCountRef = useRef<number>(0);
 
   // 🎯 Vibrate function
   const vibratePhone = useCallback((pattern: number | number[] = 200) => {
@@ -191,7 +202,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     }
   }, [lessonId, note, isRTL, playSuccessFeedback, playErrorFeedback, scannedStudents.length]);
 
-  // Start scanner - مع فلترة الأخطاء
+  // Start scanner
   const startScanner = useCallback(async () => {
     try {
       if (!(window as any).Html5Qrcode) {
@@ -211,18 +222,16 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         containerRef.current.id = scannerId;
       }
 
-      // Override console error temporarily to filter scanner errors
       const originalConsoleError = console.error;
       console.error = (...args) => {
         const message = args.join(' ');
-        // Filter out specific scanner errors
         if (
           message.includes('NoMultiFormatReaders') ||
           message.includes('QR code parse error') ||
           message.includes('NotFoundException') ||
           message.includes('D: No MultiFormat Readers')
         ) {
-          return; // Ignore these errors
+          return;
         }
         originalConsoleError.apply(console, args);
       };
@@ -334,7 +343,6 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
           }
         },
         (error: any) => {
-          // ✅ فلترة الأخطاء - منع ظهور Error: D: No MultiFormat Readers
           const errorMessage = error?.message || '';
           if (
             errorMessage.includes('NoMultiFormatReaders') ||
@@ -342,16 +350,13 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
             errorMessage.includes('NotFoundException') ||
             errorMessage.includes('D: No MultiFormat Readers')
           ) {
-            return; // تجاهل هذه الأخطاء تماماً
+            return;
           }
-          // سجل الأخطاء الأخرى فقط
           console.warn('Scanner warning:', error);
         }
       );
 
-      // Restore console error
       console.error = originalConsoleError;
-
       setScannerReady(true);
       toast.success(
         isRTL 
@@ -507,7 +512,6 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Mode Selector */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex gap-2">
           <Button
@@ -537,15 +541,8 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
             onClick={toggleMode}
             className={`gap-2 ${autoMode ? 'bg-gradient-to-r from-green-500 to-emerald-600' : ''}`}
           >
-            {autoMode ? (
-              <Zap className="h-4 w-4" />
-            ) : (
-              <UserPlus className="h-4 w-4" />
-            )}
-            {autoMode 
-              ? (isRTL ? 'تلقائي' : 'Auto')
-              : (isRTL ? 'يدوي' : 'Manual')
-            }
+            {autoMode ? <Zap className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+            {autoMode ? (isRTL ? 'تلقائي' : 'Auto') : (isRTL ? 'يدوي' : 'Manual')}
           </Button>
           
           <Button
@@ -563,7 +560,6 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         </div>
       </div>
 
-      {/* Camera View */}
       <div className="relative rounded-xl overflow-hidden bg-black" style={{ minHeight: 320 }}>
         {!scannerReady && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 bg-black/80">
@@ -653,7 +649,6 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         )}
       </div>
 
-      {/* Note Input */}
       <AnimatePresence>
         {showNoteInput && (
           <motion.div
@@ -689,7 +684,6 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Manual Mode */}
       {!autoMode && (
         <>
           <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-primary/5 border border-primary/10">
@@ -706,9 +700,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
                   {isRTL ? 'ملاحظة' : 'Note'}
                 </Badge>
               )}
-              {loading && (
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              )}
+              {loading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -799,7 +791,6 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         </>
       )}
 
-      {/* Auto Mode Stats */}
       {autoMode && recordedCount > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -834,14 +825,13 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
           </div>
-          <span>
-            {isRTL ? 'جاهز للمسح' : 'Ready to scan'}
-          </span>
+          <span>{isRTL ? 'جاهز للمسح' : 'Ready to scan'}</span>
         </div>
       </div>
     </div>
   );
 };
+
 // ============================================
 // 🆕 How to Use Component
 // ============================================
@@ -849,12 +839,20 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
 const HowToUseSection: React.FC<{ isRTL: boolean }> = ({ isRTL }) => {
   const steps = [
     {
-      icon: <BookOpen className="h-5 w-5" />,
-      title: isRTL ? 'اختر الواجب' : 'Select Assignment',
+      icon: <GraduationCap className="h-5 w-5" />,
+      title: isRTL ? 'اختر المرحلة' : 'Select Stage',
       description: isRTL 
-        ? 'تأكد من اختيار الواجب أولاً من القائمة المنسدلة' 
-        : 'Make sure to select the assignment from the dropdown list',
+        ? 'اختر المرحلة لعرض الكورسات المتاحة' 
+        : 'Select stage to show available courses',
       color: 'from-blue-500 to-blue-600',
+    },
+    {
+      icon: <BookOpen className="h-5 w-5" />,
+      title: isRTL ? 'اختر الكورس والدرس' : 'Select Course & Lesson',
+      description: isRTL 
+        ? 'اختر الكورس ثم الدرس المطلوب لتسجيل الحضور' 
+        : 'Select course then the lesson to record attendance',
+      color: 'from-purple-500 to-purple-600',
     },
     {
       icon: <Camera className="h-5 w-5" />,
@@ -870,14 +868,6 @@ const HowToUseSection: React.FC<{ isRTL: boolean }> = ({ isRTL }) => {
       description: isRTL 
         ? 'بمجرد مسح الباركود يتم تسجيل الحضور تلقائياً ويهتز الهاتف' 
         : 'Attendance is recorded automatically on scan with vibration feedback',
-      color: 'from-purple-500 to-purple-600',
-    },
-    {
-      icon: <Repeat className="h-5 w-5" />,
-      title: isRTL ? 'استمر في المسح' : 'Continue Scanning',
-      description: isRTL 
-        ? 'استمر في مسح الطلاب - الكاميرا جاهزة للتسجيل التلقائي المستمر' 
-        : 'Keep scanning students - camera stays ready for continuous auto-recording',
       color: 'from-orange-500 to-amber-600',
     },
   ];
@@ -924,15 +914,11 @@ const HowToUseSection: React.FC<{ isRTL: boolean }> = ({ isRTL }) => {
                 </div>
                 
                 <div className={`mt-1 p-2 rounded-lg bg-gradient-to-r ${step.color} bg-opacity-10`}>
-                  <div className="text-white">
-                    {step.icon}
-                  </div>
+                  <div className="text-white">{step.icon}</div>
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    {step.title}
-                  </h3>
+                  <h3 className="text-sm font-semibold text-foreground">{step.title}</h3>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {step.description}
                   </p>
@@ -977,17 +963,37 @@ export const StudentAttendance: React.FC = () => {
   const { lang, user } = useApp();
   const isRTL = lang === 'ar';
 
+  // ✅ State
+  const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
 
-  const { courses, loading: coursesLoading, fetchCourses } = useCourses(user?.id);
+  // ✅ جلب المراحل من useTeacherMeta
+  const { stages, loading: metaLoading } = useTeacherMeta(user?.id);
+
+  // ✅ Fetch courses with stage filter
+  const { 
+    courses, 
+    loading: coursesLoading, 
+    refetch 
+  } = useCourses({ 
+    teacherId: user?.id, 
+    stageId: selectedStageId,
+  });
+
   const { lessons, loading: lessonsLoading, fetchLessons } = useLessons(selectedCourseId);
   const { recordAttendance } = useAttendance();
 
+  // ✅ Reset course when stage changes
+  useEffect(() => {
+    setSelectedCourseId(null);
+    setSelectedLesson(null);
+  }, [selectedStageId]);
+
   const handleRefresh = () => {
-    fetchCourses();
+    refetch();
     if (selectedCourseId) fetchLessons();
     toast.info(isRTL ? 'جاري التحديث...' : 'Refreshing...');
   };
@@ -995,6 +1001,9 @@ export const StudentAttendance: React.FC = () => {
   const handleAttendanceRecorded = (studentIds: number[], notes?: string) => {
     console.log('✅ Recorded students:', studentIds, 'Notes:', notes);
   };
+
+  // ✅ معرفة إذا كان الفلتر مكتمل
+  const isFilterComplete = selectedStageId && selectedCourseId && selectedLesson;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4 md:p-6">
@@ -1007,24 +1016,106 @@ export const StudentAttendance: React.FC = () => {
 
         <HowToUseSection isRTL={isRTL} />
 
-        {/* Selection Row */}
+        {/* ✅ Stage & Course Selectors */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+          {/* ✅ Stage Selector - من useTeacherMeta */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-sm font-medium">
+              <GraduationCap className="h-4 w-4 text-primary" />
+              {isRTL ? 'المرحلة' : 'Stage'}
+              <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              value={selectedStageId?.toString() || ''}
+              onValueChange={(value) => setSelectedStageId(Number(value))}
+              disabled={metaLoading}
+            >
+              <SelectTrigger className="rounded-xl">
+                <SelectValue 
+                  placeholder={
+                    metaLoading 
+                      ? (isRTL ? 'جاري التحميل...' : 'Loading...')
+                      : (isRTL ? 'اختر المرحلة' : 'Select Stage')
+                  } 
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {metaLoading ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : stages.length === 0 ? (
+                  <div className="px-2 py-1 text-sm text-muted-foreground">
+                    {isRTL ? 'لا توجد مراحل' : 'No stages available'}
+                  </div>
+                ) : (
+                  stages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id.toString()}>
+                      {isRTL ? stage.name_ar : stage.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* ✅ Course Selector - مفلتر حسب المرحلة */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-sm font-medium">
+              <BookOpen className="h-4 w-4 text-primary" />
+              {isRTL ? 'الكورس' : 'Course'}
+              <span className="text-red-500">*</span>
+            </Label>
+            
+            <Select
+              value={selectedCourseId?.toString() || ''}
+              onValueChange={(value) => {
+                setSelectedCourseId(Number(value));
+                setSelectedLesson(null);
+              }}
+              disabled={!selectedStageId}
+            >
+              <SelectTrigger className="rounded-xl">
+                <SelectValue 
+                  placeholder={
+                    !selectedStageId
+                      ? (isRTL ? 'اختر المرحلة أولاً' : 'Select stage first')
+                      : (isRTL ? 'اختر الكورس' : 'Select Course')
+                  } 
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {coursesLoading ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : courses.length === 0 && selectedStageId ? (
+                  <div className="px-2 py-1 text-sm text-muted-foreground">
+                    {isRTL ? 'لا توجد كورسات لهذه المرحلة' : 'No courses for this stage'}
+                  </div>
+                ) : (
+                  courses.map((course) => (
+                    <SelectItem key={course.id} value={course.id.toString()}>
+                      {isRTL ? course.title_ar || course.title : course.title}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </motion.div>
+
+        {/* ✅ Lesson Selector */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-          <CourseSelector
-            courses={courses}
-            loading={coursesLoading}
-            selectedId={selectedCourseId}
-            onSelect={(id) => {
-              setSelectedCourseId(id);
-              setSelectedLesson(null);
-            }}
-            isRTL={isRTL}
-          />
-
           <LessonSelector
             lessons={lessons}
             loading={lessonsLoading}
@@ -1035,24 +1126,39 @@ export const StudentAttendance: React.FC = () => {
           />
         </motion.div>
 
+        {/* ✅ Status Indicator */}
+        {!isFilterComplete && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-3 rounded-xl bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 text-center"
+          >
+            <p className="text-sm text-yellow-700 dark:text-yellow-400">
+              {isRTL 
+                ? '⚠️ يرجى اختيار المرحلة، الكورس، ثم الدرس لتسجيل الحضور'
+                : '⚠️ Please select stage, course, then lesson to record attendance'}
+            </p>
+          </motion.div>
+        )}
+
         {/* Action Buttons */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.15 }}
           className="flex flex-col sm:flex-row justify-center gap-4"
         >
           <Button
             size="lg"
             onClick={() => setModalOpen(true)}
-            disabled={!selectedLesson}
+            disabled={!isFilterComplete}
             className="gap-3 px-8 py-6 text-lg rounded-2xl bg-gradient-to-r from-primary to-secondary hover:shadow-lg transition-all"
           >
             <UserPlus className="h-5 w-5" />
             {isRTL ? '📌 إدخال يدوي' : '📌 Manual Entry'}
-            {!selectedLesson && (
+            {!isFilterComplete && (
               <span className="text-xs text-white/70">
-                ({isRTL ? 'اختر درساً أولاً' : 'Select a lesson first'})
+                ({isRTL ? 'أكمل الاختيارات أولاً' : 'Complete selections first'})
               </span>
             )}
           </Button>
@@ -1060,14 +1166,14 @@ export const StudentAttendance: React.FC = () => {
           <Button
             size="lg"
             onClick={() => setShowCameraScanner(true)}
-            disabled={!selectedLesson}
+            disabled={!isFilterComplete}
             className="gap-3 px-8 py-6 text-lg rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-lg transition-all animate-pulse"
           >
             <Camera className="h-5 w-5" />
             {isRTL ? '📷 فتح كاميرا الهاتف للمسح' : '📷 Open Phone Camera to Scan'}
-            {!selectedLesson && (
+            {!isFilterComplete && (
               <span className="text-xs text-white/70">
-                ({isRTL ? 'اختر درساً أولاً' : 'Select a lesson first'})
+                ({isRTL ? 'أكمل الاختيارات أولاً' : 'Complete selections first'})
               </span>
             )}
           </Button>
