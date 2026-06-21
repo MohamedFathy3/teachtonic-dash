@@ -23,6 +23,7 @@ import {
   TagIcon,
   Layers3,
   BellIcon,
+  Share2,
 } from "lucide-react";
 
 import { TranslationKey } from "@/i18n/translations";
@@ -71,6 +72,7 @@ const instructorNav: NavItem[] = [
   { to: "Notifications", labelKey: "Notifications", icon: BellIcon },
   { to: "payment-codes", labelKey: "paymentCodes", icon: TagIcon },
   { to: "assignments", labelKey: "assignments", icon: FileEdit },
+  { to: "seo-counts", labelKey: "seocounts", icon: Share2   },
     { to: "settings", labelKey: "settings", icon: Settings },
 
 ];

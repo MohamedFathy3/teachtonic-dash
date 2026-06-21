@@ -50,6 +50,7 @@ import { BookDetailsPage } from "./pages/instructor/BookDetailsPage";
 import { StudentAttendance } from "./pages/instructor/StudentAttendance";
 import { MyAssistantPage } from "./pages/instructor/MyAssistantPage";
 import SettingsPages from '@/pages/instructor/SettingsPage';
+import SeoCountsPage from '@/pages/instructor/SeoCountsPage';
 
 
 const queryClient = new QueryClient();
@@ -117,6 +118,7 @@ const App = () => {
 <Route path="attens" element={<StudentAttendance />} />
                 <Route path="my-AssistantIns" element={<MyAssistantPage />} />
                 <Route path="settings" element={<SettingsPages  />} />
+<Route path="seo-counts" element={<SeoCountsPage />} />
 
               </Route>
 

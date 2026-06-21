@@ -338,7 +338,7 @@ lms: "Learning Management System",
     // Success messages
 
     // Error messages
-
+seocounts:"socile-counts",
     // Directions
     ltr: "Left to Right",
     rtl: "Right to Left",
@@ -431,7 +431,9 @@ lms: "Learning Management System",
     videoLink: 'رابط الفيديو',
     deleteLessonConfirm: 'هل أنت متأكد من حذف هذا الدرس؟',
     brand: "إدوفلو",
+    seocounts:"عدد السوشيال ميديا",
 AssistantIns:"مساعد المدرس",
+
     downloadReport: "تحميل التقرير",
     reportDownloaded: "تم تحميل التقرير بنجاح",
     pleaseSelectDates: "الرجاء تحديد نطاق التاريخ",
