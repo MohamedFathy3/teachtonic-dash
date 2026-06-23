@@ -17,7 +17,7 @@ export const WebsitePreview = ({ teacherSlug, activeTheme, backgroundColor, font
 
   // بناء رابط المعاينة مع إضافة query parameter للتمييز
   // نفترض أن الدومين الأساسي للمنصة هو https://web-lec.com/
-  const baseWebsiteUrl = `https://web-lec.com//${teacherSlug}`;
+  const baseWebsiteUrl = `https://web-lec.com/${teacherSlug}`;
   const previewUrl = `${baseWebsiteUrl}?preview=true&theme=${activeTheme}&bg=${backgroundColor.replace('#', '')}&font=${fontColor.replace('#', '')}`;
 
   const handleRefresh = () => {
