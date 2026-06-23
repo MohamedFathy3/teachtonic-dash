@@ -16,7 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Shield, Eye, Plus, Pencil, Trash2, Save, X, Search } from 'lucide-react';
+import { Loader2, Shield, Plus, Pencil, Trash2, Save, X, Search } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 
@@ -127,10 +127,10 @@ export function AssistantPermissionsModal({
     }
   }, [open, permissions]);
 
-  // ✅ تحديث صلاحية معينة
+  // ✅ تحديث صلاحية معينة (بدون view)
   const updatePermission = (
     permissionId: number,
-    field: 'view' | 'create' | 'update' | 'delete',
+    field: 'create' | 'update' | 'delete', // ❌ إزالة view
     value: boolean
   ) => {
     setAssistantPermissions((prev) => {
@@ -152,7 +152,7 @@ export function AssistantPermissionsModal({
     });
   };
 
-  // ✅ حفظ الصلاحيات - 🔥 الطريقة الصحيحة
+  // ✅ حفظ الصلاحيات
   const handleSave = async () => {
     if (!assistantId) {
       toast({
@@ -165,7 +165,6 @@ export function AssistantPermissionsModal({
 
     setSaving(true);
     try {
-      // 🔥 بناء الـ payload بالشكل المطلوب
       const permissionsPayload = Object.values(assistantPermissions).map((p) => ({
         permission_id: p.permission_id,
         view: p.view,
@@ -196,7 +195,6 @@ export function AssistantPermissionsModal({
     } catch (error: any) {
       console.error('Failed to save permissions:', error);
       
-      // 🔥 عرض رسالة الخطأ من الـ API
       const errorMessage = error?.response?.data?.message || 
                           error?.response?.data?.errors?.permission_id?.[0] ||
                           (isRTL ? 'فشل حفظ الصلاحيات' : 'Failed to save permissions');
@@ -246,8 +244,8 @@ export function AssistantPermissionsModal({
           </DialogTitle>
           <DialogDescription>
             {isRTL
-              ? 'قم بتحديد الصلاحيات التي يمتلكها المساعد (عرض، إضافة، تعديل، حذف)'
-              : 'Set the permissions for the assistant (View, Create, Update, Delete)'}
+              ? 'قم بتحديد الصلاحيات التي يمتلكها المساعد (إضافة، تعديل، حذف)'
+              : 'Set the permissions for the assistant (Create, Update, Delete)'}
           </DialogDescription>
         </DialogHeader>
 
@@ -295,25 +293,8 @@ export function AssistantPermissionsModal({
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2">
-                    {/* 👁️ View */}
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id={`view-${permission.id}`}
-                        checked={perms.view}
-                        onCheckedChange={(checked) =>
-                          updatePermission(permission.id, 'view', !!checked)
-                        }
-                      />
-                      <Label
-                        htmlFor={`view-${permission.id}`}
-                        className="text-xs cursor-pointer flex items-center gap-1"
-                      >
-                        <Eye className="h-3 w-3" />
-                        {isRTL ? 'عرض' : 'View'}
-                      </Label>
-                    </div>
-
+                  {/* 🟢 3 أعمدة فقط بدلاً من 4 (إزالة View) */}
+                  <div className="grid grid-cols-3 gap-3">
                     {/* ➕ Create */}
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -388,7 +369,7 @@ export function AssistantPermissionsModal({
               <Badge variant="default" className="ml-2 bg-green-500">
                 {
                   Object.values(assistantPermissions).filter(
-                    (p) => p.view || p.create || p.update || p.delete
+                    (p) => p.create || p.update || p.delete
                   ).length
                 }
               </Badge>
