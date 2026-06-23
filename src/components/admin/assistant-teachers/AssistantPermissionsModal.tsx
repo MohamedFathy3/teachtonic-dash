@@ -28,8 +28,8 @@ interface Permission {
 }
 
 interface AssistantPermission {
-  assistant_teacher_id: number;
   permission_id: number;
+  permission_name: string;
   view: boolean;
   create: boolean;
   update: boolean;
@@ -80,27 +80,42 @@ export function AssistantPermissionsModal({
     }
   };
 
-  // ✅ جلب صلاحيات المساعد الحالية - الطريقة الصحيحة مع POST
+  // ✅ جلب صلاحيات المساعد الحالية - باستخدام الـ API الجديد
   const fetchAssistantPermissions = async () => {
     if (!assistantId) return;
     
     setLoading(true);
     try {
-      // 🟢 استخدام POST مع filter كما هو مطلوب
-      const response = await api.post('/assistant-teachers/show-permissions/', {
-          assistant_teacher_id: assistantId
+      // 🟢 استخدام الـ API الجديد مع POST
+      const response = await api.post('/assistant-teachers/show-permissions', {
+        assistant_teacher_id: assistantId
       });
       
       console.log('📥 Assistant permissions response:', response.data);
       
-      if (response.data) {
-        // التأكد من أن البيانات هي array
-        const perms: AssistantPermission[] = Array.isArray(response.data) ? response.data : [];
+      if (response.data?.permissions && Array.isArray(response.data.permissions)) {
+        const perms: AssistantPermission[] = response.data.permissions;
         const permsMap: Record<number, AssistantPermission> = {};
         perms.forEach((p) => {
           permsMap[p.permission_id] = p;
         });
         setAssistantPermissions(permsMap);
+        console.log('✅ Permissions map set:', permsMap);
+      } else {
+        console.warn('⚠️ Unexpected response structure:', response.data);
+        // لو مفيش صلاحيات، نبدأ بكل الصلاحيات بقيمة false
+        const emptyPerms: Record<number, AssistantPermission> = {};
+        permissions.forEach((p) => {
+          emptyPerms[p.id] = {
+            permission_id: p.id,
+            permission_name: p.name,
+            view: false,
+            create: false,
+            update: false,
+            delete: false,
+          };
+        });
+        setAssistantPermissions(emptyPerms);
       }
     } catch (error) {
       console.error('Failed to fetch assistant permissions:', error);
@@ -108,8 +123,8 @@ export function AssistantPermissionsModal({
       const emptyPerms: Record<number, AssistantPermission> = {};
       permissions.forEach((p) => {
         emptyPerms[p.id] = {
-          assistant_teacher_id: assistantId,
           permission_id: p.id,
+          permission_name: p.name,
           view: false,
           create: false,
           update: false,
@@ -142,8 +157,8 @@ export function AssistantPermissionsModal({
   ) => {
     setAssistantPermissions((prev) => {
       const current = prev[permissionId] || {
-        assistant_teacher_id: assistantId,
         permission_id: permissionId,
+        permission_name: '',
         view: false,
         create: false,
         update: false,
@@ -172,12 +187,13 @@ export function AssistantPermissionsModal({
 
     setSaving(true);
     try {
+      // بناء الـ payload بالشكل المطلوب
       const permissionsPayload = Object.values(assistantPermissions).map((p) => ({
         permission_id: p.permission_id,
-        view: p.view,
-        create: p.create,
-        update: p.update,
-        delete: p.delete,
+        view: p.view || false,
+        create: p.create || false,
+        update: p.update || false,
+        delete: p.delete || false,
       }));
 
       const payload = {
@@ -280,6 +296,8 @@ export function AssistantPermissionsModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-4">
             {filteredPermissions.map((permission) => {
               const perms = assistantPermissions[permission.id] || {
+                permission_id: permission.id,
+                permission_name: permission.name,
                 view: false,
                 create: false,
                 update: false,
@@ -300,7 +318,7 @@ export function AssistantPermissionsModal({
                     </Badge>
                   </div>
 
-                  {/* 🟢 3 أعمدة فقط (Create, Update, Delete) */}
+                  {/* 🟢 3 أعمدة فقط (Create, Update, Delete) - بدون View */}
                   <div className="grid grid-cols-3 gap-3">
                     {/* ➕ Create */}
                     <div className="flex items-center gap-2">
