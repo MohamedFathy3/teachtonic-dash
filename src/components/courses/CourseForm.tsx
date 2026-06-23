@@ -48,7 +48,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
     price: 0,
     start_date: '',
     end_date: '',
-    offer_id:1,
+    offer_id:'',
   });
 
   // ✅ تحميل بيانات الكورس عند التعديل
