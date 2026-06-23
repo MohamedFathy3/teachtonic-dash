@@ -86,7 +86,11 @@ export function AssistantPermissionsModal({
     
     setLoading(true);
     try {
-      const response = await api.get(`/assistant/permissions/${assistantId}`);
+    const response = await api.post('/access-control/permissions/', {
+    filter: {
+        assistantId
+    }
+});
       if (response.data) {
         const perms: AssistantPermission[] = response.data;
         const permsMap: Record<number, AssistantPermission> = {};
