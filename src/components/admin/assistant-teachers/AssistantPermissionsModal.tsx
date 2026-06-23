@@ -80,19 +80,24 @@ export function AssistantPermissionsModal({
     }
   };
 
-  // ✅ جلب صلاحيات المساعد الحالية
+  // ✅ جلب صلاحيات المساعد الحالية - الطريقة الصحيحة مع POST
   const fetchAssistantPermissions = async () => {
     if (!assistantId) return;
     
     setLoading(true);
     try {
-    const response = await api.post('/access-control/permissions/', {
-    filter: {
-        assistantId
-    }
-});
+      // 🟢 استخدام POST مع filter كما هو مطلوب
+      const response = await api.post('/access-control/permissions/', {
+        filter: {
+          assistantId: assistantId
+        }
+      });
+      
+      console.log('📥 Assistant permissions response:', response.data);
+      
       if (response.data) {
-        const perms: AssistantPermission[] = response.data;
+        // التأكد من أن البيانات هي array
+        const perms: AssistantPermission[] = Array.isArray(response.data) ? response.data : [];
         const permsMap: Record<number, AssistantPermission> = {};
         perms.forEach((p) => {
           permsMap[p.permission_id] = p;
@@ -134,7 +139,7 @@ export function AssistantPermissionsModal({
   // ✅ تحديث صلاحية معينة (بدون view)
   const updatePermission = (
     permissionId: number,
-    field: 'create' | 'update' | 'delete', // ❌ إزالة view
+    field: 'create' | 'update' | 'delete',
     value: boolean
   ) => {
     setAssistantPermissions((prev) => {
@@ -297,7 +302,7 @@ export function AssistantPermissionsModal({
                     </Badge>
                   </div>
 
-                  {/* 🟢 3 أعمدة فقط بدلاً من 4 (إزالة View) */}
+                  {/* 🟢 3 أعمدة فقط (Create, Update, Delete) */}
                   <div className="grid grid-cols-3 gap-3">
                     {/* ➕ Create */}
                     <div className="flex items-center gap-2">
