@@ -36,7 +36,7 @@ const AdminLoginPage: React.FC = () => {
       } else if (user.role === 'instructor') {
         navigate('/instructor/dashboard', { replace: true });
       } else {
-        navigate('/dashboard', { replace: true });
+        navigate('/instructor/dashboard', { replace: true });
       }
     }
   }, [isAuthenticated, user, authLoading, navigate]);

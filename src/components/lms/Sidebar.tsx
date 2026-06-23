@@ -24,6 +24,7 @@ import {
   Layers3,
   BellIcon,
   Share2,
+  UserCircle,
 } from "lucide-react";
 
 import { TranslationKey } from "@/i18n/translations";
@@ -53,7 +54,6 @@ const adminNav: NavItem[] = [
   { to: "AssistantInstructors", labelKey: "AssistantInstructors", icon: GraduationCap },
   { to: "courses", labelKey: "courses", icon: BookOpen },
   { to: "reviews", labelKey: "reviews", icon: Star },
-  // { to: "settings", labelKey: "settings", icon: Settings },
 ];
 
 const instructorNav: NavItem[] = [
@@ -61,7 +61,6 @@ const instructorNav: NavItem[] = [
   { to: "semesters", labelKey: "semesters", icon: GraduationCap },
   { to: "my-courses", labelKey: "myCourses", icon: BookOpen },
   { to: "my-AssistantIns", labelKey: "AssistantIns", icon: BookOpen },
-  // { to: "redeem-requests", labelKey: "redeemRequests", icon: Sparkles },
   { to: "students", labelKey: "students", icon: Users },
   { to: "attens", labelKey: "attens", icon: Users },
   { to: "exams", labelKey: "exams", icon: ClipboardList },
@@ -72,9 +71,8 @@ const instructorNav: NavItem[] = [
   { to: "Notifications", labelKey: "Notifications", icon: BellIcon },
   { to: "payment-codes", labelKey: "paymentCodes", icon: TagIcon },
   { to: "assignments", labelKey: "assignments", icon: FileEdit },
-  { to: "seo-counts", labelKey: "seocounts", icon: Share2   },
-    { to: "settings", labelKey: "settings", icon: Settings },
-
+  { to: "seo-counts", labelKey: "seocounts", icon: Share2 },
+  { to: "settings", labelKey: "settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -85,11 +83,29 @@ interface SidebarProps {
 }
 
 export function Sidebar({ active, onNavigate, open, onClose }: SidebarProps) {
-  const { t, role } = useApp();
+  const { t, role, instructorData } = useApp();
   const [websiteOpen, setWebsiteOpen] = useState(true);
 
   const items = role === "admin" ? adminNav : instructorNav;
   const isAdmin = role === "admin";
+  const isInstructor = role === "teacher" || role === "instructor";
+
+  // 🟢 تحديد الصورة التي ستظهر (شعار أو صورة المعلم)
+  const getHeaderImage = () => {
+    // إذا كان المستخدم معلم و لديه صورة
+    if (isInstructor && instructorData?.image?.fullUrl) {
+      return instructorData.image.fullUrl;
+    }
+    // إذا كان المستخدم معلم و لديه imageUrl
+    if (isInstructor && instructorData?.imageUrl) {
+      return instructorData.imageUrl;
+    }
+    // غير ذلك استخدم الشعار الافتراضي
+    return Logo;
+  };
+
+  // 🟢 تحديد ما إذا كانت الصورة من API أم لا
+  const isTeacherImage = isInstructor && (instructorData?.image?.fullUrl || instructorData?.imageUrl);
 
   return (
     <>
@@ -140,20 +156,51 @@ export function Sidebar({ active, onNavigate, open, onClose }: SidebarProps) {
           />
         </div>
 
-        {/* HEADER WITH LOGO ONLY */}
-        <div className="relative z-10 h-20 px-5 flex items-center justify-between border-b border-black/5 dark:border-white/10">
-          <img
-            src={Logo}
-            alt="Teachtomic logo"
-            className="w-full h-full object-contain"
-          />
+        {/* HEADER WITH LOGO OR INSTRUCTOR IMAGE */}
+        <div className="relative z-10 border-b border-black/5 dark:border-white/10">
+          {/* Logo/Image Section */}
+          <div className="h-20 px-5 flex items-center justify-between">
+            {/* 🟢 صورة المعلم أو الشعار */}
+            <div className="flex-1 flex items-center">
+              {isTeacherImage ? (
+                // عرض صورة المعلم مع إطار جميل
+                <div className="flex items-center gap-3">
+                  <div className="relative w-12 h-12 rounded-2xl overflow-hidden ring-2 ring-orange-500/30 shadow-lg shadow-orange-500/20">
+                    <img
+                      src={getHeaderImage()}
+                      alt={instructorData?.name || "Instructor"}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 ring-1 ring-white/20 rounded-2xl" />
+                  </div>
+                  <div className="hidden sm:block">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[120px]">
+                      {instructorData?.name || "Instructor"}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {instructorData?.type === 'teacher' ? 'Teacher' : 'Instructor'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                // عرض الشعار الافتراضي
+                <img
+                  src={Logo}
+                  alt="Teachtomic logo"
+                  className="w-full h-full object-contain max-w-[140px]"
+                />
+              )}
+            </div>
 
-          <button
-            onClick={onClose}
-            className="lg:hidden w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-700 dark:text-white"
-          >
-            <X size={18} />
-          </button>
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="lg:hidden w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-700 dark:text-white flex-shrink-0"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
         </div>
 
         {/* NAVIGATION */}

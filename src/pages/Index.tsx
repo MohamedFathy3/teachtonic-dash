@@ -40,13 +40,15 @@ import { CenterHoursPage } from "@/components/admin/center-hours/CenterHoursPage
 import { BooksPage } from "@/components/admin/books/BooksPage";
 import { InstructorRedeemRequests } from "@/components/redeem-requests/RedeemRequestsPage";
 import { SemestersPage } from "@/components/admin/SemestersPage";
+import api from "@/lib/api"; // ✅ استيراد الـ api
+import { useFavicon } from "@/hooks/useFavicon"; // ✅ استيراد الـ Hook
 
 function LMSApp() {
-  const { role, isLoading, isAuthenticated, user } = useApp();
+  const { role, isLoading, isAuthenticated, user, instructorData } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const [active, setActive] = useState("dashboard");
-
+ useFavicon();
   // تحديث الـ active بناءً على المسار الحالي
   useEffect(() => {
     const path = location.pathname;
