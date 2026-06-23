@@ -87,8 +87,7 @@ export function AssistantPermissionsModal({
     setLoading(true);
     try {
       // 🟢 استخدام POST مع filter كما هو مطلوب
-      const response = await api.post('/access-control/permissions/', {
-       
+      const response = await api.post('/assistant-teachers/show-permissions/', {
           assistant_teacher_id: assistantId
       });
       
