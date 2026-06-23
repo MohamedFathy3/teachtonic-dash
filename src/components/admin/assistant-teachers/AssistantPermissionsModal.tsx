@@ -88,9 +88,8 @@ export function AssistantPermissionsModal({
     try {
       // 🟢 استخدام POST مع filter كما هو مطلوب
       const response = await api.post('/access-control/permissions/', {
-        filter: {
-          assistantId: assistantId
-        }
+       
+          assistant_teacher_id: assistantId
       });
       
       console.log('📥 Assistant permissions response:', response.data);
