@@ -340,6 +340,7 @@ lms: "Learning Management System",
     // Error messages
 seocounts:"socile-counts",
     // Directions
+    watch_count:"WatchCount",
     ltr: "Left to Right",
     rtl: "Right to Left",
     stageId: "Stage ID",
@@ -434,6 +435,7 @@ seocounts:"socile-counts",
     seocounts:"عدد السوشيال ميديا",
 AssistantIns:"مساعد المدرس",
 
+watch_count:"عدد مرات الشاهده",
     downloadReport: "تحميل التقرير",
     reportDownloaded: "تم تحميل التقرير بنجاح",
     pleaseSelectDates: "الرجاء تحديد نطاق التاريخ",

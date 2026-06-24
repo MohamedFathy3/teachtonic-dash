@@ -12,6 +12,7 @@ export interface CourseDetail {
   content_link: string;
   lession_date: string;
   lession_time: string;
+  available_watch_count:number,
   price: string;
   discount: string;
   image?: {

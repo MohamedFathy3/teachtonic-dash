@@ -204,6 +204,8 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     price: 0,
     image_id: null as number | null,
     pdf_id: null as number | null,
+    available_watch_count:null as number | null,
+
   });
 
   // ✅ جلب بيانات الكورس من API
@@ -389,6 +391,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       lession_time: lessonForm.lession_time,
       price: lessonForm.price,
       pdf_id: lessonForm.pdf_id,
+      available_watch_count:lessonForm.available_watch_count,
     };
 
     if (selectedImageId) {
@@ -441,6 +444,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       price: 0,
       image_id: null,
       pdf_id: null,
+      available_watch_count:null,
     });
     setSelectedImageId(null);
     setSelectedImageUrl(null);
@@ -476,6 +480,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       price: parseFloat(lesson.price as any) || 0,
       image_id: lesson.image?.id ?? null,
       pdf_id: lesson.pdf?.id ?? null,
+      available_watch_count: lesson.available_watch_count ?? null,
     });
 
     if (lesson.image?.fullUrl) {
@@ -1410,7 +1415,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                 setLessonForm(prev => ({ ...prev, pdf_id: null }));
               }}
             />
-
+available_watch_count
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">{t('date') || 'التاريخ'}</label>
@@ -1421,6 +1426,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                   className="rounded-xl"
                 />
               </div>
+              
               <div>
                 <label className="block text-sm font-medium mb-1">{t('time') || 'الوقت'}</label>
                 <Input
@@ -1430,6 +1436,16 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                   className="rounded-xl"
                 />
               </div>
+                <div>
+                <label className="block text-sm font-medium mb-1">{t('watch_count') || 'مشاهده الدرس'}</label>
+                <Input
+                  type="number"
+                  value={lessonForm.available_watch_count}
+                  onChange={(e) => setLessonForm({ ...lessonForm, available_watch_count:parseFloat(e.target.value) || 0 })}
+                  className="rounded-xl"
+                />
+              </div>
+             
               <div>
                 <label className="block text-sm font-medium mb-1">{t('price') || 'السعر'}</label>
                 <Input

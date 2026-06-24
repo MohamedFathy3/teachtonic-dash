@@ -20,12 +20,13 @@ import {
   Key, Lock, Save, AlertCircle,
   GraduationCap,
   EyeOff,
-  MapPin
+  MapPin,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import api from '@/lib/api';
-import { toast  } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -127,6 +128,10 @@ export const InstructorStudents: React.FC = () => {
   const [toggleActiveStudent, setToggleActiveStudent] = useState<Student | null>(null);
   const [togglingActive, setTogglingActive] = useState(false);
   const [filterTypeOfStudy, setFilterTypeOfStudy] = useState<string>('');
+
+  // ✅ State for Reset Device
+  const [resetDeviceStudent, setResetDeviceStudent] = useState<Student | null>(null);
+  const [resettingDevice, setResettingDevice] = useState(false);
   
   // ✅ Pagination
   const [pagination, setPagination] = useState({
@@ -255,7 +260,7 @@ export const InstructorStudents: React.FC = () => {
     filterCodeParent,
     filterCenterHourId,
     filterTypeOfStudy,
-    filterRegion, // ✅ أضفناها
+    filterRegion, 
   ]);
 
   // ✅ Fetch students
@@ -343,7 +348,6 @@ export const InstructorStudents: React.FC = () => {
   };
 
   // ✅ Change Password Function
-  
   const handleChangePassword = async () => {
     if (!changePasswordStudent) return;
 
@@ -413,6 +417,37 @@ export const InstructorStudents: React.FC = () => {
       toast.error(error?.response?.data?.message || (lang === 'ar' ? 'فشل تغيير حالة الطالب' : 'Failed to change student status'));
     } finally {
       setTogglingActive(false);
+    }
+  };
+
+  // ✅ Reset Device Function
+  const handleResetDevice = async () => {
+    if (!resetDeviceStudent) return;
+
+    setResettingDevice(true);
+
+    try {
+      const response = await api.post(`/students/${resetDeviceStudent.id}/reset-device`, {});
+
+      if (response.data?.status === true || response.status === 200) {
+        toast.success(
+          lang === 'ar'
+            ? `✅ تم إعادة تعيين جهاز الطالب ${resetDeviceStudent.name} بنجاح`
+            : `✅ Device reset successfully for ${resetDeviceStudent.name}`
+        );
+        fetchStudents(pagination.currentPage);
+        setResetDeviceStudent(null);
+      } else {
+        throw new Error(response.data?.message || 'Failed to reset device');
+      }
+    } catch (error: any) {
+      console.error('Reset device error:', error);
+      toast.error(
+        error?.response?.data?.message ||
+        (lang === 'ar' ? '❌ فشل إعادة تعيين الجهاز' : '❌ Failed to reset device')
+      );
+    } finally {
+      setResettingDevice(false);
     }
   };
 
@@ -876,17 +911,7 @@ export const InstructorStudents: React.FC = () => {
                               src={student.imageUrl || student.image?.file_path || `https://lms.dentin.cloud/storage/${student.image?.file_path}`}
                               alt={student.name}
                               className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  const fallbackSpan = document.createElement('span');
-                                  fallbackSpan.className = 'text-xl font-bold text-primary';
-                                  fallbackSpan.textContent = student.name?.charAt(0)?.toUpperCase() || 'S';
-                                  parent.appendChild(fallbackSpan);
-                                }
-                              }}
+                            
                             />
                           ) : (
                             <span className="text-xl font-bold text-primary">
@@ -910,6 +935,13 @@ export const InstructorStudents: React.FC = () => {
                               <Badge className="bg-green-500 gap-1"><CheckCircle className="h-3 w-3" /> {t('active') || 'نشط'}</Badge>
                             ) : (
                               <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t('inactive') || 'غير نشط'}</Badge>
+                            )}
+                            {/* ✅ Device Blocked Badge */}
+                            {student.device_blocked && (
+                              <Badge variant="destructive" className="bg-red-500 gap-1">
+                                <XCircle className="h-3 w-3" /> 
+                                {lang === 'ar' ? 'جهاز محظور' : 'Device Blocked'}
+                              </Badge>
                             )}
                           </div>
                         </div>
@@ -948,6 +980,18 @@ export const InstructorStudents: React.FC = () => {
                             <span>{lang === 'ar' ? 'المنطقة' : 'Region'}: {student.region}</span>
                           </div>
                         )}
+                        {/* ✅ عرض حالة الجهاز */}
+                        <div className="flex items-center gap-2 text-sm">
+                          <Monitor className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            {student.device_blocked 
+                              ? (lang === 'ar' ? '🔴 جهاز محظور' : '🔴 Device Blocked')
+                              : student.device_id 
+                                ? (lang === 'ar' ? '🟢 جهاز مسجل' : '🟢 Device Registered')
+                                : (lang === 'ar' ? '🟢 جهاز مسجل' : '🟢 Device Registered')
+                            }
+                          </span>
+                        </div>
                       </div>
 
                       {/* Actions */}
@@ -998,6 +1042,19 @@ export const InstructorStudents: React.FC = () => {
                             </>
                           )}
                         </Button>
+
+                        {/* ✅ Reset Device Button - يظهر بس لو الجهاز محظور */}
+                        {student.device_blocked && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 rounded-full border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            onClick={() => setResetDeviceStudent(student)}
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            {lang === 'ar' ? 'إعادة تعيين الجهاز' : 'Reset Device'}
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -1213,6 +1270,49 @@ export const InstructorStudents: React.FC = () => {
                 toggleActiveStudent?.active
                   ? (lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate')
                   : (lang === 'ar' ? 'تفعيل' : 'Activate')
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ✅ Reset Device Confirmation Dialog */}
+      <AlertDialog open={!!resetDeviceStudent} onOpenChange={(open) => !open && setResetDeviceStudent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-red-500" />
+              {lang === 'ar' ? 'إعادة تعيين الجهاز' : 'Reset Device'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {lang === 'ar'
+                ? `هل أنت متأكد من إعادة تعيين جهاز الطالب "${resetDeviceStudent?.name}"؟`
+                : `Are you sure you want to reset the device for "${resetDeviceStudent?.name}"?`}
+              <br />
+              <br />
+              <span className="text-red-500 font-bold">
+                {lang === 'ar'
+                  ? '⚠️ سيتم فك حظر الجهاز ومسح بياناته، وسيتمكن الطالب من تسجيل الدخول من أي جهاز جديد.'
+                  : '⚠️ Device will be unblocked and data cleared. Student will be able to login from any new device.'}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetDevice}
+              className="bg-red-500 hover:bg-red-600"
+              disabled={resettingDevice}
+            >
+              {resettingDevice ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {lang === 'ar' ? 'جاري...' : 'Resetting...'}
+                </>
+              ) : (
+                lang === 'ar' ? 'تأكيد' : 'Confirm'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
