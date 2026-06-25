@@ -265,7 +265,7 @@ const AdminLoginPage: React.FC = () => {
                   <Input
                     id="email"
                     type="email"
-                    placeholder={lang === 'ar' ? 'admin@admin.com' : 'admin@admin.com'}
+                    placeholder={lang === 'ar' ? 'mr.eslammohamed@gmail.com' : 'mr.eslammohamed@gmail.com'}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
