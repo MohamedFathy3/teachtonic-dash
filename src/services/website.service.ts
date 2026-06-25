@@ -36,7 +36,7 @@ class WebsiteSectionService implements ISectionService {
 
   async getAll(type: SectionType, teacherId: number): Promise<any[]> {
     try {
-      const response = await api.post(`/${this.getListEndpoint(type)}`, { filter: { teacher_id: teacherId } });
+      const response = await api.post(`/${this.getListEndpoint(type)}`, { filters: { teacher_id: teacherId } });
       return response.data?.data || [];
     } catch (error) {
       console.error(`Failed to fetch ${type}:`, error);

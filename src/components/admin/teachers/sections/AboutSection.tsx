@@ -41,7 +41,7 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
     setLoading(true);
     try {
       const response = await api.post('/about/index', {
-        filter: { teacher_id: teacherId },
+        filters: { teacher_id: teacherId },
       });
       setAbouts(response.data?.data || []);
     } catch (error) {
