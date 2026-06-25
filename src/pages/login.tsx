@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, LogIn, Mail, Lock, Shield, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
-
+import logo from '@/assets/1.png'
 // صورة افتراضية - يمكنك تغيير الرابط بصورة أخرى
 const LOGIN_IMAGE = 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80';
 
@@ -125,7 +125,6 @@ const AdminLoginPage: React.FC = () => {
     >
       <div className="w-full max-w-6xl h-[90vh] max-h-[800px] flex rounded-2xl shadow-2xl overflow-hidden bg-white dark:bg-gray-800/95 backdrop-blur-xl">
         
-        {/* الجهة اليمنى - الصورة (تظهر دائماً على اليمين) */}
         <motion.div 
           variants={imageVariants}
           className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
@@ -146,8 +145,13 @@ const AdminLoginPage: React.FC = () => {
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.5, duration: 0.5 }}
               >
-                <div className="w-20 h-20 mx-auto bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 border border-white/30">
-                  <Shield className="h-10 w-10 text-white" />
+                <div className="w-30 h-30 mx-auto bg-white/20-sm  flex items-center justify-center mb-6 ">
+                   <img 
+            src={logo}
+            alt="LMS Login"
+            className="w-full h-full object-cover"
+          />
+          
                 </div>
               </motion.div>
               
@@ -157,7 +161,7 @@ const AdminLoginPage: React.FC = () => {
                 transition={{ delay: 0.7, duration: 0.5 }}
                 className="text-4xl font-bold"
               >
-                {lang === 'ar' ? 'منصة التعليم الإلكتروني' : 'LMS Platform'}
+                {lang === 'ar' ? ' Teacher Planet ' : 'Teacher Planet'}
               </motion.h2>
               
               <motion.p 
@@ -166,9 +170,8 @@ const AdminLoginPage: React.FC = () => {
                 transition={{ delay: 0.9, duration: 0.5 }}
                 className="text-lg text-white/90 leading-relaxed"
               >
-                {lang === 'ar' 
-                  ? 'نظام إدارة التعلم المتطور لتمكين المعلمين والطلاب من تحقيق أقصى إمكاناتهم'
-                  : 'Advanced Learning Management System empowering educators and students to reach their full potential'
+                {lang === 'ar'   ? 'اسهل و اسرع منصة في مصر ليك يا مستر 🤍'
+                  :  'The easiest and fastest platform in Egypt for you, Mr. 🤍'
                 }
               </motion.p>
               

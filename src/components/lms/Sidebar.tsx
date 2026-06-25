@@ -341,10 +341,11 @@ export function Sidebar({ active, onNavigate, open, onClose }: SidebarProps) {
               </div>
               <div>
                 <p className="font-bold text-sm text-gray-900 dark:text-white">
-                  LMS Dashboard
+                  Teacher planet platform 
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Modern Education Platform
+                 اسهل واسرع منصة في مصر ليك يا مستر ومن الاخر هدافنا زيادة عدد طلابك مش شكل و خلاص 😎 
+
                 </p>
               </div>
             </div>
