@@ -1,23 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/components/courses/CourseForm.tsx
-import api from '@/lib/api';
-
 import React, { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import { useApp } from '@/contexts/AppContext';
 import { useCourses } from '@/hooks/useCourses';
+import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 import FileUploader from '@/components/FileUploader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, ChevronLeft, Save, Gift } from 'lucide-react';
 import type { Course, CourseFormData } from '@/types/course.types';
-import { AsyncSelect } from '@/components/ui/AsyncSelect'; // 🔥 أضف هذا الاستيراد
+import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
-import { useTeacherMeta } from '@/hooks/useTeacherMeta'; // عدّل المسار حسب مشروعك
 
 interface CourseFormProps {
   course?: Course;
@@ -28,14 +25,24 @@ interface CourseFormProps {
 export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCancel }) => {
   const { t, lang, user } = useApp();
   const teacherId = user?.id;
-  const { stages, subjects,offers  } = useTeacherMeta(teacherId);
+  
+  // ✅ استخدم الـ Hook
+  const { 
+    stages, 
+    subjects, 
+    offers, 
+    loading: metaLoading,
+    error: metaError
+  } = useTeacherMeta(teacherId);
+  
   const { createCourse, updateCourse, loading, error } = useCourses({ autoFetch: false });
+  
   const [formData, setFormData] = useState<Partial<CourseFormData>>({
     teacher_id: user?.id || 1,
     stage_id: null,
     subject_id: null,
-    semester_id :null ,
-    image: course?.image?.id || 0, // ✅ استخدام ID الصورة الموجودة
+    semester_id: null,
+    image: course?.image?.id || 0,
     title: '',
     title_ar: '',
     description: '',
@@ -48,12 +55,13 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
     price: 0,
     start_date: '',
     end_date: '',
-    offer_id:'',
+    offer_id: null,
   });
 
   // ✅ تحميل بيانات الكورس عند التعديل
   useEffect(() => {
     if (course) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         teacher_id: course.teacher_id,
         stage_id: course.stage_id,
@@ -69,30 +77,25 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
         hour_time_course: course.hour_time_course,
         type: course.type,
         count_student: course.count_student,
-        price: parseFloat(course.price),
+        price: parseFloat(course.price as any),
         start_date: course.start_date,
         end_date: course.end_date,
-        offer_id: course.offer_id,
+        offer_id: course.offer_id || null,
       });
     }
   }, [course]);
 
-  // ✅ معالج رفع الصورة
   const handleImageUpload = (imageId: number) => {
     setFormData(prev => ({ ...prev, image: imageId }));
-    console.log('✅ Image uploaded/updated with ID:', imageId);
   };
 
-  // ✅ معالج إزالة الصورة
   const handleRemoveImage = () => {
     setFormData(prev => ({ ...prev, image: 0 }));
-    console.log('🗑️ Image removed from form');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ✅ التحقق من وجود صورة
     if (!formData.image || formData.image === 0) {
       alert(t('pleaseUploadImage') || 'Please upload a course image');
       return;
@@ -114,15 +117,47 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // ✅ فلترة المواد حسب المرحلة
+  const filteredSubjects = subjects?.filter((s: any) => s.stage_id === formData.stage_id) || [];
+
+  // ✅ جلب اسم المرحلة حسب اللغة
+  const getStageName = (stage: any) => {
+    if (!stage) return '';
+    return lang === 'ar' ? (stage.name_ar || stage.name) : stage.name;
+  };
+
+  // ✅ جلب اسم المادة حسب اللغة
+  const getSubjectName = (subject: any) => {
+    if (!subject) return '';
+    return lang === 'ar' ? (subject.name_ar || subject.name) : subject.name;
+  };
+
+  // ✅ جلب اسم العرض حسب اللغة
+  const getOfferName = (offer: any) => {
+    if (!offer) return '';
+    return lang === 'ar' ? (offer.title_ar || offer.title) : offer.title;
+  };
+
+  if (metaLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (metaError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{metaError}</AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onCancel}
-          className="gap-2"
-        >
+        <Button variant="ghost" size="sm" onClick={onCancel} className="gap-2">
           <ChevronLeft className="h-4 w-4" />
           {t('back')}
         </Button>
@@ -143,7 +178,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
               </Alert>
             )}
 
-            {/* ✅ Course Image Upload - مع دعم الصورة الحالية */}
+            {/* ✅ Course Image Upload */}
             <div className="space-y-2">
               <Label>{t('courseImage')} *</Label>
               <FileUploader
@@ -290,7 +325,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
                     type="number"
                     step="0.01"
                     value={formData.price}
-                    onChange={(e) => handleChange('price', parseFloat(e.target.value))}
+                    onChange={(e) => handleChange('price', parseFloat(e.target.value) || 0)}
                     placeholder="Course price"
                     className="rounded-xl"
                     required
@@ -321,94 +356,112 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
               </div>
             </div>
 
-            {/* Stage, Subject, Semester - يمكن إضافتها من API منفصل */}
+            {/* ✅ Academic Info */}
             <div className="space-y-4 pt-4 border-t">
               <h3 className="text-lg font-semibold">{t('academicInfo')}</h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>{t('stage')} *</Label>
+            {/* ✅ Stage Select */}
+<div className="space-y-2">
+  <Label>{t('stage')} *</Label>
+  <Select
+    value={formData.stage_id?.toString() || 'none'}
+    onValueChange={(value) => {
+      handleChange('stage_id', value === 'none' ? null : Number(value));
+      handleChange('subject_id', null);
+    }}
+  >
+    <SelectTrigger className="rounded-xl">
+      <SelectValue placeholder={lang === 'ar' ? 'اختر المرحلة' : 'Select Stage'} />
+    </SelectTrigger>
+    <SelectContent>
+      {/* ✅ استخدم 'none' بدلاً من '' */}
+      <SelectItem value="none">{lang === 'ar' ? 'اختر المرحلة' : 'Select Stage'}</SelectItem>
+      {stages.map((stage: any) => (
+        <SelectItem key={stage.id} value={stage.id.toString()}>
+          {getStageName(stage)}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
 
-                  <Select
-                    value={formData.stage_id?.toString()}
-                    onValueChange={(value) => handleChange('stage_id', Number(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Stage" />
-                    </SelectTrigger>
+{/* ✅ Subject Select */}
+<div className="space-y-2">
+  <Label>{t('subject')} *</Label>
+  <Select
+    value={formData.subject_id?.toString() || 'none'}
+    onValueChange={(value) => {
+      handleChange('subject_id', value === 'none' ? null : Number(value));
+    }}
+    disabled={!formData.stage_id || filteredSubjects.length === 0}
+  >
+    <SelectTrigger className="rounded-xl">
+      <SelectValue placeholder={
+        !formData.stage_id 
+          ? (lang === 'ar' ? 'اختر المرحلة أولاً' : 'Select stage first')
+          : filteredSubjects.length === 0
+            ? (lang === 'ar' ? 'لا توجد مواد' : 'No subjects')
+            : (lang === 'ar' ? 'اختر المادة' : 'Select Subject')
+      } />
+    </SelectTrigger>
+    <SelectContent>
+      {/* ✅ استخدم 'none' بدلاً من '' */}
+      <SelectItem value="none">{lang === 'ar' ? 'اختر المادة' : 'Select Subject'}</SelectItem>
+      {filteredSubjects.map((subject: any) => (
+        <SelectItem key={subject.id} value={subject.id.toString()}>
+          {getSubjectName(subject)}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
+            </div>
 
-                    <SelectContent>
-                      {stages.map((stage: any) => (
-                        <SelectItem key={stage.id} value={stage.id.toString()}>
-                          {lang === 'ar' ? stage.name_ar : stage.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{t('subject')} *</Label>
-
-                  <Select
-                    value={formData.subject_id?.toString()}
-                    onValueChange={(value) => handleChange('subject_id', Number(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Subject" />
-                    </SelectTrigger>
-
-                    <SelectContent>
-                      {subjects
-                        .filter((s: any) => s.stage_id === formData.stage_id)
-                        .map((subject: any) => (
-                          <SelectItem key={subject.id} value={subject.id.toString()}>
-                            {lang === 'ar' ? subject.name_ar : subject.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{t('semester')} *</Label>
-                  <AsyncSelect
-                    configKey="semesters"
-                    value={formData.semester_id}
-                    onChange={(id, semester) => {
-                      handleChange('semester_id', id );
-                      console.log('Selected semester:', id, semester);
-                    }}
-                    label=""
-                    placeholder={lang === 'ar' ? 'اختر الترم' : 'Select Semester'}
-                    required
-                    extraFilters={{ teacher_id: user?.id }}
-                  />
-                </div>
-                <div>
+            {/* ✅ Offer Select */}
+          {/* ✅ Offer Select - تعديل value */}
+<div className="space-y-2">
   <Label className="flex items-center gap-1">
     <Gift className="h-4 w-4 text-orange-500" />
     {lang === 'ar' ? 'عرض خصم' : 'Discount Offer'}
   </Label>
-  <select
-    className="w-full h-10 rounded-xl border bg-white dark:bg-gray-800 px-3 mt-1"
-    value={formData.offer_id ?? ''}
-    onChange={(e) => handleChange('offer_id', e.target.value ? Number(e.target.value) : null)}
+  <Select
+    value={formData.offer_id?.toString() || 'none'}
+    onValueChange={(value) => {
+      // ✅ إذا كانت القيمة 'none' نضع null وإلا نحولها لرقم
+      handleChange('offer_id', value === 'none' ? null : Number(value));
+    }}
   >
-    <option value="">
-      {lang === 'ar' ? 'بدون عرض' : 'No Offer'}
-    </option>
-    {offers?.map((offer: any) => (
-      <option key={offer.id} value={offer.id}>
-        {lang === 'ar' ? (offer.title_ar || offer.title) : offer.title} - {offer.offer_discount}%
-      </option>
-    ))}
-  </select>
+    <SelectTrigger className="rounded-xl">
+      <SelectValue placeholder={lang === 'ar' ? 'بدون عرض' : 'No Offer'} />
+    </SelectTrigger>
+    <SelectContent>
+      {/* ✅ استخدم 'none' بدلاً من '' */}
+      <SelectItem value="none">{lang === 'ar' ? 'بدون عرض' : 'No Offer'}</SelectItem>
+      {offers.map((offer: any) => (
+        <SelectItem key={offer.id} value={offer.id.toString()}>
+          {getOfferName(offer)} - {offer.offer_discount}%
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
 </div>
-              </div>
-            </div>
-
-
+{/* ✅ Semester Select */}
+<div className="space-y-2">
+  <Label>{t('semester')} *</Label>
+  <AsyncSelect
+    configKey="semesters"
+    value={formData.semester_id || 'none'}
+    onChange={(id, semester) => {
+      // ✅ إذا كانت القيمة 'none' نضع null
+      handleChange('semester_id', id === 'none' ? null : id);
+      console.log('Selected semester:', id, semester);
+    }}
+    label=""
+    placeholder={lang === 'ar' ? 'اختر الترم' : 'Select Semester'}
+    required
+    extraFilters={{ teacher_id: user?.id }}
+  />
+</div>
             {/* Submit Buttons */}
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button

@@ -662,26 +662,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               {description || about || t('noDescription')}
             </p>
           </motion.div>
-          <motion.div variants={fadeIn}>
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <Award className="h-5 w-5 text-primary" />
-              {t('keyFeatures')}
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {features.map((feature, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950/20"
-                >
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">{feature}</span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+        
           <motion.div variants={fadeIn} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <InfoCard icon={Calendar} label={t('startDate')} value={formatDate(course.start_date)} />
             <InfoCard icon={Calendar} label={t('endDate')} value={formatDate(course.end_date)} />
