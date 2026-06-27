@@ -92,14 +92,7 @@ const GROUPS = [
 
 // ✅ تعريف الحقول - مع دعم اللغتين
 const FIELDS = {
-  general: [
-    { key: 'site_name', label: 'Site Name', label_ar: 'اسم الموقع', type: 'text', placeholder: 'Enter site name', placeholder_ar: 'أدخل اسم الموقع' },
-    { key: 'site_title', label: 'Site Title', label_ar: 'عنوان الموقع', type: 'text', placeholder: 'Enter site title', placeholder_ar: 'أدخل عنوان الموقع' },
-    { key: 'site_description', label: 'Site Description', label_ar: 'وصف الموقع', type: 'textarea', placeholder: 'Enter site description', placeholder_ar: 'أدخل وصف الموقع' },
-    { key: 'site_url', label: 'Site URL', label_ar: 'رابط الموقع', type: 'url', placeholder: 'Enter site URL', placeholder_ar: 'أدخل رابط الموقع' },
-    { key: 'site_keywords', label: 'Keywords', label_ar: 'الكلمات المفتاحية', type: 'text', placeholder: 'Enter keywords separated by comma', placeholder_ar: 'أدخل الكلمات المفتاحية مفصولة بفواصل' },
-    { key: 'default_language', label: 'Default Language', label_ar: 'اللغة الافتراضية', type: 'text', placeholder: 'en/ar', placeholder_ar: 'en/ar' },
-  ],
+
   seo: [
     { key: 'seo_title', label: 'SEO Title', label_ar: 'عنوان SEO', type: 'text', placeholder: 'Enter SEO title', placeholder_ar: 'أدخل عنوان SEO' },
     { key: 'seo_description', label: 'SEO Description', label_ar: 'وصف SEO', type: 'textarea', placeholder: 'Enter SEO description', placeholder_ar: 'أدخل وصف SEO' },
@@ -107,8 +100,6 @@ const FIELDS = {
     { key: 'og_title', label: 'OG Title', label_ar: 'عنوان OG', type: 'text', placeholder: 'Enter OG title', placeholder_ar: 'أدخل عنوان OG' },
     { key: 'og_description', label: 'OG Description', label_ar: 'وصف OG', type: 'textarea', placeholder: 'Enter OG description', placeholder_ar: 'أدخل وصف OG' },
     { key: 'og_image', label: 'OG Image', label_ar: 'صورة OG', type: 'image', placeholder: 'Enter OG image URL', placeholder_ar: 'أدخل رابط صورة OG' },
-    { key: 'og_image_width', label: 'OG Image Width', label_ar: 'عرض الصورة', type: 'text', placeholder: '1200', placeholder_ar: '1200' },
-    { key: 'og_image_height', label: 'OG Image Height', label_ar: 'ارتفاع الصورة', type: 'text', placeholder: '630', placeholder_ar: '630' },
     { key: 'og_type', label: 'OG Type', label_ar: 'نوع OG', type: 'text', placeholder: 'website', placeholder_ar: 'website' },
     { key: 'og_url', label: 'OG URL', label_ar: 'رابط OG', type: 'url', placeholder: 'Enter OG URL', placeholder_ar: 'أدخل رابط OG' },
     { key: 'og_site_name', label: 'OG Site Name', label_ar: 'اسم موقع OG', type: 'text', placeholder: 'My Website', placeholder_ar: 'My Website' },
@@ -117,9 +108,7 @@ const FIELDS = {
     { key: 'twitter_card', label: 'Twitter Card', label_ar: 'بطاقة تويتر', type: 'text', placeholder: 'summary/summary_large_image', placeholder_ar: 'summary/summary_large_image' },
   ],
   social: [
-    { key: 'facebook_app_id', label: 'Facebook App ID', label_ar: 'معرف تطبيق فيسبوك', type: 'text', placeholder: 'Enter Facebook App ID', placeholder_ar: 'أدخل معرف تطبيق فيسبوك' },
     { key: 'facebook_page', label: 'Facebook Page', label_ar: 'صفحة فيسبوك', type: 'url', placeholder: 'Enter Facebook page URL', placeholder_ar: 'أدخل رابط صفحة فيسبوك' },
-    { key: 'twitter_username', label: 'Twitter Username', label_ar: 'اسم تويتر', type: 'text', placeholder: 'Enter Twitter username', placeholder_ar: 'أدخل اسم المستخدم' },
     { key: 'instagram_url', label: 'Instagram URL', label_ar: 'رابط انستغرام', type: 'url', placeholder: 'Enter Instagram URL', placeholder_ar: 'أدخل رابط انستغرام' },
     { key: 'youtube_url', label: 'YouTube URL', label_ar: 'رابط يوتيوب', type: 'url', placeholder: 'Enter YouTube URL', placeholder_ar: 'أدخل رابط يوتيوب' },
     { key: 'linkedin_url', label: 'LinkedIn URL', label_ar: 'رابط لينكد إن', type: 'url', placeholder: 'Enter LinkedIn URL', placeholder_ar: 'أدخل رابط لينكد إن' },
@@ -143,8 +132,6 @@ const FIELDS = {
     { key: 'favicon_16', label: 'Favicon 16x16', label_ar: 'أيقونة 16×16', type: 'image', placeholder: 'https://example.com/favicon-16x16.png', placeholder_ar: 'https://example.com/favicon-16x16.png' },
     { key: 'favicon_apple', label: 'Apple Touch Icon', label_ar: 'أيقونة آبل', type: 'image', placeholder: 'https://example.com/apple-touch-icon.png', placeholder_ar: 'https://example.com/apple-touch-icon.png' },
     { key: 'favicon_android', label: 'Android Chrome Icon', label_ar: 'أيقونة أندرويد', type: 'image', placeholder: 'https://example.com/android-chrome-192x192.png', placeholder_ar: 'https://example.com/android-chrome-192x192.png' },
-    { key: 'favicon_ms', label: 'MS Tile Icon', label_ar: 'أيقونة مايكروسوفت', type: 'image', placeholder: 'https://example.com/mstile-150x150.png', placeholder_ar: 'https://example.com/mstile-150x150.png' },
-    { key: 'manifest_json', label: 'Web Manifest', label_ar: 'ملف المانيفست', type: 'url', placeholder: 'https://example.com/site.webmanifest', placeholder_ar: 'https://example.com/site.webmanifest' },
     { key: 'browserconfig_xml', label: 'Browser Config', label_ar: 'ملف إعدادات المتصفح', type: 'url', placeholder: 'https://example.com/browserconfig.xml', placeholder_ar: 'https://example.com/browserconfig.xml' },
   ],
 };

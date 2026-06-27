@@ -210,15 +210,20 @@ const AdminLoginPage: React.FC = () => {
           style={{ order: dir === 'rtl' ? 1 : 2 }}
         >
           <div className="w-full max-w-md">
-            <div className="text-center mb-8">
+            <div className="text-center mb-5">
               <motion.div 
                 className="flex justify-center mb-4 lg:hidden"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               >
-                <div className="h-16 w-16 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Shield className="h-8 w-8 text-white" />
+              <div className="max-w-[220px] max-h-md mx-auto bg-white/20-sm  flex items-center justify-center mb-1 ">
+                   <img 
+            src={logo}
+            alt="LMS Login"
+            className="w-full h-full object-cover"
+          />
+          
                 </div>
               </motion.div>
               
