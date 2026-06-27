@@ -273,9 +273,7 @@ export const InstructorExams: React.FC = () => {
               <button onClick={() => setViewMode('grid')} className={`p-2 px-3 rounded-lg transition-all duration-300 ${viewMode === 'grid' ? 'bg-white dark:bg-gray-800 text-primary shadow-md' : 'hover:bg-white/50'}`}>
                 <Grid3x3 className="h-4 w-4" />
               </button>
-              <button onClick={() => setViewMode('table')} className={`p-2 px-3 rounded-lg transition-all duration-300 ${viewMode === 'table' ? 'bg-white dark:bg-gray-800 text-primary shadow-md' : 'hover:bg-white/50'}`}>
-                <List className="h-4 w-4" />
-              </button>
+           
             </div>
 
             {/* Export Button */}

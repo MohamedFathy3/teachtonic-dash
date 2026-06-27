@@ -290,7 +290,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
                     type="number"
                     step="0.01"
                     value={formData.price}
-                    onChange={(e) => handleChange('price', parseFloat(e.target.value) || 0)}
+                    onChange={(e) => handleChange('price', parseFloat(e.target.value))}
                     placeholder="Course price"
                     className="rounded-xl"
                     required

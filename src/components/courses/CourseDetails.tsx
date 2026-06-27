@@ -1451,9 +1451,9 @@ available_watch_count
                 <Input
                   type="number"
                   value={lessonForm.price}
-                  onChange={(e) => setLessonForm({ ...lessonForm, price: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => setLessonForm({ ...lessonForm, price: parseFloat(e.target.value)})}
                   placeholder="0"
-                  min="0"
+                  min=""
                   step="0.5"
                   className="rounded-xl"
                 />
