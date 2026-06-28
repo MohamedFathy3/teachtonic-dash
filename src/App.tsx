@@ -112,15 +112,15 @@ const App = () => {
                 <Route path="redeem-requests" element={<InstructorRedeemRequests />} />
                 <Route path="semesters" element={<SemestersPage />} />
                 <Route path="center-hours" element={<CenterHoursPage />} />
-               <Route path="lesson/:lessonId" element={<LessonDetailsPage />} />
-               <Route path="books/:id" element={<BookDetailsPage />} />
-<Route path="offers" element={<OffersPage />} />
-<Route path="Notifications" element={<BannersPage />} />
-<Route path="attens" element={<StudentAttendance />} />
+                <Route path="lesson/:lessonId" element={<LessonDetailsPage />} />
+                <Route path="books/:id" element={<BookDetailsPage />} />
+                <Route path="offers" element={<OffersPage />} />
+                <Route path="Notifications" element={<BannersPage />} />
+                <Route path="attens" element={<StudentAttendance />} />
                 <Route path="my-AssistantIns" element={<MyAssistantPage />} />
                 <Route path="settings" element={<SettingsPages  />} />
-<Route path="seo-counts" element={<SeoCountsPage />} />
-<Route path="semesters/:id" element={<SemesterDetailsPage />} />
+                <Route path="seo-counts" element={<SeoCountsPage />} />
+                <Route path="semesters/:id" element={<SemesterDetailsPage />} />
 
               </Route>
 

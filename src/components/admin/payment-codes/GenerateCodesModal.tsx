@@ -264,6 +264,7 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
             label={lang === 'ar' ? 'اختر الكورس' : 'Select Course'}
             placeholder={lang === 'ar' ? 'ابحث عن كورس...' : 'Search for course...'}
             required
+            extraFilters={{ teacher_id: user?.id }}
           />
         )}
         
@@ -277,7 +278,7 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
             label={lang === 'ar' ? 'اختر الترم' : 'Select Semester'}
             placeholder={lang === 'ar' ? 'ابحث عن ترم...' : 'Search for semester...'}
             required
-            extraFilters={teacherId ? { teacher_id: teacherId } : undefined}
+             extraFilters={{ teacher_id: user?.id }} 
           />
         )}
         
@@ -293,6 +294,7 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
               label={lang === 'ar' ? 'اختر الكورس أولاً' : 'Select Course First'}
               placeholder={lang === 'ar' ? 'ابحث عن كورس...' : 'Search for course...'}
               required
+              extraFilters={{ teacher_id: user?.id }}
             />
             
             {formData.course_id && (
