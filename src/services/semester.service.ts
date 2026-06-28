@@ -122,7 +122,6 @@ class SemesterService extends BaseService<Semester> {
         },
       };
     } catch (error) {
-      console.error('API Error:', error);
       throw error;
     }
   }
@@ -200,7 +199,6 @@ class SemesterService extends BaseService<Semester> {
         paginate: false,
       });
       
-     ('🎁 Offers for select:', response.data?.data);
       return response.data?.data || [];
     } catch (error) {
       console.error('Error fetching offers:', error);

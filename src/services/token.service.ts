@@ -22,7 +22,6 @@ class TokenService {
       sameSite: 'lax',
       path: '/'
     });
-    console.log('✅ Token saved');
   }
 
   getToken(): string | null {
@@ -36,9 +35,7 @@ class TokenService {
   setUser(user: User): void {
     try {
       localStorage.setItem(this.USER_KEY, JSON.stringify(user));
-      console.log('✅ User saved with role:', user.role);
     } catch (error) {
-      console.error('❌ Error saving user:', error);
     }
   }
 
@@ -47,10 +44,8 @@ class TokenService {
       const userStr = localStorage.getItem(this.USER_KEY);
       if (!userStr) return null;
       const user = JSON.parse(userStr) as User;
-      console.log('📖 User loaded with role:', user.role);
       return user;
     } catch (error) {
-      console.error('❌ Error parsing user:', error);
       localStorage.removeItem(this.USER_KEY);
       return null;
     }

@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import FileUploader from '@/components/FileUploader';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -43,6 +44,7 @@ import {
   Image as ImageIcon,
   Gift,
   Percent,
+  Eye,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast  } from "@/hooks/use-toast";
@@ -51,6 +53,7 @@ export const SemestersPage: React.FC = () => {
   const { lang, user } = useApp();
   const teacherId = user?.id;
   const isRTL = lang === 'ar';
+const navigate = useNavigate();
 
   const { subjects, offers } = useTeacherMeta(teacherId);
 
@@ -701,6 +704,7 @@ export const SemestersPage: React.FC = () => {
                         exit={{ opacity: 0, x: 20 }}
                         transition={{ delay: idx * 0.03 }}
                         className="border-b hover:bg-muted/30 group"
+                        
                       >
                         <TableCell>
                           <input
@@ -710,7 +714,8 @@ export const SemestersPage: React.FC = () => {
                             className="rounded border-gray-300 dark:border-gray-600"
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell
+                      >
                           {semester.imageUrl ? (
                             <img
                               src={semester.imageUrl}
@@ -783,6 +788,13 @@ export const SemestersPage: React.FC = () => {
                             >
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
+                               <Link 
+          to={`/instructor/semesters/${semester.id}`}
+          className="font-medium hover:text-primary transition-colors hover:underline"
+          onClick={(e) => e.stopPropagation()} // ✅ منع انتشار الضغط
+        >
+        <Eye className="h-4 w-4 mt-2 text-muted-foreground group-hover:text-primary transition-colors" />
+        </Link>
                           </div>
                         </TableCell>
                       </motion.tr>

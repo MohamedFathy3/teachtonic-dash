@@ -693,6 +693,7 @@ const handleToggleStar = async (course: Course) => {
                         custom={idx}
                       >
                         <CourseCard
+                        
                           course={course}
                           onView={handleViewCourse}
                           onEdit={handleEditCourse}

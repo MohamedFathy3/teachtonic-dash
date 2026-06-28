@@ -46,6 +46,9 @@ interface AsyncSelectProps {
   placeholder?: string;
   searchPlaceholder?: string;
   label?: string;
+    autoFetch?: boolean; // ✅ إضافة prop
+  initialData?: AsyncSelectOption[]; // ✅ بيانات أولية
+  initialSelected?: number | null; 
   required?: boolean;
   extraFilters?: Record<string, any>;
   disabled?: boolean;
@@ -72,6 +75,9 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       value,
       onChange,
       configKey,
+         autoFetch = false, // ✅ افتراضي false
+      initialData = [],
+      initialSelected = null,
       fetchFn: customFetchFn,
       placeholder = 'Select...',
       searchPlaceholder = 'Search...',
@@ -116,7 +122,18 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
     const triggerRef = useRef<HTMLButtonElement>(null);
     const isFirstOpenRef = useRef(true);
     const prevExtraFiltersRef = useRef<string>();
+    useEffect(() => {
+      if (autoFetch && !initialLoaded) {
+        fetchOptions(1, perPage, '', false);
+      }
+    }, [autoFetch]);
 
+    // ✅ جلب البيانات عند فتح الـ Popover (إذا مش autoFetch)
+    useEffect(() => {
+      if (open && !initialLoaded && !autoFetch) {
+        fetchOptions(page, perPage, searchDebounced, false);
+      }
+    }, [open]);
     const fetchFn = configKey
       ? selectFactory.createSelectFetcher(configKey)
       : customFetchFn;
@@ -182,14 +199,7 @@ const fetchOptions = useCallback(async (
       }
     }
 
-   ('🔍 AsyncSelect fetchOptions:', {
-      configKey,
-      searchTerm,
-      searchFilters,
-      extraFilters,
-      page: pageNum,
-      perPage: perPageNum,
-    });
+
 
     const response = await fetchFn({
       page: pageNum,

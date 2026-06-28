@@ -448,17 +448,18 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
 {/* ✅ Semester Select */}
 <div className="space-y-2">
   <Label>{t('semester')} *</Label>
-  <AsyncSelect
+    <AsyncSelect
     configKey="semesters"
-    value={formData.semester_id || 'none'}
+    value={formData.semester_id}
     onChange={(id, semester) => {
-      // ✅ إذا كانت القيمة 'none' نضع null
-      handleChange('semester_id', id === 'none' ? null : id);
+      handleChange('semester_id', id);
     }}
     label=""
     placeholder={lang === 'ar' ? 'اختر الترم' : 'Select Semester'}
     required
+    autoFetch={true} // ✅ هات البيانات تلقائياً
     extraFilters={{ teacher_id: user?.id }}
+    initialSelected={formData.semester_id}
   />
 </div>
             {/* Submit Buttons */}

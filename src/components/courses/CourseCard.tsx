@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/courses/CourseCard.tsx
 
 import React, { useState } from 'react';
@@ -76,12 +77,13 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       <Card className={`overflow-hidden rounded-2xl border transition-all duration-300 ${isDeleted ? 'bg-muted/30 border-red-200/50' : 'hover:shadow-xl'
         }`}>
         {/* Course Image */}
-        <div className="relative aspect-[16/9] bg-gradient-to-br from-gray-900 to-gray-800">
+        <div className="relative aspect-[16/9] bg-gradient-to-br from-gray-900 to-gray-800" >
           {course.image?.fullUrl || course.imageUrl ? (
             <img
               src={course.image?.fullUrl || course.imageUrl}
               alt={title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+               
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -90,7 +92,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           )}
 
           {/* ✅ Overlay Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"  onClick={() => onView(course)} />
 
           {/* ✅ Badges Row - Top */}
           <div className="absolute top-3 left-3 right-3 flex flex-wrap gap-2">
