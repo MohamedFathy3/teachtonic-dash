@@ -90,23 +90,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // دالة لجلب بيانات المعلم من الـ API
   const fetchInstructorData = async () => {
     if (!isAuthenticated || !token) {
-      console.log('⏭️ Skipping instructor fetch: Not authenticated');
+     ('⏭️ Skipping instructor fetch: Not authenticated');
       return;
     }
 
     // جلب فقط إذا كان المستخدم معلم (teacher أو instructor)
     if (role !== 'teacher' && role !== 'instructor') {
-      console.log('⏭️ Skipping instructor fetch: User is not an instructor');
+     ('⏭️ Skipping instructor fetch: User is not an instructor');
       return;
     }
 
     setIsLoadingInstructor(true);
     try {
-      console.log('🔄 Fetching instructor data...');
+     ('🔄 Fetching instructor data...');
       
       const response = await api.get('/admin/check-auth');
       
-      console.log('✅ Instructor data fetched:', response.data);
+     ('✅ Instructor data fetched:', response.data);
       
       if (response.data?.result === 'Success' && response.data?.data) {
         const data = response.data.data;
@@ -121,7 +121,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           email: data.email,
         });
         
-        console.log('✅ Instructor data set successfully:', instructorData);
+       ('✅ Instructor data set successfully:', instructorData);
       } else {
         console.warn('⚠️ Unexpected instructor data structure:', response.data);
       }
@@ -185,7 +185,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
-  console.log('🔄 AppContext value updated:', { 
+ ('🔄 AppContext value updated:', { 
     isAuthenticated, 
     role,
     uiRole,

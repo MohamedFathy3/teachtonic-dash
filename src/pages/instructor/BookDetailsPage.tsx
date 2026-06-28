@@ -94,7 +94,6 @@ export const BookDetailsPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.get(`/book/${id}`);
-      console.log('📚 Book details:', response.data);
       setBook(response.data.data);
     } catch (error) {
       console.error('Error fetching book:', error);

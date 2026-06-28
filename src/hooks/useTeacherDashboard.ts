@@ -44,7 +44,6 @@ export function useTeacherDashboard(teacherId: number) {
   const fetchBooks = useCallback(async () => {
     try {
       const response = await teachersService.getTeacherBooks(teacherId);
-      console.log("📚 Fetched books:", response?.length);
       setAllBooks(response || []);
     } catch (error) {
       console.error('Error fetching books:', error);
@@ -55,7 +54,6 @@ export function useTeacherDashboard(teacherId: number) {
   const fetchSemesters = useCallback(async () => {
     try {
       const response = await teachersService.getTeacherSemesters(teacherId);
-      console.log("📚 Fetched semesters:", response?.length);
       setAllSemesters(response || []);
     } catch (error) {
       console.error('Error fetching semesters:', error);
@@ -69,7 +67,6 @@ export function useTeacherDashboard(teacherId: number) {
     
     try {
       const response = await teachersService.getAllExamsByTeacher(teacherId);
-      console.log("📝 All Exams fetched once:", response?.length);
       setAllExams(response || []);
     } catch (error) {
       console.error('Error fetching all exams:', error);
@@ -83,7 +80,6 @@ export function useTeacherDashboard(teacherId: number) {
     
     try {
       const response = await teachersService.getAllAssignmentsByTeacher(teacherId);
-      console.log("📋 All Assignments fetched once:", response?.length);
       setAllAssignments(response || []);
     } catch (error) {
       console.error('Error fetching all assignments:', error);
@@ -95,7 +91,6 @@ export function useTeacherDashboard(teacherId: number) {
     try {
       setStudentsModalLoading(true);
       const response = await teachersService.getSemesterById(semesterId);
-      console.log(`👨‍🎓 Semester ${semesterId} students:`, response?.students?.length);
       setSelectedSemester(response);
       setSelectedSemesterStudents(response?.students || []);
       return response;
@@ -112,7 +107,6 @@ export function useTeacherDashboard(teacherId: number) {
     try {
       setStudentsModalLoading(true);
       const response = await teachersService.getCourseById(courseId);
-      console.log(`👨‍🎓 Course ${courseId} students:`, response?.students?.length);
       setSelectedCourse(response);
       setSelectedCourseStudents(response?.students || []);
       return response;
@@ -129,7 +123,6 @@ export function useTeacherDashboard(teacherId: number) {
     try {
       setStudentsModalLoading(true);
       const response = await teachersService.getCourseDetailById(lessonId);
-      console.log(`👨‍🎓 Lesson ${lessonId} students:`, response?.students?.length);
       setSelectedLesson(response);
       setSelectedLessonStudents(response?.students || []);
       return response;
@@ -149,7 +142,6 @@ export function useTeacherDashboard(teacherId: number) {
     try {
       setLoading(true);
       const response = await teachersService.getTeacherCourses(teacherId);
-      console.log("🚀 COURSES:", response?.length);
       setCourses(response || []);
       
       const allDetails: any[] = [];
@@ -158,7 +150,6 @@ export function useTeacherDashboard(teacherId: number) {
       for (const course of response || []) {
         try {
           const details = await teachersService.getCourseDetails(course.id);
-          console.log(`📚 Course ${course.id} details:`, details?.length);
           
           if (Array.isArray(details)) {
             allDetails.push(...details);
@@ -187,7 +178,6 @@ export function useTeacherDashboard(teacherId: number) {
   const fetchStudents = useCallback(async () => {
     try {
       const response = await teachersService.getStudents();
-      console.log("STUDENTS => ", response?.length);
       setStudents(response || []);
     } catch (error) {
       console.error("Error fetching students:", error);

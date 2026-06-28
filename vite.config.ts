@@ -9,7 +9,7 @@ const isDev = (mode: string) => mode === "development";
 
 const logOnlyDev = (mode: string, ...args: any[]) => {
   if (isDev(mode)) {
-    console.log(...args);
+    console.log("")
   }
 };
 
@@ -64,7 +64,7 @@ export default defineConfig(({ mode }) => {
             proxy.on("proxyRes", (proxyRes, req, _res) => {
               logOnlyDev(mode, "Received Response from the Target:", proxyRes.statusCode, req.url);
               if (isDevelopment) {
-                console.log("Response Headers:", proxyRes.headers);
+                console.log("");
               }
             });
           },

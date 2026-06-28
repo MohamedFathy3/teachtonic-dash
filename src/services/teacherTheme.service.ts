@@ -68,10 +68,10 @@ class TeacherWebsiteThemeService {
       payload.font_color = fontColor;
     }
     
-    console.log("📤 Activate theme payload:", payload);
+   ("📤 Activate theme payload:", payload);
     
     const response = await api.post<ActivateThemeResponse>('/activate/theme', payload);
-    console.log("📥 Activate theme response:", response.data);
+   ("📥 Activate theme response:", response.data);
     
     return response.data;
   }

@@ -160,7 +160,6 @@ const toggleMustSolveAssignment = async (assignmentId: number, value: boolean) =
   }, [fetchAssignments, filters, debouncedSearch, filterAssignmentType, filterCenterHourId]);
 
   const handleViewAssignment = (assignment: any) => {
-    console.log("VIEW CLICKED", assignment.id);
     navigate(`/instructor/assignments/${assignment.id}`);
   };
 

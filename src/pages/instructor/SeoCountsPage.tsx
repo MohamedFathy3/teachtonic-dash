@@ -143,7 +143,7 @@ const CountCard = ({
 const SeoCountsPage = () => {
   const { lang } = useApp();
   const isRTL = lang === 'ar';
-  
+  const {user} = useApp()
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [aboutData, setAboutData] = useState<AboutResponse | null>(null);
@@ -159,7 +159,7 @@ const fetchData = useCallback(async () => {
   try {
     setLoading(true);
     const response = await seoCountsService.getAboutWithCounts({
-      teacher_id: 5
+      teacher_id: user.id
     });
     
     console.log('📦 About Data:', response);

@@ -214,7 +214,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     setError(null);
     try {
       const response = await courseService.getCourse(courseId);
-      console.log('📚 Course data:', response);
       setCourse(response);
     } catch (err: any) {
       console.error('Error fetching course:', err);
@@ -236,7 +235,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
         perPage: lessonsPagination.perPage
       });
 
-      console.log('📚 Lessons from API:', response);
       const lessonsData = response?.data || [];
       setLessons(lessonsData);
 

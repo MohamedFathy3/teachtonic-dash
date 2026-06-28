@@ -165,11 +165,11 @@ const fetchCourses = useCallback(async () => {
       delete: false,
     };
 
-    console.log('📤 Request Body:', requestBody);
+   ('📤 Request Body:', requestBody);
 
     const response = await api.post("/course/index", requestBody);
     
-    console.log('📥 Response:', response.data);
+   ('📥 Response:', response.data);
 
     // ✅ استخراج البيانات من الـ Response
     const courseData = response.data?.data || [];

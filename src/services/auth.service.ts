@@ -72,7 +72,6 @@ class AuthService {
   
   getCurrentUser(): User | null {
     const user = tokenService.getUser();
-    console.log('📖 Getting current user with role:', user?.role);
     return user;
   }
   

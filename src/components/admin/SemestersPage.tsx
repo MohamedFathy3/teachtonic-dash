@@ -102,7 +102,6 @@ export const SemestersPage: React.FC = () => {
       setLoadingOffers(true);
       try {
         const response = await semesterService.getOffersForSelect(teacherId);
-        console.log('🎁 Direct offers fetch:', response);
         setOffersList(response);
       } catch (error) {
         console.error('Error fetching offers directly:', error);
@@ -852,7 +851,6 @@ export const SemestersPage: React.FC = () => {
                 <FileUploader
                   label={isRTL ? 'صورة الترم' : 'Semester Image'}
                   onUploadSuccess={(fileId) => {
-                    console.log('Uploaded file ID:', fileId);
                     setFormData(prev => ({ 
                       ...prev, 
                       image: fileId

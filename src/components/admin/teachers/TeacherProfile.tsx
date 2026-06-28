@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-next/no-explicit-any */
 // src/components/admin/teachers/TeacherProfile.tsx
 
 import { useState, useEffect } from 'react';

@@ -354,13 +354,13 @@ export function InstructorDashboard() {
     }
   }, [lang]);
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const fetchInstructorReport = useCallback(async () => {
     try {
       setLoading(true);
       const teacherId = user?.id;
       if (!teacherId) return;
       const response = await api.get(`/teachers/${teacherId}/report`);
-      console.log("📊 Report data:", response.data?.data);
       setReport(response.data?.data);
     } catch (error: any) {
       console.error("Error fetching report:", error);
@@ -432,7 +432,6 @@ export function InstructorDashboard() {
     { name: t("semesters"), value: report?.semesters_count || 0, color: '#06b6d4', icon: Layers, bg: 'bg-cyan-500/10', text: 'text-cyan-500' },
     { name: t("books"), value: report?.books_count || 0, color: '#84cc16', icon: BookMarked, bg: 'bg-lime-500/10', text: 'text-lime-500' },
     { name: "الكوبونات", value: report?.used_coupons || 0, color: '#ec4899', icon: Ticket, bg: 'bg-pink-500/10', text: 'text-pink-500' },
-    { name: "الطلبات", value: report?.requests_count || 0, color: '#f97316', icon: HelpCircle, bg: 'bg-orange-500/10', text: 'text-orange-500' },
   ];
 
   // بيانات الرادار
@@ -478,12 +477,7 @@ export function InstructorDashboard() {
   const hasGovernorateData = governorateData.length > 0;
   const totalGovernorateStudents = governorateData.reduce((sum, g) => sum + g.value, 0);
   
-  console.log("✅ Governorates loaded:", {
-    count: governorateData.length,
-    totalStudents: totalGovernorateStudents,
-    topGovernorate: governorateData[0]?.name,
-    data: governorateData,
-  });
+
 
   // ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // ✅ معالجة بيانات المناطق (REGIONS)
@@ -509,12 +503,7 @@ export function InstructorDashboard() {
   const hasRegionData = regionData.length > 0;
   const totalRegionStudents = regionData.reduce((sum, r) => sum + r.value, 0);
   
-  console.log("✅ Regions loaded:", {
-    count: regionData.length,
-    totalStudents: totalRegionStudents,
-    topRegion: regionData[0]?.name,
-    data: regionData,
-  });
+
   
   // بيانات المراحل الدراسية
   const stageData = report?.students_by_stage?.map(s => ({

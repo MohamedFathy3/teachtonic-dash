@@ -103,7 +103,6 @@ export const BooksPage: React.FC = () => {
         filters.stage_id = filterStageId;
       }
       
-      console.log('📚 Sending filters to API:', filters);
       
       const response = await api.post('/book/index', {
         filters: filters,
@@ -114,7 +113,6 @@ export const BooksPage: React.FC = () => {
         paginate: true,
       });
       
-      console.log('📚 Response:', response.data);
       
       setBooks(response.data?.data || []);
       setMeta(response.data?.meta || null);

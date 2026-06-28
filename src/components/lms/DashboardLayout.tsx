@@ -58,7 +58,6 @@ export function DashboardLayout({
 
   // دالة للتعامل مع الضغط على الروابط
   const handleNavigate = (to: string) => {
-    console.log("📱 DashboardLayout - Navigating to:", to);
     onNavigate(to);
     // غلق السايد بار على الموبايل بعد الضغط
     if (window.innerWidth < 1024) {

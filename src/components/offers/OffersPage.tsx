@@ -91,7 +91,7 @@ export const OffersPage: React.FC = () => {
         paginate: true,
       });
       
-      console.log('🎁 Offers Response:', response.data);
+     ('🎁 Offers Response:', response.data);
       
       setOffers(response.data?.data || []);
       setMeta(response.data?.meta || null);

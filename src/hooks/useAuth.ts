@@ -34,10 +34,7 @@ export const useAuth = (): UseAuthReturn => {
       if (storedToken && storedUser) {
         setToken(storedToken);
         setUser(storedUser);
-        console.log('✅ User loaded from storage:', storedUser);
-        console.log('✅ User role:', storedUser.role);
       } else {
-        console.log('⚠️ No stored user found');
       }
       
       setIsLoading(false);
@@ -83,7 +80,6 @@ export const useAuth = (): UseAuthReturn => {
   }, []);
 
   const logout = useCallback(() => {
-    console.log('🚪 Logging out...');
     authService.logout();
     setUser(null);
     setToken(null);

@@ -251,6 +251,7 @@ export const InstructorBankQuestions: React.FC = () => {
     }, [searchQuery]);
 
     // ✅ Fetch Questions
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     const fetchQuestions = useCallback(async (page = 1) => {
         if (!user?.id) return;
         setLoading(true);

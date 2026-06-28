@@ -182,7 +182,7 @@ const fetchOptions = useCallback(async (
       }
     }
 
-    console.log('🔍 AsyncSelect fetchOptions:', {
+   ('🔍 AsyncSelect fetchOptions:', {
       configKey,
       searchTerm,
       searchFilters,

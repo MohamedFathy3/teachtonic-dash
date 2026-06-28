@@ -318,7 +318,7 @@ const exportStudentsToExcel = () => {
     setLoading(true);
     try {
       const response = await courseDetailService.getById(Number(lessonId));
-      console.log('📚 Lesson full data:', response);
+     ('📚 Lesson full data:', response);
       setLesson(response);
     } catch (error) {
       console.error('Error fetching lesson:', error);
@@ -383,7 +383,6 @@ const studentStats = {
     setExamLoading(true);
     try {
       const response = await examService.getExamById(examId);
-      console.log('📚 Exam details:', response);
       setSelectedExam(response);
       setIsExamModalOpen(true);
     } catch (error) {

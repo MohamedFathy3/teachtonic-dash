@@ -156,7 +156,6 @@ export default function FileUploader({
 
       if (uploadedIds.length > 0) {
         setShowDefaultImage(false);
-        console.log(`✅ ${uploadedIds.length} file(s) uploaded successfully`);
       }
 
     } catch (error) {

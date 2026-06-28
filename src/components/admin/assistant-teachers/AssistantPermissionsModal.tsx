@@ -91,7 +91,6 @@ export function AssistantPermissionsModal({
         assistant_teacher_id: assistantId
       });
       
-      console.log('📥 Assistant permissions response:', response.data);
       
       if (response.data?.permissions && Array.isArray(response.data.permissions)) {
         const perms: AssistantPermission[] = response.data.permissions;
@@ -100,7 +99,6 @@ export function AssistantPermissionsModal({
           permsMap[p.permission_id] = p;
         });
         setAssistantPermissions(permsMap);
-        console.log('✅ Permissions map set:', permsMap);
       } else {
         console.warn('⚠️ Unexpected response structure:', response.data);
         // لو مفيش صلاحيات، نبدأ بكل الصلاحيات بقيمة false
@@ -201,7 +199,6 @@ export function AssistantPermissionsModal({
         permissions: permissionsPayload,
       };
 
-      console.log('📤 Sending payload:', payload);
 
       const response = await api.post('/assistant/permissions', payload);
 

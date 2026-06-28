@@ -29,7 +29,6 @@ export const useSeoSettings = () => {
         teacher_id: teacherId,
       });
 
-      console.log('📦 About Response:', aboutResponse);
 
       if (aboutResponse.status === 200 && aboutResponse.data.length > 0) {
         const about = aboutResponse.data[0];
@@ -43,7 +42,6 @@ export const useSeoSettings = () => {
         try {
           const seoData = await seoService.getSeoById(aboutId);
           setSettings(seoData);
-          console.log('✅ SEO Data loaded:', seoData);
         } catch (seoError) {
           console.warn('⚠️ No SEO settings found, using empty data');
           setSettings({
@@ -115,8 +113,6 @@ export const useSeoSettings = () => {
 
       const idToUse = seoId || settings?.id || aboutData?.id;
       
-      console.log('🆔 Saving with ID:', idToUse);
-      console.log('📦 Data to save:', data);
 
       if (!idToUse) {
         toast.error('لا يوجد ID للتحديث');

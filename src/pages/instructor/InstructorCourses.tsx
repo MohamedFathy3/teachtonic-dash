@@ -157,7 +157,6 @@ const fetchCourses = useCallback(async (page = 1) => {
     }
   }
 
-  console.log(`🔍 Searching in ${searchType} mode with:`, searchField);
 
   try {
     const response = await courseService.getAllCourses(

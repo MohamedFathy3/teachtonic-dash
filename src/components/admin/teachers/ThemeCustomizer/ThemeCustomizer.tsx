@@ -51,7 +51,6 @@ export const ThemeCustomizer = ({ teacherId, teacherName }: ThemeCustomizerProps
     setLoadingTeacher(true);
     try {
       const response = await api.get(`/teacher/${teacherId}`);
-      console.log("Teacher data:", response.data);
       
       if (response.data?.result === "Success" && response.data?.data) {
         setTeacherData(response.data.data);

@@ -64,7 +64,7 @@ class TeachersService extends BaseService<any> {
         };
 
         const response = await api.post("/exam/index", body);
-        console.log(`📝 Exams for lesson ${lessonId}:`, response.data);
+       (`📝 Exams for lesson ${lessonId}:`, response.data);
         
         return response.data?.data ?? [];
     }
@@ -84,7 +84,7 @@ class TeachersService extends BaseService<any> {
         };
 
         const response = await api.post("/exam/index", body);
-        console.log(`📋 Assignments for lesson ${lessonId}:`, response.data);
+       (`📋 Assignments for lesson ${lessonId}:`, response.data);
         
         return response.data?.data ?? [];
     }
@@ -105,7 +105,7 @@ async getTeacherSemesters(teacherId: number): Promise<any[]> {
     };
 
     const response = await api.post("/semesters/index", body);
-    console.log("📚 Semesters response:", response.data);
+   ("📚 Semesters response:", response.data);
     
     return response.data?.data ?? [];
 }
@@ -118,21 +118,21 @@ async getTeacherSemesters(teacherId: number): Promise<any[]> {
 // ✅ جلب تفاصيل الترم مع الطلاب والكورسات
 async getSemesterById(semesterId: number): Promise<any> {
     const response = await api.get(`/semesters/${semesterId}`);
-    console.log(`📚 Semester ${semesterId} details:`, response.data);
+   (`📚 Semester ${semesterId} details:`, response.data);
     return response.data?.data;
 }
 
 // ✅ جلب تفاصيل الكورس مع الطلاب والتفاصيل
 async getCourseById(courseId: number): Promise<any> {
     const response = await api.get(`/course/${courseId}`);
-    console.log(`📚 Course ${courseId} details:`, response.data);
+   (`📚 Course ${courseId} details:`, response.data);
     return response.data?.data;
 }
 
 // ✅ جلب تفاصيل الدرس مع الامتحانات والواجبات والطلاب
 async getCourseDetailById(courseDetailId: number): Promise<any> {
     const response = await api.get(`/course-detail/${courseDetailId}`);
-    console.log(`📚 Course Detail ${courseDetailId}:`, response.data);
+   (`📚 Course Detail ${courseDetailId}:`, response.data);
     return response.data?.data;
 }
 
@@ -172,7 +172,7 @@ async getTeacherBooks(teacherId: number): Promise<any[]> {
     };
 
     const response = await api.post("/book/index", body);
-    console.log("📚 Books response:", response.data);
+   ("📚 Books response:", response.data);
     
     return response.data?.data ?? [];
 }
@@ -187,7 +187,7 @@ async getTeacherBooks(teacherId: number): Promise<any[]> {
         delete: false,
     };
     const response = await api.post("/exam/index", body);
-    console.log("📝 All Exams fetched:", response.data?.data?.length);
+   ("📝 All Exams fetched:", response.data?.data?.length);
     return response.data?.data ?? [];
 }
     // ✅ جلب جميع الواجبات للمدرس

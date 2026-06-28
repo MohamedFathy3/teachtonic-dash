@@ -10,7 +10,7 @@ const isDevelopment = import.meta.env.DEV;
 
 const logOnlyDev = (...args: any[]) => {
   if (isDevelopment) {
-    console.log(...args);
+    console.error(...args);
   }
 };
 

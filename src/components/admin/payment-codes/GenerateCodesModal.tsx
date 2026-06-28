@@ -169,7 +169,6 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
 
     try {
       const result = await generateCodes.mutateAsync(payload);
-      console.log('API Response:', result);
       
       let codes: GeneratedCode[] = [];
       
@@ -193,7 +192,6 @@ export const GenerateCodesModal: React.FC<GenerateCodesModalProps> = ({
         codes = result.data.codes;
       }
       
-      console.log('Extracted codes:', codes);
       setGeneratedCodes(codes);
       setShowResults(true);
       

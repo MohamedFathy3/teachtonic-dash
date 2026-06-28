@@ -343,7 +343,6 @@ export const AssignmentViewer: React.FC = () => {
   const [filterTypeOfStudy, setFilterTypeOfStudy] = useState<string>('');
   useEffect(() => {
     if (assignmentId) {
-      console.log("🔍 Fetching assignment ID:", assignmentId);
       fetchAssignment();
     }
   }, [assignmentId, refreshKey]);
@@ -352,7 +351,6 @@ export const AssignmentViewer: React.FC = () => {
     setLoading(true);
     try {
       const res = await assignmentService.getAssignment(Number(assignmentId));
-      console.log("📦 Assignment data:", res);
       setAssignment(res);
     } catch (error) {
       console.error("❌ Error fetching assignment:", error);

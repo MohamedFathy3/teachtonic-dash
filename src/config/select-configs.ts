@@ -46,7 +46,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
     // ✅ إضافة customFetcher لدعم الفلترة حسب المرحلة
     customFetcher: async (params) => {
       const { page, perPage, search, extraFilters } = params;
-        console.log('🔥🔥🔥 Subjects customFetcher called with:', { 
+       ('🔥🔥🔥 Subjects customFetcher called with:', { 
     page, 
     perPage, 
     search, 
@@ -69,10 +69,10 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
       // 🔥 فلترة المواد حسب المرحلة (stage_id)
       if (extraFilters?.stage_id) {
         requestBody.filters.stage_id = extraFilters.stage_id;
-        console.log('🔍 Filtering subjects by stage_id:', extraFilters.stage_id);
+       ('🔍 Filtering subjects by stage_id:', extraFilters.stage_id);
       }
 
-      console.log('🔍 Subjects Request Body:', requestBody);
+     ('🔍 Subjects Request Body:', requestBody);
 
       const response = await api.post('/subject/index', requestBody);
 
@@ -134,7 +134,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
         requestBody.searchFields = ['titles', 'titles_ar', 'description', 'description_ar'];
       }
 
-      console.log('📤 CourseLessons Request:', requestBody);
+     ('📤 CourseLessons Request:', requestBody);
 
       const response = await api.post('/course-detail/index', requestBody);
 
@@ -210,7 +210,7 @@ courses: {
       filters.subject_id = params.extraFilters.subject_id;
     }
 
-    console.log('📤 Courses filters:', filters);
+   ('📤 Courses filters:', filters);
 
     // 🔥 استخدم courseService مع الفلاتر
     const response = await courseService.getAllCourses(

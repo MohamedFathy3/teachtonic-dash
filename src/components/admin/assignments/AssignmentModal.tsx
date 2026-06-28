@@ -121,7 +121,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       ...(imageId && { image: imageId }),
     };
 
-    console.log('📤 Sending payload:', payload);
+   ('📤 Sending payload:', payload);
 
     if (editingItem) {
       await updateMutation.mutateAsync({ id: editingItem.id, data: payload });

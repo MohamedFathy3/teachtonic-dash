@@ -454,7 +454,6 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
     onChange={(id, semester) => {
       // ✅ إذا كانت القيمة 'none' نضع null
       handleChange('semester_id', id === 'none' ? null : id);
-      console.log('Selected semester:', id, semester);
     }}
     label=""
     placeholder={lang === 'ar' ? 'اختر الترم' : 'Select Semester'}

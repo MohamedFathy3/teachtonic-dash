@@ -40,7 +40,6 @@ export const ExamCard: React.FC<ExamCardProps> = ({
 
   // دالة معالجة toggle show result
   const handleToggleShowResult = () => {
-    console.log('🔄 Toggling show result for exam:', exam.id, 'current value:', exam.show_result);
     onToggleShowResult(exam.id, exam.show_result);
   };
 

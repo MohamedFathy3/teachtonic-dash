@@ -80,7 +80,7 @@ export const BannersPage: React.FC = () => {
         paginate: true,
       });
       
-      console.log('🎨 Banners Response:', response.data);
+     ('🎨 Banners Response:', response.data);
       
       setBanners(response.data?.data || []);
       setMeta(response.data?.meta || null);

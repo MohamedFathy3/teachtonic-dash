@@ -183,7 +183,6 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
      if (formData.course_id) {
       filters.course_id = formData.course_id;
     }
-    console.log('📤 Lesson filters:', filters);
     return filters;
   };
 
@@ -201,7 +200,6 @@ const getCourseExtraFilters = useCallback(() => {
     filters.stage_id = formData.stage_id;
   }
   
-  console.log('📤 Course extraFilters:', filters);
   return filters;
 }, [user?.id, formData.stage_id]);
   
@@ -423,7 +421,6 @@ const getCourseExtraFilters = useCallback(() => {
     configKey="courses"
     value={formData.course_id}
     onChange={(id, course) => {
-      console.log('📚 Selected course:', { id, course });
       setFormData({ 
         ...formData, 
         course_id: id,
@@ -444,7 +441,6 @@ const getCourseExtraFilters = useCallback(() => {
     configKey="courseLessons" // ✅ استخدم Config جديد
     value={formData.course_detail_id}
     onChange={(id, lesson) => {
-      console.log('📚 Selected lesson:', { id, lesson });
       setFormData({ ...formData, course_detail_id: id });
     }}
     extraFilters={getLessonExtraFilters()}

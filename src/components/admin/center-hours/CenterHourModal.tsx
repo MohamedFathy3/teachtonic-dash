@@ -133,7 +133,6 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
       subject_id: formData.subject_id,
     };
 
-    console.log('📤 Submitting center hour payload:', payload);
 
     if (editingItem) {
       await updateMutation.mutateAsync({ id: editingItem.id, data: payload });
