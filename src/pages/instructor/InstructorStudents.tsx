@@ -21,7 +21,10 @@ import {
   GraduationCap,
   EyeOff,
   MapPin,
-  RotateCcw
+  RotateCcw,
+  Edit,
+  Trash2,
+  UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
@@ -132,6 +135,17 @@ export const InstructorStudents: React.FC = () => {
   // ✅ State for Reset Device
   const [resetDeviceStudent, setResetDeviceStudent] = useState<Student | null>(null);
   const [resettingDevice, setResettingDevice] = useState(false);
+
+  // ✅ State for Edit Student
+  const [editStudent, setEditStudent] = useState<Student | null>(null);
+  const [editingStudent, setEditingStudent] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
+  const [editPassword, setEditPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
+
+  // ✅ State for Delete Student
+  const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
+  const [deletingStudent, setDeletingStudent] = useState(false);
   
   // ✅ Pagination
   const [pagination, setPagination] = useState({
@@ -152,17 +166,13 @@ export const InstructorStudents: React.FC = () => {
   // ✅ فلترة الساعات المركزية حسب المرحلة
   useEffect(() => {
     if (filterStageId) {
-      // فلترة الساعات المركزية اللي مرتبطة بالمرحلة المختارة
       const filtered = allCenterHours.filter(hour => {
-        // هنا المفروض يكون عندك علاقة بين center_hour والمرحلة
-        // لو في الـ API رابط بينهم، استخدمه. حالياً بنعرض الكل
         return true;
       });
       setFilteredCenterHours(filtered);
     } else {
       setFilteredCenterHours(allCenterHours);
     }
-    // إعادة تعيين الساعة المركزية عند تغيير المرحلة
     setFilterCenterHourId('');
   }, [filterStageId, allCenterHours]);
 
@@ -243,7 +253,6 @@ export const InstructorStudents: React.FC = () => {
       result = result.filter(s => s.type_of_study === filterTypeOfStudy);
     }
 
-    // ✅ فلتر المنطقة (Select - مطابقة تامة)
     if (filterRegion) {
       result = result.filter(s => s.region === filterRegion);
     }
@@ -264,9 +273,8 @@ export const InstructorStudents: React.FC = () => {
   ]);
 
   // ✅ Fetch students
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const fetchStudents = useCallback(async (page = 1) => {
-    setLoading(false);
+    setLoading(true);
     setError(null);
     try {
       const filters: any = {};
@@ -281,7 +289,7 @@ export const InstructorStudents: React.FC = () => {
       if (filterPhone) filters.phone = filterPhone;
       if (filterCodeParent) filters.code_parent = filterCodeParent;
       if (filterCenterHourId) filters.center_hour_id = Number(filterCenterHourId);
-      if (filterRegion) filters.region = filterRegion; // ✅ أضفناها
+      if (filterRegion) filters.region = filterRegion;
 
       const response = await studentService.getTeacherStudents(
         user?.id || undefined,
@@ -314,7 +322,7 @@ export const InstructorStudents: React.FC = () => {
     pagination.perPage,
     user?.id,
     filterTypeOfStudy,
-    filterRegion, // ✅ أضفناها
+    filterRegion,
   ]);
 
   useEffect(() => {
@@ -339,7 +347,7 @@ export const InstructorStudents: React.FC = () => {
     setSearchQuery('');
     setDebouncedSearch('');
     setFilterTypeOfStudy('');
-    setFilterRegion(''); // ✅ أضفناها
+    setFilterRegion('');
     setShowFilters(false);
   };
 
@@ -378,6 +386,7 @@ export const InstructorStudents: React.FC = () => {
         setChangePasswordStudent(null);
         setNewPassword('');
         setConfirmPassword('');
+        fetchStudents(pagination.currentPage);
       } else {
         throw new Error(response.data?.message || 'Failed to change password');
       }
@@ -448,6 +457,120 @@ export const InstructorStudents: React.FC = () => {
       );
     } finally {
       setResettingDevice(false);
+    }
+  };
+
+  // ✅ Edit Student - Open Modal
+  const handleEditStudent = (student: Student) => {
+    setEditStudent(student);
+    setEditFormData({
+      name: student.name || '',
+      phone: student.phone || '',
+      phone_parent: student.phone_parent || '',
+      birth_date: student.birth_date || '',
+      type_of_attendance: student.type_of_attendance || 'online',
+      stage_id: student.stage_id || '',
+      type_of_study: student.type_of_study || 'general',
+      gender: student.gender || 'male',
+      region: student.region || '',
+      governorate: student.governorate || '',
+      school_name: student.school_name || '',
+    });
+    setEditPassword('');
+    setShowEditPassword(false);
+  };
+
+  // ✅ Edit Student - Save
+  const handleSaveEditStudent = async () => {
+    if (!editStudent) return;
+
+    // ✅ التحقق من البيانات
+    if (!editFormData.name || editFormData.name.trim().length < 4) {
+      toast.error(lang === 'ar' ? 'الاسم يجب أن يكون 4 كلمات على الأقل' : 'Name must be at least 4 words');
+      return;
+    }
+
+    if (!editFormData.phone) {
+      toast.error(lang === 'ar' ? 'رقم الهاتف مطلوب' : 'Phone number is required');
+      return;
+    }
+
+    if (!editFormData.stage_id) {
+      toast.error(lang === 'ar' ? 'المرحلة الدراسية مطلوبة' : 'Stage is required');
+      return;
+    }
+
+    setEditingStudent(true);
+
+    try {
+      const payload: any = {
+        student_id: editStudent.id,
+        name: editFormData.name.trim(),
+        phone: editFormData.phone,
+        phone_parent: editFormData.phone_parent || undefined,
+        birth_date: editFormData.birth_date || undefined,
+        type_of_attendance: editFormData.type_of_attendance,
+        stage_id: Number(editFormData.stage_id),
+        type_of_study: editFormData.type_of_study || 'general',
+        gender: editFormData.gender || 'male',
+        region: editFormData.region || undefined,
+        governorate: editFormData.governorate || undefined,
+        school_name: editFormData.school_name || undefined,
+      };
+
+      // ✅ لو في كلمة مرور جديدة
+      if (editPassword && editPassword.length >= 6) {
+        payload.password = editPassword;
+      }
+
+      const response = await api.post(`student/change-password`, payload);
+
+      if (response.data?.status === true || response.status === 200) {
+        toast.success(lang === 'ar'
+          ? `تم تحديث بيانات الطالب ${editFormData.name} بنجاح`
+          : `Student ${editFormData.name} updated successfully`
+        );
+        setEditStudent(null);
+        setEditFormData({});
+        setEditPassword('');
+        fetchStudents(pagination.currentPage);
+      } else {
+        throw new Error(response.data?.message || 'Failed to update student');
+      }
+    } catch (error: any) {
+      console.error('Update student error:', error);
+      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'فشل تحديث بيانات الطالب' : 'Failed to update student'));
+    } finally {
+      setEditingStudent(false);
+    }
+  };
+
+  // ✅ Delete Student
+  const handleDeleteStudent = async () => {
+    if (!deleteStudent) return;
+
+    setDeletingStudent(true);
+
+    try {
+      const response = await api.delete(`/student/delete`, {
+        data: { items: [deleteStudent.id] }
+      });
+
+      if (response.data?.status === true || response.status === 200) {
+        toast.success(lang === 'ar'
+          ? `تم حذف الطالب ${deleteStudent.name} بنجاح`
+          : `Student ${deleteStudent.name} deleted successfully`
+        );
+        setDeleteStudent(null);
+        fetchStudents(pagination.currentPage);
+      } else {
+        throw new Error(response.data?.message || 'Failed to delete student');
+      }
+    } catch (error: any) {
+      console.error('Delete student error:', error);
+      toast.error(error?.response?.data?.message || (lang === 'ar' ? 'فشل حذف الطالب' : 'Failed to delete student'));
+    } finally {
+      setDeletingStudent(false);
     }
   };
 
@@ -615,7 +738,7 @@ export const InstructorStudents: React.FC = () => {
               <Card className="p-5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
-                  {/* 🔹 Stage (المرحلة) */}
+                  {/* Stage */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1 text-sm font-medium">
                       <GraduationCap className="h-4 w-4 text-primary" />
@@ -641,7 +764,7 @@ export const InstructorStudents: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* 🔹 نوع الدراسة */}
+                  {/* Study Type */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <GraduationCap className="h-4 w-4" />
@@ -658,7 +781,7 @@ export const InstructorStudents: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* 🔹 المنطقة - NEW SELECT */}
+                  {/* Region */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
@@ -685,7 +808,7 @@ export const InstructorStudents: React.FC = () => {
                     )}
                   </div>
 
-                  {/* 🔹 نوع الحضور */}
+                  {/* Attendance Type */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <Monitor className="h-4 w-4" />
@@ -708,7 +831,7 @@ export const InstructorStudents: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* 🔹 الساعة المركزية - يظهر فقط لو اختار سنتر */}
+                  {/* Center Hour */}
                   {filterAttendance === 'center' && (
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1 text-sm font-medium">
@@ -738,7 +861,7 @@ export const InstructorStudents: React.FC = () => {
                     </div>
                   )}
 
-                  {/* 🔹 الحالة */}
+                  {/* Status */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <CheckCircle className="h-4 w-4" />
@@ -755,7 +878,7 @@ export const InstructorStudents: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* 🔹 الهاتف */}
+                  {/* Phone */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <Phone className="h-4 w-4" />
@@ -769,7 +892,7 @@ export const InstructorStudents: React.FC = () => {
                     />
                   </div>
 
-                  {/* 🔹 كود ولي الأمر */}
+                  {/* Parent Code */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <Award className="h-4 w-4" />
@@ -783,7 +906,7 @@ export const InstructorStudents: React.FC = () => {
                     />
                   </div>
 
-                  {/* 🔹 رقم الطالب */}
+                  {/* Student ID */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       <User className="h-4 w-4" />
@@ -799,7 +922,7 @@ export const InstructorStudents: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 🔹 Actions */}
+                {/* Actions */}
                 <div className="flex justify-end gap-3 mt-5 pt-3 border-t">
                   <Button variant="outline" size="sm" onClick={clearFilters} className="gap-2">
                     <X className="h-4 w-4" />
@@ -811,7 +934,7 @@ export const InstructorStudents: React.FC = () => {
                   </Button>
                 </div>
 
-                {/* عرض الفلاتر النشطة */}
+                {/* Active Filters */}
                 {(filterStageId || filterAttendance || filterStatus || filterCenterHourId || filterPhone || filterCodeParent || filterId || filterRegion) && (
                   <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
                     <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
@@ -859,7 +982,6 @@ export const InstructorStudents: React.FC = () => {
                         <X className="h-3 w-3 cursor-pointer" onClick={() => setFilterId('')} />
                       </Badge>
                     )}
-                    {/* ✅ فلتر المنطقة النشط */}
                     {filterRegion && (
                       <Badge variant="secondary" className="text-xs gap-1">
                         📍 {filterRegion}
@@ -911,7 +1033,6 @@ export const InstructorStudents: React.FC = () => {
                               src={student.imageUrl || student.image?.file_path || `https://lms.dentin.cloud/storage/${student.image?.file_path}`}
                               alt={student.name}
                               className="w-full h-full object-cover"
-                            
                             />
                           ) : (
                             <span className="text-xl font-bold text-primary">
@@ -936,7 +1057,6 @@ export const InstructorStudents: React.FC = () => {
                             ) : (
                               <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t('inactive') || 'غير نشط'}</Badge>
                             )}
-                            {/* ✅ Device Blocked Badge */}
                             {student.device_blocked && (
                               <Badge variant="destructive" className="bg-red-500 gap-1">
                                 <XCircle className="h-3 w-3" /> 
@@ -973,14 +1093,12 @@ export const InstructorStudents: React.FC = () => {
                             <span>{t('parentCode') || 'كود ولي الأمر'}: {student.code_parent}</span>
                           </div>
                         )}
-                        {/* ✅ عرض المنطقة في البطاقة */}
                         {student.region && (
                           <div className="flex items-center gap-2 text-sm">
                             <MapPin className="h-4 w-4 text-muted-foreground" />
                             <span>{lang === 'ar' ? 'المنطقة' : 'Region'}: {student.region}</span>
                           </div>
                         )}
-                        {/* ✅ عرض حالة الجهاز */}
                         <div className="flex items-center gap-2 text-sm">
                           <Monitor className="h-4 w-4 text-muted-foreground" />
                           <span>
@@ -1024,6 +1142,28 @@ export const InstructorStudents: React.FC = () => {
                           {lang === 'ar' ? 'تغيير كلمة المرور' : 'Change Password'}
                         </Button>
 
+                        {/* ✅ Edit Button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 rounded-full border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                          onClick={() => handleEditStudent(student)}
+                        >
+                          <Edit className="h-3 w-3" />
+                          {lang === 'ar' ? 'تعديل' : 'Edit'}
+                        </Button>
+
+                        {/* ✅ Delete Button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 rounded-full border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                          onClick={() => setDeleteStudent(student)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          {lang === 'ar' ? 'حذف' : 'Delete'}
+                        </Button>
+
                         <Button
                           size="sm"
                           variant={student.active ? "destructive" : "default"}
@@ -1043,7 +1183,6 @@ export const InstructorStudents: React.FC = () => {
                           )}
                         </Button>
 
-                        {/* ✅ Reset Device Button - يظهر بس لو الجهاز محظور */}
                         {student.device_blocked && (
                           <Button
                             size="sm"
@@ -1138,7 +1277,6 @@ export const InstructorStudents: React.FC = () => {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* كلمة المرور الجديدة مع عين */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Lock className="h-4 w-4" />
@@ -1157,11 +1295,7 @@ export const InstructorStudents: React.FC = () => {
                   onClick={() => setShowNewPassword(!showNewPassword)}
                   className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
                 >
-                  {showNewPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -1169,7 +1303,6 @@ export const InstructorStudents: React.FC = () => {
               </p>
             </div>
 
-            {/* تأكيد كلمة المرور مع عين */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Lock className="h-4 w-4" />
@@ -1188,11 +1321,7 @@ export const InstructorStudents: React.FC = () => {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -1206,27 +1335,241 @@ export const InstructorStudents: React.FC = () => {
           </div>
 
           <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setChangePasswordStudent(null)}
-            >
+            <Button variant="outline" onClick={() => setChangePasswordStudent(null)}>
               {lang === 'ar' ? 'إلغاء' : 'Cancel'}
             </Button>
-            <Button
-              onClick={handleChangePassword}
-              disabled={changingPassword}
-              className="gap-2"
-            >
+            <Button onClick={handleChangePassword} disabled={changingPassword} className="gap-2">
               {changingPassword ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {lang === 'ar' ? 'جاري التغيير...' : 'Changing...'}
-                </>
+                <><Loader2 className="h-4 w-4 animate-spin" />{lang === 'ar' ? 'جاري التغيير...' : 'Changing...'}</>
               ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  {lang === 'ar' ? 'تغيير' : 'Change'}
-                </>
+                <><Save className="h-4 w-4" />{lang === 'ar' ? 'تغيير' : 'Change'}</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ Edit Student Modal */}
+      <Dialog open={!!editStudent} onOpenChange={(open) => !open && setEditStudent(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5 text-blue-500" />
+              {lang === 'ar' ? 'تعديل بيانات الطالب' : 'Edit Student'}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === 'ar'
+                ? `تعديل بيانات الطالب: ${editStudent?.name}`
+                : `Edit student data: ${editStudent?.name}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Name */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  {lang === 'ar' ? 'الاسم الكامل' : 'Full Name'} <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  value={editFormData.name || ''}
+                  onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                  placeholder={lang === 'ar' ? 'الاسم الرباعي' : 'Full name'}
+                  className="rounded-xl"
+                />
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  {lang === 'ar' ? 'رقم الهاتف' : 'Phone'} <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  value={editFormData.phone || ''}
+                  onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
+                  placeholder={lang === 'ar' ? 'رقم الهاتف' : 'Phone number'}
+                  className="rounded-xl"
+                />
+              </div>
+
+              {/* Parent Phone */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  {lang === 'ar' ? 'هاتف ولي الأمر' : 'Parent Phone'}
+                </Label>
+                <Input
+                  value={editFormData.phone_parent || ''}
+                  onChange={(e) => setEditFormData({...editFormData, phone_parent: e.target.value})}
+                  placeholder={lang === 'ar' ? 'رقم ولي الأمر' : 'Parent phone'}
+                  className="rounded-xl"
+                />
+              </div>
+
+              {/* Birth Date */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  {lang === 'ar' ? 'تاريخ الميلاد' : 'Birth Date'}
+                </Label>
+                <Input
+                  type="date"
+                  value={editFormData.birth_date || ''}
+                  onChange={(e) => setEditFormData({...editFormData, birth_date: e.target.value})}
+                  className="rounded-xl"
+                />
+              </div>
+
+              {/* Stage */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  {lang === 'ar' ? 'المرحلة الدراسية' : 'Stage'} <span className="text-red-500">*</span>
+                </Label>
+                <select
+                  value={editFormData.stage_id || ''}
+                  onChange={(e) => setEditFormData({...editFormData, stage_id: e.target.value})}
+                  className="w-full px-3 py-2 rounded-xl border bg-background"
+                >
+                  <option value="">{lang === 'ar' ? 'اختر المرحلة' : 'Select stage'}</option>
+                  {stages.map((stage: any) => (
+                    <option key={stage.id} value={stage.id}>
+                      {isRTL ? stage.name_ar : stage.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Attendance Type */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Monitor className="h-4 w-4" />
+                  {lang === 'ar' ? 'نوع الحضور' : 'Attendance Type'} <span className="text-red-500">*</span>
+                </Label>
+                <select
+                  value={editFormData.type_of_attendance || 'online'}
+                  onChange={(e) => setEditFormData({...editFormData, type_of_attendance: e.target.value})}
+                  className="w-full px-3 py-2 rounded-xl border bg-background"
+                >
+                  <option value="online">🖥️ {lang === 'ar' ? 'أونلاين' : 'Online'}</option>
+                  <option value="center">🏢 {lang === 'ar' ? 'سنتر' : 'Center'}</option>
+                </select>
+              </div>
+
+              {/* Study Type */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  {lang === 'ar' ? 'نوع الدراسة' : 'Study Type'}
+                </Label>
+                <select
+                  value={editFormData.type_of_study || 'general'}
+                  onChange={(e) => setEditFormData({...editFormData, type_of_study: e.target.value})}
+                  className="w-full px-3 py-2 rounded-xl border bg-background"
+                >
+                  <option value="general">📚 {lang === 'ar' ? 'عام' : 'General'}</option>
+                  <option value="azhar">🕌 {lang === 'ar' ? 'أزهر' : 'Azhar'}</option>
+                </select>
+              </div>
+
+              {/* Gender */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  {lang === 'ar' ? 'النوع' : 'Gender'}
+                </Label>
+                <select
+                  value={editFormData.gender || 'male'}
+                  onChange={(e) => setEditFormData({...editFormData, gender: e.target.value})}
+                  className="w-full px-3 py-2 rounded-xl border bg-background"
+                >
+                  <option value="male">👨 {lang === 'ar' ? 'ذكر' : 'Male'}</option>
+                  <option value="female">👩 {lang === 'ar' ? 'أنثى' : 'Female'}</option>
+                </select>
+              </div>
+
+              {/* Region */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  {lang === 'ar' ? 'المنطقة' : 'Region'}
+                </Label>
+                <Input
+                  value={editFormData.region || ''}
+                  onChange={(e) => setEditFormData({...editFormData, region: e.target.value})}
+                  placeholder={lang === 'ar' ? 'المنطقة' : 'Region'}
+                  className="rounded-xl"
+                />
+              </div>
+
+              {/* Governorate */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  {lang === 'ar' ? 'المحافظة' : 'Governorate'}
+                </Label>
+                <Input
+                  value={editFormData.governorate || ''}
+                  onChange={(e) => setEditFormData({...editFormData, governorate: e.target.value})}
+                  placeholder={lang === 'ar' ? 'المحافظة' : 'Governorate'}
+                  className="rounded-xl"
+                />
+              </div>
+
+              {/* School Name */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  {lang === 'ar' ? 'اسم المدرسة' : 'School Name'}
+                </Label>
+                <Input
+                  value={editFormData.school_name || ''}
+                  onChange={(e) => setEditFormData({...editFormData, school_name: e.target.value})}
+                  placeholder={lang === 'ar' ? 'اسم المدرسة' : 'School name'}
+                  className="rounded-xl"
+                />
+              </div>
+
+              {/* New Password (optional) */}
+              <div className="space-y-2 md:col-span-2">
+                <Label className="flex items-center gap-2">
+                  <Key className="h-4 w-4 text-amber-500" />
+                  {lang === 'ar' ? 'كلمة مرور جديدة (اختياري)' : 'New Password (Optional)'}
+                </Label>
+                <div className="relative">
+                  <Input
+                    type={showEditPassword ? "text" : "password"}
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder={lang === 'ar' ? 'اترك فارغاً إذا لم ترغب في التغيير' : 'Leave empty if no change'}
+                    className="rounded-xl pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword(!showEditPassword)}
+                    className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    {showEditPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {lang === 'ar' ? 'يجب أن تكون 6 أحرف على الأقل إذا تم إدخالها' : 'Must be at least 6 characters if entered'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditStudent(null)}>
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </Button>
+            <Button onClick={handleSaveEditStudent} disabled={editingStudent} className="gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
+              {editingStudent ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />{lang === 'ar' ? 'جاري الحفظ...' : 'Saving...'}</>
+              ) : (
+                <><Save className="h-4 w-4" />{lang === 'ar' ? 'حفظ التغييرات' : 'Save Changes'}</>
               )}
             </Button>
           </DialogFooter>
@@ -1262,10 +1605,7 @@ export const InstructorStudents: React.FC = () => {
               disabled={togglingActive}
             >
               {togglingActive ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  {lang === 'ar' ? 'جاري...' : 'Loading...'}
-                </>
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />{lang === 'ar' ? 'جاري...' : 'Loading...'}</>
               ) : (
                 toggleActiveStudent?.active
                   ? (lang === 'ar' ? 'إلغاء التفعيل' : 'Deactivate')
@@ -1307,12 +1647,49 @@ export const InstructorStudents: React.FC = () => {
               disabled={resettingDevice}
             >
               {resettingDevice ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  {lang === 'ar' ? 'جاري...' : 'Resetting...'}
-                </>
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />{lang === 'ar' ? 'جاري...' : 'Resetting...'}</>
               ) : (
                 lang === 'ar' ? 'تأكيد' : 'Confirm'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ✅ Delete Student Confirmation Dialog */}
+      <AlertDialog open={!!deleteStudent} onOpenChange={(open) => !open && setDeleteStudent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-500">
+              <Trash2 className="h-5 w-5" />
+              {lang === 'ar' ? 'حذف الطالب' : 'Delete Student'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {lang === 'ar'
+                ? `هل أنت متأكد من حذف الطالب "${deleteStudent?.name}"؟`
+                : `Are you sure you want to delete student "${deleteStudent?.name}"?`}
+              <br />
+              <br />
+              <span className="text-red-500 font-bold">
+                {lang === 'ar'
+                  ? '⚠️ سيتم حذف جميع بيانات الطالب بشكل نهائي ولا يمكن استعادتها!'
+                  : '⚠️ All student data will be permanently deleted and cannot be recovered!'}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteStudent}
+              className="bg-red-500 hover:bg-red-600"
+              disabled={deletingStudent}
+            >
+              {deletingStudent ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />{lang === 'ar' ? 'جاري الحذف...' : 'Deleting...'}</>
+              ) : (
+                lang === 'ar' ? 'حذف' : 'Delete'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

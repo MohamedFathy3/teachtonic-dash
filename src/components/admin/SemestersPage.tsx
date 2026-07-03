@@ -689,7 +689,7 @@ const navigate = useNavigate();
                     <TableHead>{isRTL ? 'الاسم (إنجليزي)' : 'Name (English)'}</TableHead>
                     <TableHead className="text-center">{isRTL ? 'السعر' : 'Price'}</TableHead>
                     <TableHead className="text-center">{isRTL ? 'الخصم' : 'Discount'}</TableHead>
-                    <TableHead className="text-center">{isRTL ? 'العرض' : 'Offer'}</TableHead>
+                    {/* <TableHead className="text-center">{isRTL ? 'العرض' : 'Offer'}</TableHead> */}
                     <TableHead className="text-center">{isRTL ? 'الحالة' : 'Status'}</TableHead>
                     <TableHead className="text-center">{isRTL ? 'الإجراءات' : 'Actions'}</TableHead>
                   </TableRow>
@@ -744,16 +744,15 @@ const navigate = useNavigate();
                             {parseFloat(semester.discount).toFixed(2)}
                           </span>
                         </TableCell>
-                        <TableCell className="text-center">
+                        {/* <TableCell className="text-center">
                           {semester.offer_id ? (
                             <span className="inline-flex items-center gap-1 text-xs bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-700 dark:text-orange-400 px-2 py-1 rounded-full">
-                              <Percent className="h-3 w-3" />
-                              {getOfferName(semester.offer_id)}
+                              {(semester.offer_id)}
                             </span>
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="text-center">
                           <div className="flex justify-center">
                             <div className="flex items-center gap-2">
