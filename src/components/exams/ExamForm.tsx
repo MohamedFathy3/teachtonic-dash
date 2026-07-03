@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/exams/ExamForm.tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/contexts/AppContext';
 import { examService } from '@/services/exam.service';
@@ -13,8 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import FileUploader from '@/components/FileUploader';
-import { Loader2, Sparkles, Save, ChevronLeft, Settings2, Calendar, Clock } from 'lucide-react';
-import { toast  } from "@/hooks/use-toast";
+import { Loader2, Save, ChevronLeft, Settings2, Calendar, Clock } from 'lucide-react';
+import { toast } from "@/hooks/use-toast";
 
 interface ExamFormProps {
   examId?: number | null;
@@ -28,7 +28,7 @@ interface ExamFormData {
   description: string;
   description_ar?: string;
   total_marks: number;
-  total_marks_pass_marks: number;
+  total_must_pass_marks: number;
   duration_minutes: number;
   course_detail_id: number | null;
   stage_id: number | null;
@@ -36,7 +36,6 @@ interface ExamFormData {
   type_exam: 'center' | 'online' | '';
   time_start: string | null;
   time_end: string | null;
-  
 }
 
 export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel }) => {
@@ -51,52 +50,115 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
     description: '',
     description_ar: '',
     total_marks: 0,
-    total_marks_pass_marks: 0,
+    total_must_pass_marks: 0,
     duration_minutes: 0,
     course_detail_id: null,
     stage_id: null,
+    course_id: null,
     type_exam: '',
     time_start: null,
     time_end: null,
-    course_id:null,
   });
 
-  // Load exam data if editing
+  // ✅ Load exam data if editing
   useEffect(() => {
     if (examId) {
       loadExamData();
     }
   }, [examId]);
 
-  const loadExamData = async () => {
-    setLoading(true);
-    try {
-      const exam = await examService.getExam(examId!);
-      setFormData({
-        title: exam.title || '',
-        title_ar: exam.title_ar || '',
-        description: exam.description || '',
-        description_ar: exam.description_ar || '',
-        total_marks: exam.total_marks || 0,
-        total_marks_pass_marks: exam.total_marks_pass_marks || 0,
-        duration_minutes: exam.duration_minutes || 0,
-        course_detail_id: exam.course_detail_id?.id || exam.course_detail_id || null,
-        stage_id: exam.stage_id?.id || exam.stage_id || null,
-        type_exam: exam.type_exam || '',
-        time_start: exam.time_start || null,
-        time_end: exam.time_end || null,
-        course_id: exam.course_id?.id || exam.course_id || null,
+const loadExamData = async () => {
+  setLoading(true);
+  try {
+    const exam = await examService.getExam(examId!);
+    console.log("📝 Exam data loaded:", exam);
+    
+    // ✅ استخراج الـ IDs بشكل صحيح مع التحقق من النوع
+    let stageId = null;
+    let courseId = null;
+    let lessonId = null;
 
-        
-      });
-      setImageId(exam.image?.id || null);
-    } catch (error) {
-      console.error('Error loading exam:', error);
-      toast.error(lang === 'ar' ? 'حدث خطأ في تحميل بيانات الامتحان' : 'Error loading exam data');
-    } finally {
-      setLoading(false);
+    // ✅ Stage ID
+    if (exam.stage_id) {
+      if (typeof exam.stage_id === 'object' && exam.stage_id !== null) {
+        stageId = exam.stage_id.id;
+      } else {
+        stageId = exam.stage_id;
+      }
     }
-  };
+
+    // ✅ Course ID (من course_detail_id)
+    if (exam.course_detail_id) {
+      if (typeof exam.course_detail_id === 'object' && exam.course_detail_id !== null) {
+        lessonId = exam.course_detail_id.id;
+        // ✅ جلب الـ course_id من جوه الكائن
+        courseId = exam.course_detail_id.course_id || null;
+      } else {
+        lessonId = exam.course_detail_id;
+      }
+    }
+
+    // ✅ لو في course_id منفصل
+    if (exam.course_id) {
+      if (typeof exam.course_id === 'object' && exam.course_id !== null) {
+        courseId = exam.course_id.id;
+      } else {
+        courseId = exam.course_id;
+      }
+    }
+
+    console.log("🔍 Extracted IDs:", { stageId, courseId, lessonId });
+
+    setFormData({
+      title: exam.title || '',
+      title_ar: exam.title_ar || '',
+      description: exam.description || '',
+      description_ar: exam.description_ar || '',
+      total_marks: exam.total_marks || 0,
+      total_must_pass_marks: exam.total_must_pass_marks || 0,
+      duration_minutes: exam.duration_minutes || 0,
+      stage_id: stageId,
+      course_id: courseId,
+      course_detail_id: lessonId,
+      type_exam: exam.type_exam || '',
+      time_start: exam.time_start || null,
+      time_end: exam.time_end || null,
+    });
+    setImageId(exam.image?.id || null);
+  } catch (error) {
+    console.error('Error loading exam:', error);
+    toast.error(lang === 'ar' ? 'حدث خطأ في تحميل بيانات الامتحان' : 'Error loading exam data');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // ✅ Get course filters with useCallback
+  const getCourseExtraFilters = useCallback(() => {
+    const filters: Record<string, any> = {};
+    if (user?.id) {
+      filters.teacher_id = user.id;
+    }
+    if (formData.stage_id) {
+      filters.stage_id = formData.stage_id;
+    }
+    return filters;
+  }, [user?.id, formData.stage_id]);
+
+  // ✅ Get lesson filters with useCallback
+  const getLessonExtraFilters = useCallback(() => {
+    const filters: Record<string, any> = {};
+    if (user?.id) {
+      filters.teacher_id = user.id;
+    }
+    if (formData.stage_id) {
+      filters.stage_id = formData.stage_id;
+    }
+    if (formData.course_id) {
+      filters.course_id = formData.course_id;
+    }
+    return filters;
+  }, [user?.id, formData.stage_id, formData.course_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,12 +171,26 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
       toast.error(lang === 'ar' ? 'يرجى اختيار المرحلة' : 'Please select stage');
       return;
     }
+    if (!formData.course_id) {
+      toast.error(lang === 'ar' ? 'يرجى اختيار الكورس' : 'Please select course');
+      return;
+    }
     if (!formData.course_detail_id) {
       toast.error(lang === 'ar' ? 'يرجى اختيار الدرس' : 'Please select lesson');
       return;
     }
 
-    // Validate time_start and time_end
+    // ✅ Validate pass marks
+    if (formData.total_must_pass_marks > formData.total_marks) {
+      toast.error(
+        lang === 'ar' 
+          ? 'درجة النجاح لا يمكن أن تتجاوز المجموع الكلي' 
+          : 'Pass marks cannot exceed total marks'
+      );
+      return;
+    }
+
+    // Validate time
     if (formData.time_start && formData.time_end) {
       const start = new Date(formData.time_start);
       const end = new Date(formData.time_end);
@@ -157,52 +233,11 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
     setImageId(null);
   };
 
-  // Helper function to format datetime-local input value
   const formatDateTimeLocal = (dateTime: string | null) => {
     if (!dateTime) return '';
-    return dateTime.slice(0, 16); // Format: YYYY-MM-DDThh:mm
+    return dateTime.slice(0, 16);
   };
 
-  // Helper function to combine date and time
-  const combineDateTime = (date: string, time: string): string => {
-    if (!date || !time) return '';
-    return `${date}T${time}:00`;
-  };
-
-  const getLessonExtraFilters = () => {
-    const filters: Record<string, any> = {};
-    
-    // إضافة teacher_id لجلب دروس المعلم فقط
-    if (user?.id) {
-      filters.teacher_id = user.id;
-    }
-    
-    if (formData.stage_id) {
-      filters.stage_id = formData.stage_id;
-    }
-     if (formData.course_id) {
-      filters.course_id = formData.course_id;
-    }
-    return filters;
-  };
-
-// eslint-disable-next-line react-hooks/preserve-manual-memoization
-const getCourseExtraFilters = useCallback(() => {
-  const filters: Record<string, any> = {};
-  
-  // ✅ teacher_id أساسي
-  if (user?.id) {
-    filters.teacher_id = user.id;
-  }
-  
-  // ✅ stage_id لو موجود
-  if (formData.stage_id) {
-    filters.stage_id = formData.stage_id;
-  }
-  
-  return filters;
-}, [user?.id, formData.stage_id]);
-  
   if (loading && examId) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -278,17 +313,6 @@ const getCourseExtraFilters = useCallback(() => {
               />
             </div>
 
-            {/* Arabic Title (optional) */}
-            {/* <div className="space-y-2">
-              <Label>{lang === 'ar' ? 'العنوان بالعربية' : 'Arabic Title'}</Label>
-              <Input
-                value={formData.title_ar}
-                onChange={(e) => setFormData({ ...formData, title_ar: e.target.value })}
-                placeholder={lang === 'ar' ? 'عنوان الامتحان بالعربية (اختياري)' : 'Arabic title (optional)'}
-                className="rounded-2xl h-12"
-              />
-            </div> */}
-
             {/* Description */}
             <div className="space-y-2">
               <Label>{t('description')}</Label>
@@ -301,43 +325,68 @@ const getCourseExtraFilters = useCallback(() => {
               />
             </div>
 
-            {/* Arabic Description (optional) */}
-            {/* <div className="space-y-2">
-              <Label>{lang === 'ar' ? 'الوصف بالعربية' : 'Arabic Description'}</Label>
-              <Textarea
-                value={formData.description_ar}
-                onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })}
-                rows={4}
-                placeholder={lang === 'ar' ? 'وصف الامتحان بالعربية (اختياري)' : 'Arabic description (optional)'}
-                className="rounded-2xl resize-none"
-              />
-            </div> */}
-
-            {/* Stats Row */}
+            {/* Stats Row - مع درجة النجاح */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="space-y-2">
                 <Label>{t('totalMarks')}</Label>
                 <Input
                   type="number"
+                  min={0}
                   value={formData.total_marks}
-                  onChange={(e) => setFormData({ ...formData, total_marks: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setFormData({ 
+                      ...formData, 
+                      total_marks: val,
+                      // ✅ لو درجة النجاح أكبر من المجموع، نعدلها
+                      total_must_pass_marks: Math.min(formData.total_must_pass_marks, val)
+                    });
+                  }}
                   className="rounded-xl"
                   required
                 />
               </div>
-              {/* <div className="space-y-2">
-                <Label>{lang === 'ar' ? 'درجة النجاح' : 'Pass Marks'}</Label>
+              
+              {/* ✅ حقل درجة النجاح */}
+              <div className="space-y-2">
+                <Label>
+                  {lang === 'ar' ? 'درجة النجاح' : 'Pass Marks'}
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (من {formData.total_marks || 0})
+                  </span>
+                </Label>
                 <Input
                   type="number"
-                  value={formData.total_marks_pass_marks}
-                  onChange={(e) => setFormData({ ...formData, total_marks_pass_marks: parseInt(e.target.value) || 0 })}
+                  min={0}
+                  max={formData.total_marks || 100}
+                  value={formData.total_must_pass_marks}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    if (value <= formData.total_marks || formData.total_marks === 0) {
+                      setFormData({ ...formData, total_must_pass_marks: value });
+                    } else {
+                      toast.warning(
+                        lang === 'ar' 
+                          ? 'درجة النجاح لا يمكن أن تتجاوز المجموع الكلي' 
+                          : 'Pass marks cannot exceed total marks'
+                      );
+                    }
+                  }}
                   className="rounded-xl"
+                  required
                 />
-              </div> */}
+                <p className="text-xs text-muted-foreground">
+                  {lang === 'ar' 
+                    ? `الطالب يحتاج ${formData.total_must_pass_marks || 0} درجة للنجاح` 
+                    : `Student needs ${formData.total_must_pass_marks || 0} marks to pass`}
+                </p>
+              </div>
+              
               <div className="space-y-2">
                 <Label>{t('durationMinutes')}</Label>
                 <Input
                   type="number"
+                  min={0}
                   value={formData.duration_minutes}
                   onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 0 })}
                   className="rounded-xl"
@@ -346,7 +395,7 @@ const getCourseExtraFilters = useCallback(() => {
               </div>
             </div>
 
-            {/* Date and Time Section */}
+            {/* Schedule */}
             <div className="space-y-4">
               <Label className="text-base font-semibold flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
@@ -354,7 +403,6 @@ const getCourseExtraFilters = useCallback(() => {
               </Label>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Start Date and Time */}
                 <div className="space-y-3">
                   <Label className="text-sm font-medium flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
@@ -366,12 +414,7 @@ const getCourseExtraFilters = useCallback(() => {
                     onChange={(e) => setFormData({ ...formData, time_start: e.target.value ? `${e.target.value}:00` : null })}
                     className="rounded-xl"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {lang === 'ar' ? 'اختر التاريخ والوقت لبدء الامتحان' : 'Select date and time for exam start'}
-                  </p>
                 </div>
-
-                {/* End Date and Time */}
                 <div className="space-y-3">
                   <Label className="text-sm font-medium flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
@@ -383,15 +426,13 @@ const getCourseExtraFilters = useCallback(() => {
                     onChange={(e) => setFormData({ ...formData, time_end: e.target.value ? `${e.target.value}:00` : null })}
                     className="rounded-xl"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {lang === 'ar' ? 'اختر التاريخ والوقت لانتهاء الامتحان' : 'Select date and time for exam end'}
-                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Stage & Lesson */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Stage, Course, Lesson */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Stage */}
               <div className="space-y-2">
                 <Label>{t('stage')}</Label>
                 <select
@@ -401,8 +442,8 @@ const getCourseExtraFilters = useCallback(() => {
                     setFormData({ 
                       ...formData, 
                       stage_id: newStageId,
-                      // reset lesson when stage changes
-                      course_detail_id: null 
+                      course_id: null, // ✅ إعادة تعيين الكورس
+                      course_detail_id: null // ✅ إعادة تعيين الدرس
                     });
                   }}
                   className="w-full px-3 py-2 rounded-xl border bg-background"
@@ -414,47 +455,63 @@ const getCourseExtraFilters = useCallback(() => {
                   ))}
                 </select>
               </div>
-<div className="space-y-2">
-  <Label>{t('course')}</Label>
-  <AsyncSelect
-    key={`course-${formData.stage_id}-${user?.id}`}
-    configKey="courses"
-    value={formData.course_id}
-    onChange={(id, course) => {
-      setFormData({ 
-        ...formData, 
-        course_id: id,
-        course_detail_id: null // ✅ إعادة تعيين الدرس
-      });
-    }}
-    extraFilters={getCourseExtraFilters()} // ✅ استخدم الدالة
-    placeholder={lang === 'ar' ? 'اختر الكورس' : 'Select course'}
-    required
-  />
-</div>
 
+              {/* Course */}
+              <div className="space-y-2">
+                <Label>{t('course')}</Label>
+                <AsyncSelect
+                  key={`course-${formData.stage_id}-${user?.id}`}
+                  configKey="courses"
+                  autoFetch={true}
+                  value={formData.course_id}
+                  onChange={(id) => {
+                    console.log("📚 Course selected:", id);
+                    setFormData({ 
+                      ...formData, 
+                      course_id: id,
+                      course_detail_id: null // ✅ إعادة تعيين الدرس
+                    });
+                  }}
+                  extraFilters={getCourseExtraFilters()}
+                  placeholder={lang === 'ar' ? 'اختر الكورس' : 'Select course'}
+                  required
+                  disabled={!formData.stage_id}
+                />
+                {!formData.stage_id && (
+                  <p className="text-xs text-amber-500 mt-1">
+                    {lang === 'ar' ? 'يرجى اختيار المرحلة أولاً' : 'Please select a stage first'}
+                  </p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-  <Label>{t('lesson')}</Label>
-  <AsyncSelect
-    key={`lesson-${formData.stage_id}-${formData.course_id}-${user?.id}`}
-    configKey="courseLessons" // ✅ استخدم Config جديد
-    value={formData.course_detail_id}
-    onChange={(id, lesson) => {
-      setFormData({ ...formData, course_detail_id: id });
-    }}
-    extraFilters={getLessonExtraFilters()}
-    placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select lesson'}
-    required
-    disabled={!formData.course_id} // ✅ تعطيل إذا لم يتم اختيار كورس
-  />
-  {!formData.course_id && (
-    <p className="text-xs text-amber-500 mt-1">
-      {lang === 'ar' ? 'يرجى اختيار الكورس أولاً' : 'Please select a course first'}
-    </p>
-  )}
-</div>
-
+              {/* Lesson */}
+              <div className="space-y-2">
+                <Label>{t('lesson')}</Label>
+                <AsyncSelect
+                  key={`lesson-${formData.stage_id}-${formData.course_id}-${user?.id}`}
+                  configKey="courseLessons"
+                   autoFetch={true}
+                  value={formData.course_detail_id}
+                  onChange={(id) => {
+                    console.log("📖 Lesson selected:", id);
+                    setFormData({ ...formData, course_detail_id: id });
+                  }}
+                  extraFilters={getLessonExtraFilters()}
+                  placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select lesson'}
+                  required
+                  disabled={!formData.course_id}
+                />
+                {!formData.course_id && (
+                  <p className="text-xs text-amber-500 mt-1">
+                    {lang === 'ar' ? 'يرجى اختيار الكورس أولاً' : 'Please select a course first'}
+                  </p>
+                )}
+                {formData.course_id && formData.course_detail_id && (
+                  <p className="text-xs text-green-500 mt-1">
+                    ✅ {lang === 'ar' ? 'تم اختيار الدرس' : 'Lesson selected'}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Exam Type */}

@@ -10,65 +10,151 @@ class CenterHourService extends BaseService<CenterHour> {
     super('center-hour');
   }
 
-  // جلب كل المواعيد
+  // ✅ نفس طريقة SemesterService لجلب teacher_id
+  private getTeacherId(): number | undefined {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    return user?.id;
+  }
+
+  // ✅ جلب كل المواعيد مع فلتر teacher_id تلقائي
   async getAll(params?: GetAllCenterHoursParams): Promise<any> {
-    const requestBody: any = {
-      filters: {},
-      orderBy: 'date',
-      orderByDirection: 'desc',
-      perPage: params?.perPage || 10,
-      page: params?.page || 1,
-      paginate: true,
-      delete: false,
-    };
+    try {
+      // ✅ جلب teacher_id بنفس الطريقة
+      const teacherId = params?.teacher_id ?? this.getTeacherId();
 
-    if (params?.teacher_id) {
-      requestBody.filters.teacher_id = params.teacher_id;
+      const requestBody: any = {
+        filters: {},
+        orderBy: 'date',
+        orderByDirection: 'desc',
+        perPage: params?.perPage || 10,
+        page: params?.page || 1,
+        paginate: true,
+        delete: false,
+      };
+
+      // ✅ إضافة teacher_id للفلترات
+      if (teacherId) {
+        requestBody.filters.teacher_id = teacherId;
+      }
+
+      // ✅ فلتر search
+      if (params?.search) {
+        requestBody.search = params.search;
+        requestBody.searchFields = ['title', 'note'];
+      }
+
+      // ✅ فلتر التاريخ
+      if (params?.from_date) {
+        requestBody.filters.date_from = params.from_date;
+      }
+
+      if (params?.to_date) {
+        requestBody.filters.date_to = params.to_date;
+      }
+
+      // ✅ حذف الفلاتر الفارغة (زي SemesterService)
+      Object.keys(requestBody.filters).forEach((key) => {
+        const value = requestBody.filters[key];
+        if (value === '' || value === null || value === undefined) {
+          delete requestBody.filters[key];
+        }
+      });
+
+      console.log('📤 Sending request:', requestBody);
+
+      const response = await api.post(`/${this.endpoint}/index`, requestBody);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching center hours:', error);
+      throw error;
     }
-
-    if (params?.search) {
-      requestBody.search = params.search;
-      requestBody.searchFields = ['title', 'note'];
-    }
-
-    if (params?.from_date) {
-      requestBody.filters.date_from = params.from_date;
-    }
-
-    if (params?.to_date) {
-      requestBody.filters.date_to = params.to_date;
-    }
-
-    const response = await api.post(`/${this.endpoint}/index`, requestBody);
-    return response.data;
   }
 
-  // إنشاء موعد جديد
+  // ✅ إنشاء موعد جديد (مع teacher_id تلقائي)
   async create(data: CreateCenterHourRequest): Promise<CenterHour> {
-    const response = await api.post(`/${this.endpoint}`, data);
-    return response.data.data;
+    try {
+      // ✅ إضافة teacher_id تلقائياً
+      const teacherId = this.getTeacherId();
+      const finalData = {
+        ...data,
+        teacher_id: data.teacher_id || teacherId,
+      };
+
+      const response = await api.post(`/${this.endpoint}`, finalData);
+      return response.data.data;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to create center hour",
+        variant: "destructive"
+      });
+      throw error;
+    }
   }
 
-  // تحديث موعد
+  // ✅ تحديث موعد
   async update(id: number, data: Partial<CreateCenterHourRequest>): Promise<CenterHour> {
-    const response = await api.patch(`/${this.endpoint}/${id}`, data);
-    return response.data.data;
+    try {
+      const response = await api.patch(`/${this.endpoint}/${id}`, data);
+      return response.data.data;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update center hour",
+        variant: "destructive"
+      });
+      throw error;
+    }
   }
 
-  // حذف موعد
+  // ✅ حذف موعد
   async deleteHour(id: number): Promise<void> {
-    await api.delete(`/${this.endpoint}/${id}`);
+    try {
+      await api.delete(`/${this.endpoint}/${id}`);
+      toast({
+        title: "Success",
+        description: "Center hour deleted successfully"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to delete center hour",
+        variant: "destructive"
+      });
+      throw error;
+    }
   }
 
-  // حذف جماعي
+  // ✅ حذف جماعي
   async bulkDelete(ids: number[]): Promise<void> {
-    await api.delete(`/${this.endpoint}/delete`, { data: { items: ids } });
+    try {
+      await api.delete(`/${this.endpoint}/delete`, { data: { items: ids } });
+      toast({
+        title: "Success",
+        description: `${ids.length} center hours deleted successfully`
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to delete center hours",
+        variant: "destructive"
+      });
+      throw error;
+    }
   }
 
-  // إحصائيات المواعيد
+  // ✅ إحصائيات المواعيد
   async getStatistics(): Promise<any> {
-    const response = await api.get(`/${this.endpoint}/statistics`);
-    return response.data.data;
+    try {
+      const teacherId = this.getTeacherId();
+      const response = await api.get(`/${this.endpoint}/statistics`, {
+        params: { teacher_id: teacherId }
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+      throw error;
+    }
   }
 }
 

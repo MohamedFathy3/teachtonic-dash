@@ -611,7 +611,7 @@ const navigate = useNavigate();
                       </option>
                       {offersList.map((offer: any) => (
                         <option key={offer.id} value={offer.id}>
-                          {isRTL ? (offer.title_ar || offer.title) : offer.title} - {offer.offer_discount}%
+                          {isRTL ? (offer.title_ar || offer.title) : offer.title} - {offer.offer_discount}
                         </option>
                       ))}
                     </select>
@@ -741,7 +741,7 @@ const navigate = useNavigate();
                         </TableCell>
                         <TableCell className="text-center">
                           <span className="text-sm">
-                            {parseFloat(semester.discount).toFixed(2)}%
+                            {parseFloat(semester.discount).toFixed(2)}
                           </span>
                         </TableCell>
                         <TableCell className="text-center">
@@ -964,7 +964,7 @@ const navigate = useNavigate();
                     </option>
                     {offersList.map((offer: any) => (
                       <option key={offer.id} value={offer.id}>
-                        {isRTL ? (offer.title_ar || offer.title) : offer.title} - {offer.offer_discount}%
+                        {isRTL ? (offer.title_ar || offer.title) : offer.title} - {offer.offer_discount}
                       </option>
                     ))}
                   </select>
