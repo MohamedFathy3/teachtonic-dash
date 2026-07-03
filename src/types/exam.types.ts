@@ -20,7 +20,7 @@ export interface MediaImage {
 export interface ExamFormData {
   title: string;
   title_ar?: string;
-
+ total_must_pass_marks: number; 
   description: string;
   description_ar?: string;
 

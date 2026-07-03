@@ -163,110 +163,123 @@ async toggleShowResult(id: number): Promise<Exam> {
   // ✅ إنشاء امتحان جديد
   private creatingExams = new Set<string>();
 
-  async createExam(data: CreateExamDTO): Promise<Exam> {
-    const key = `${data.title}_${data.teacher_id}`;
+// src/services/exam.service.ts
 
-    try {
-      if (this.creatingExams.has(key)) {
-        throw new Error('Exam creation already in progress');
-      }
+async createExam(data: CreateExamDTO): Promise<Exam> {
+  const key = `${data.title}_${data.teacher_id}`;
 
-      this.creatingExams.add(key);
+  try {
+    if (this.creatingExams.has(key)) {
+      throw new Error('Exam creation already in progress');
+    }
 
-      const payload = {
-        title: data.title,
-        title_ar: data.title_ar,
-        description: data.description,
-        description_ar: data.description_ar,
-        type: data.type,
-        teacher_id: data.teacher_id,
-        course_detail_id: data.course_detail_id,
-        stage_id: data.stage_id,
-        total_marks: data.total_marks,
-        total_marks_pass_marks: data.total_marks_pass_marks,
-        duration_minutes: data.duration_minutes,
-        ...(data.image && { image: data.image }),
-      };
+    this.creatingExams.add(key);
 
-      const response = await api.post(`/${this.endpoint}`, payload);
+    // ✅ تصحيح الـ payload
+    const payload = {
+      title: data.title,
+      title_ar: data.title_ar || '',
+      description: data.description || '',
+      description_ar: data.description_ar || '',
+      type: data.type || 'exam',
+      teacher_id: data.teacher_id,
+      course_detail_id: data.course_detail_id,
+      stage_id: data.stage_id,
+      total_marks: data.total_marks || 0,
+      total_must_pass_marks: data.total_must_pass_marks || 0, // ✅ تصحيح
+      duration_minutes: data.duration_minutes || 0,
+      type_exam: (data as any).type_exam || 'online',
+      time_start: (data as any).time_start || null,
+      time_end: (data as any).time_end || null,
+      ...(data.image && { image: data.image }),
+    };
 
-      toast({
-        title: "Success",
-        description: "Exam created successfully",
-      });
+    console.log('📤 Creating exam payload:', payload); // ✅ للتأكد
 
-      if (response.data?.status === 200 && response.data?.result === "Success") {
-        if (!response.data?.data) {
-          const allExams = await this.getAllExams(
-            { teacher_id: data.teacher_id },
-            1,
-            1
-          );
+    const response = await api.post(`/${this.endpoint}`, payload);
 
-          if (allExams.data && allExams.data.length > 0) {
-            return allExams.data[0];
-          }
+    toast({
+      title: "Success",
+      description: "Exam created successfully",
+    });
 
-          throw new Error('Failed to retrieve created exam');
+    if (response.data?.status === 200 && response.data?.result === "Success") {
+      if (!response.data?.data) {
+        const allExams = await this.getAllExams(
+          { teacher_id: data.teacher_id },
+          1,
+          1
+        );
+
+        if (allExams.data && allExams.data.length > 0) {
+          return allExams.data[0];
         }
 
-        return response.data.data;
+        throw new Error('Failed to retrieve created exam');
       }
-
-      throw new Error(response.data?.message || 'Failed to create exam');
-
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || error.message || 'Failed to create exam',
-        variant: 'destructive',
-      });
-      throw error;
-    } finally {
-      this.creatingExams.delete(key);
-    }
-  }
-
-  // ✅ تحديث امتحان
-  async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {
-    try {
-      const payload: any = {
-        title: data.title,
-        title_ar: data.title_ar,
-        description: data.description,
-        description_ar: data.description_ar,
-        teacher_id: data.teacher_id,
-        course_detail_id: data.course_detail_id,
-        stage_id: data.stage_id,
-        total_marks: data.total_marks,
-        total_marks_pass_marks: data.total_marks_pass_marks,
-        duration_minutes: data.duration_minutes,
-        type_exam: (data as any).type_exam || undefined,
-      };
-
-      if (data.image) {
-        payload.image = data.image;
-      }
-
-      const response = await api.patch(`/${this.endpoint}/${id}`, payload);
-
-      toast({
-        title: "Success",
-        description: "Exam updated successfully",
-      });
 
       return response.data.data;
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to update exam",
-        variant: "destructive"
-      });
-      throw error;
     }
-  }
 
-  // ✅ نقل امتحان إلى سلة المحذوفات
+    throw new Error(response.data?.message || 'Failed to create exam');
+
+  } catch (error: any) {
+    console.error('Create exam error:', error);
+    toast({
+      title: 'Error',
+      description: error.response?.data?.message || error.message || 'Failed to create exam',
+      variant: 'destructive',
+    });
+    throw error;
+  } finally {
+    this.creatingExams.delete(key);
+  }
+}
+
+async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {
+  try {
+    const payload: any = {
+      title: data.title,
+      title_ar: data.title_ar || '',
+      description: data.description || '',
+      description_ar: data.description_ar || '',
+      teacher_id: data.teacher_id,
+      course_detail_id: data.course_detail_id,
+      stage_id: data.stage_id,
+      total_marks: data.total_marks || 0,
+      total_must_pass_marks: data.total_must_pass_marks || 0, // ✅ تصحيح
+      duration_minutes: data.duration_minutes || 0,
+      type_exam: (data as any).type_exam || undefined,
+      time_start: (data as any).time_start || null,
+      time_end: (data as any).time_end || null,
+    };
+
+    if (data.image) {
+      payload.image = data.image;
+    }
+
+    console.log('📤 Updating exam payload:', payload); // ✅ للتأكد
+
+    const response = await api.patch(`/${this.endpoint}/${id}`, payload);
+
+    toast({
+      title: "Success",
+      description: "Exam updated successfully",
+    });
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error('Update exam error:', error);
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Failed to update exam",
+      variant: "destructive"
+    });
+    throw error;
+  }
+}
+
+
   async deleteExam(id: number): Promise<void> {
     try {
       await this.delete(id);
@@ -277,7 +290,6 @@ async toggleShowResult(id: number): Promise<Exam> {
     }
   }
 
-  // ✅ حذف نهائي
   async forceDeleteExam(id: number): Promise<void> {
     try {
       await this.forceDelete(id);
@@ -288,7 +300,6 @@ async toggleShowResult(id: number): Promise<Exam> {
     }
   }
 
-  // ✅ استعادة امتحان
   async restoreExam(id: number): Promise<Exam> {
     try {
       const exam = await this.restore(id);

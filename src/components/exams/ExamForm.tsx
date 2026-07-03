@@ -134,6 +134,7 @@ const loadExamData = async () => {
 };
 
   // ✅ Get course filters with useCallback
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const getCourseExtraFilters = useCallback(() => {
     const filters: Record<string, any> = {};
     if (user?.id) {
@@ -146,6 +147,7 @@ const loadExamData = async () => {
   }, [user?.id, formData.stage_id]);
 
   // ✅ Get lesson filters with useCallback
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const getLessonExtraFilters = useCallback(() => {
     const filters: Record<string, any> = {};
     if (user?.id) {
@@ -160,69 +162,66 @@ const loadExamData = async () => {
     return filters;
   }, [user?.id, formData.stage_id, formData.course_id]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.title) {
-      toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الامتحان' : 'Please enter exam title');
-      return;
-    }
-    if (!formData.stage_id) {
-      toast.error(lang === 'ar' ? 'يرجى اختيار المرحلة' : 'Please select stage');
-      return;
-    }
-    if (!formData.course_id) {
-      toast.error(lang === 'ar' ? 'يرجى اختيار الكورس' : 'Please select course');
-      return;
-    }
-    if (!formData.course_detail_id) {
-      toast.error(lang === 'ar' ? 'يرجى اختيار الدرس' : 'Please select lesson');
-      return;
-    }
 
-    // ✅ Validate pass marks
-    if (formData.total_must_pass_marks > formData.total_marks) {
-      toast.error(
-        lang === 'ar' 
-          ? 'درجة النجاح لا يمكن أن تتجاوز المجموع الكلي' 
-          : 'Pass marks cannot exceed total marks'
-      );
-      return;
-    }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  // ✅ التحقق من صحة البيانات
+  if (!formData.title) {
+    toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الامتحان' : 'Please enter exam title');
+    return;
+  }
+  if (!formData.stage_id) {
+    toast.error(lang === 'ar' ? 'يرجى اختيار المرحلة' : 'Please select stage');
+    return;
+  }
+  if (!formData.course_id) {
+    toast.error(lang === 'ar' ? 'يرجى اختيار الكورس' : 'Please select course');
+    return;
+  }
+  if (!formData.course_detail_id) {
+    toast.error(lang === 'ar' ? 'يرجى اختيار الدرس' : 'Please select lesson');
+    return;
+  }
 
-    // Validate time
-    if (formData.time_start && formData.time_end) {
-      const start = new Date(formData.time_start);
-      const end = new Date(formData.time_end);
-      if (end <= start) {
-        toast.error(lang === 'ar' ? 'وقت النهاية يجب أن يكون بعد وقت البداية' : 'End time must be after start time');
-        return;
-      }
-    }
+  // ✅ التحقق من درجة النجاح
+  if (formData.total_must_pass_marks > formData.total_marks) {
+    toast.error(
+      lang === 'ar' 
+        ? 'درجة النجاح لا يمكن أن تتجاوز المجموع الكلي' 
+        : 'Pass marks cannot exceed total marks'
+    );
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const examData = {
-        ...formData,
-        teacher_id: user?.id || 1,
-        image: imageId || undefined,
-      };
-
-      if (examId) {
-        await examService.updateExam(examId, examData);
-        toast.success(lang === 'ar' ? 'تم تحديث الامتحان بنجاح' : 'Exam updated successfully');
-      } else {
-        await examService.createExam(examData);
-        toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
-      }
-      onSuccess();
-    } catch (error) {
-      console.error('Error saving exam:', error);
-      toast.error(lang === 'ar' ? 'حدث خطأ في حفظ الامتحان' : 'Error saving exam');
-    } finally {
-      setLoading(false);
-    }
+  // ✅ تحضير البيانات للإرسال
+  const examData = {
+    ...formData,
+    teacher_id: user?.id || 1,
+    image: imageId || undefined,
+    type: 'exam', // ✅ إضافة النوع
+    type_exam: formData.type_exam || 'online', // ✅ قيمة افتراضية
   };
+
+  console.log('📤 Sending exam data:', examData); // ✅ للتأكد
+
+  setLoading(true);
+  try {
+    if (examId) {
+      await examService.updateExam(examId, examData);
+      toast.success(lang === 'ar' ? 'تم تحديث الامتحان بنجاح' : 'Exam updated successfully');
+    } else {
+      await examService.createExam(examData);
+      toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
+    }
+    onSuccess();
+  } catch (error) {
+    console.error('Error saving exam:', error);
+    toast.error(lang === 'ar' ? 'حدث خطأ في حفظ الامتحان' : 'Error saving exam');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleImageUpload = (id: number) => {
     setImageId(id);
