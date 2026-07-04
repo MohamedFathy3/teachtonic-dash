@@ -8,6 +8,7 @@ export const translations = {
     instructor: "Instructor",
     switchRole: "Switch role",
     // Nav - common
+    linkVideo:"link_Video",
     dashboard: "Dashboard",
     settings: "Settings",
     // Nav - admin
@@ -538,6 +539,7 @@ watch_count:"عدد مرات الشاهده",
     stage: "المراحل",
     subject: "المواد",
     discount: "الخصم",
+    linkVideo: "رابط الفيديو",
     "attens":"تسجيل الحضور",
     Notifications:"الاشعارات",
     edit_teacher: "تعديل المُدرس",

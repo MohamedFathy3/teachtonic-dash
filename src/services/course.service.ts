@@ -138,7 +138,8 @@ async getAllCourses(
         start_date: data.start_date,
         end_date: data.end_date,
         ...(data.image && { image: data.image }),
-         ...(data.offer_id && { offer_id: data.offer_id }), 
+        ...(data.offer_id && { offer_id: data.offer_id }),
+        ...(data.link_video !== undefined && { link_video: data.link_video }), // ✅ إضافة link_video
       };
 
       const response = await api.post(`/${this.endpoint}`, payload);
@@ -181,7 +182,9 @@ async getAllCourses(
       if (data.start_date !== undefined) payload.start_date = data.start_date;
       if (data.end_date !== undefined) payload.end_date = data.end_date;
       if (data.image !== undefined) payload.image = data.image;
- if (data.offer_id !== undefined) payload.offer_id = data.offer_id;
+      if (data.offer_id !== undefined) payload.offer_id = data.offer_id;
+      if (data.link_video !== undefined) payload.link_video = data.link_video; // ✅ إضافة link_video
+
       const response = await api.patch(`/${this.endpoint}/${id}`, payload);
 
       toast({

@@ -171,12 +171,26 @@ class AssignmentService extends BaseService<Exam> {
   }
 
   // ✅ تبديل إظهار النتيجة
-  async toggleShowResult(id: number, value: boolean): Promise<Exam> {
-    const response = await api.patch(`/${this.endpoint}/${id}`, { 
-      show_result: value 
+// ✅ تبديل إظهار النتيجة - التعديل الصحيح
+async toggleShowResult(id: number): Promise<{ message: string }> {
+  try {
+    const response = await api.put(`/${this.endpoint}/${id}/show_result`);
+    
+    toast({
+      title: "Success",
+      description: response.data?.message || "Show result toggled successfully"
     });
-    return response.data.data;
+    
+    return response.data;
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Failed to update setting",
+      variant: "destructive"
+    });
+    throw error;
   }
+}
 }
 
 export const assignmentService = new AssignmentService();

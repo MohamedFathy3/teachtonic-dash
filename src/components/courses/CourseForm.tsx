@@ -56,6 +56,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
     start_date: '',
     end_date: '',
     offer_id: null,
+     link_video: course?.link_video || '',
   });
 
   // ✅ تحميل بيانات الكورس عند التعديل
@@ -81,6 +82,7 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
         start_date: course.start_date,
         end_date: course.end_date,
         offer_id: course.offer_id || null,
+        link_video: course.link_video || '',
       });
     }
   }, [course]);
@@ -93,25 +95,31 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
     setFormData(prev => ({ ...prev, image: 0 }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!formData.image || formData.image === 0) {
-      alert(t('pleaseUploadImage') || 'Please upload a course image');
-      return;
-    }
+  if (!formData.image || formData.image === 0) {
+    alert(t('pleaseUploadImage') || 'Please upload a course image');
+    return;
+  }
 
-    try {
-      if (course) {
-        await updateCourse(course.id, formData);
-      } else {
-        await createCourse(formData as CourseFormData);
-      }
-      onSuccess?.();
-    } catch (err) {
-      console.error('Form submission error:', err);
+  try {
+    // ✅ تأكد من إرسال link_video
+    const submitData = {
+      ...formData,
+      link_video: formData.link_video || null,
+    };
+
+    if (course) {
+      await updateCourse(course.id, submitData);
+    } else {
+      await createCourse(submitData as CourseFormData);
     }
-  };
+    onSuccess?.();
+  } catch (err) {
+    console.error('Form submission error:', err);
+  }
+};
 
   const handleChange = (field: keyof CourseFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -278,7 +286,21 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
             {/* Course Details */}
             <div className="space-y-4 pt-4 border-t">
               <h3 className="text-lg font-semibold">{t('courseDetails')}</h3>
-
+<div className="space-y-2">
+  <Label>{t('linkVideo')}</Label>
+  <Input
+    type="url"
+    value={formData.link_video || ''}
+    onChange={(e) => handleChange('link_video', e.target.value)}
+    placeholder={lang === 'ar' ? 'رابط الفيديو التعريفي' : 'Introduction video link'}
+    className="rounded-xl"
+  />
+  <p className="text-xs text-muted-foreground">
+    {lang === 'ar' 
+      ? 'أدخل رابط فيديو (YouTube, Vimeo, إلخ) لعرضه كفيديو تعريفي للدورة' 
+      : 'Enter a video link (YouTube, Vimeo, etc.) to display as an introductory video for the course'}
+  </p>
+</div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>{t('type')} *</Label>
@@ -353,6 +375,8 @@ export const CourseForm: React.FC<CourseFormProps> = ({ course, onSuccess, onCan
                     required
                   />
                 </div>
+
+
               </div>
             </div>
 

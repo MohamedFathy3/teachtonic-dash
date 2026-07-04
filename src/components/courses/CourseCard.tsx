@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import {
   BookOpen, Star, Users, DollarSign, Eye, Edit, Trash2,
   RefreshCw, Archive, Power, PowerOff, CheckCircle, XCircle,
-  Percent, Clock, Calendar, TrendingDown, Gift, Zap, Flame
+  Percent, Clock, Calendar, TrendingDown, Gift, Zap, Flame,
+  Video
 } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import type { Course } from '@/types/course.types';
@@ -54,13 +55,19 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   const semesterName = isRTL ? course.semester?.name_ar : course.semester?.name;
 
   const isStarEnabled = course.star === 1;
-  const hasDiscount = parseFloat(course.discount) > 0;
-  const discountPercent = parseFloat(course.discount);
-  const originalPrice = parseFloat(course.original_price || course.price);
-  const finalPrice = parseFloat(course.price);
+  
+  // ✅ استخدام القيم من الباك اند مباشرة
+  const originalPrice = parseFloat(course.original_price as any || course.price);
+  const finalPrice = parseFloat(course.price as any);
+  const discountAmount = parseFloat(course.discount as any || 0); // قيمة الخصم بالجنيه (40)
+  const discountPercent = parseFloat(course.offer_discount as any || 0); // نسبة الخصم المئوية (10%)
+  const hasDiscount = discountPercent > 0 || discountAmount > 0;
   const savedAmount = originalPrice - finalPrice;
 
-  // حساب نسبة الإكمال (مثال - ممكن تعدل حسب منطقك)
+  // ✅ التحقق من وجود فيديو تعريفي
+  const hasVideo = !!course.link_video;
+
+  // حساب نسبة الإكمال
   const completionRate = course.details?.length > 0 
     ? Math.min(100, Math.floor((course.details.filter((d: any) => d.attended).length / course.details.length) * 100))
     : 0;
@@ -77,13 +84,12 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       <Card className={`overflow-hidden rounded-2xl border transition-all duration-300 ${isDeleted ? 'bg-muted/30 border-red-200/50' : 'hover:shadow-xl'
         }`}>
         {/* Course Image */}
-        <div className="relative aspect-[16/9] bg-gradient-to-br from-gray-900 to-gray-800" >
+        <div className="relative aspect-[16/9] bg-gradient-to-br from-gray-900 to-gray-800">
           {course.image?.fullUrl || course.imageUrl ? (
             <img
               src={course.image?.fullUrl || course.imageUrl}
               alt={title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-               
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -91,10 +97,10 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </div>
           )}
 
-          {/* ✅ Overlay Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"  onClick={() => onView(course)} />
+          {/* Overlay Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" onClick={() => onView?.(course)} />
 
-          {/* ✅ Badges Row - Top */}
+          {/* Badges Row - Top */}
           <div className="absolute top-3 left-3 right-3 flex flex-wrap gap-2">
             {/* Star Featured Badge */}
             {isStarEnabled && (
@@ -104,7 +110,15 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               </Badge>
             )}
 
-            {/* Discount Badge */}
+            {/* Video Badge */}
+            {hasVideo && !isDeleted && (
+              <Badge className="gap-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-none shadow-lg">
+                <Video className="h-3 w-3" />
+                {lang === 'ar' ? 'فيديو تعريفي' : 'Intro Video'}
+              </Badge>
+            )}
+
+            {/* ✅ Discount Badge - يعرض نسبة الخصم المئوية من offer_discount */}
             {hasDiscount && !isDeleted && (
               <Badge className="gap-1 bg-gradient-to-r from-red-500 to-orange-500 text-white border-none shadow-lg">
                 <Percent className="h-3 w-3" />
@@ -112,7 +126,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               </Badge>
             )}
 
-            {/* Offer Badge (من العرض) */}
+            {/* Offer Badge */}
             {course.offer_id && !isDeleted && (
               <Badge className="gap-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-none shadow-lg">
                 <Gift className="h-3 w-3" />
@@ -160,7 +174,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </div>
           </div>
 
-          {/* ✅ Type Badge - Bottom Right */}
+          {/* Type Badge - Bottom Right */}
           <div className="absolute bottom-3 right-3">
             <Badge variant="outline" className="bg-black/50 text-white border-white/20 backdrop-blur-sm gap-1">
               {course.type === 'online' ? (
@@ -177,7 +191,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </Badge>
           </div>
 
-          {/* Actions Menu - appears on hover */}
+          {/* Actions Menu */}
           {showActions && isHovered && (
             <div className={`absolute top-3 ${isRTL ? 'right-3' : 'left-3'} flex gap-1 flex-wrap`}>
               {onView && (
@@ -214,7 +228,6 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                   )}
                 </Button>
               )}
-              {/* Star Toggle */}
               {!isDeleted && onToggleStar && (
                 <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-black/70 backdrop-blur-sm">
                   <Star className={`h-3 w-3 ${isStarEnabled ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`} />
@@ -282,25 +295,20 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>
           )}
 
-          {/* ✅ Stats Row */}
+          {/* Stats Row */}
           <div className="grid grid-cols-3 gap-2 pt-2">
-            {/* Duration */}
             <div className="flex items-center gap-1.5 text-xs bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1.5">
               <Clock className="h-3 w-3 text-blue-500" />
               <span className="text-muted-foreground">
                 {course.hour_time_course || '0'}h
               </span>
             </div>
-
-            {/* Semester */}
             <div className="flex items-center gap-1.5 text-xs bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1.5">
               <Calendar className="h-3 w-3 text-purple-500" />
               <span className="text-muted-foreground truncate">
                 {semesterName || (lang === 'ar' ? 'بدون ترم' : 'No Semester')}
               </span>
             </div>
-
-            {/* Stage */}
             <div className="flex items-center gap-1.5 text-xs bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1.5">
               <BookOpen className="h-3 w-3 text-green-500" />
               <span className="text-muted-foreground truncate">
@@ -309,7 +317,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </div>
           </div>
 
-          {/* ✅ Rating Stars */}
+          {/* Rating Stars & Discount Savings */}
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1">
               {isStarEnabled ? (
@@ -328,16 +336,24 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               )}
             </div>
 
-            {/* Discount Savings Badge */}
+            {/* ✅ Discount Savings - يعرض قيمة الخصم بالجنيه */}
             {hasDiscount && !isDeleted && (
               <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                 <TrendingDown className="h-3 w-3" />
                 <span>وفر {savedAmount.toLocaleString()} EGP</span>
               </div>
             )}
+
+            {/* Video Indicator */}
+            {hasVideo && !isDeleted && (
+              <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                <Video className="h-3 w-3" />
+                <span>{lang === 'ar' ? 'فيديو' : 'Video'}</span>
+              </div>
+            )}
           </div>
 
-          {/* ✅ Progress Bar for completion (optional) */}
+          {/* Progress Bar */}
           {completionRate > 0 && completionRate < 100 && (
             <div className="space-y-1 pt-1">
               <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -348,7 +364,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </div>
           )}
 
-          {/* ✅ Date Range */}
+          {/* Date Range */}
           {course.start_date && course.end_date && (
             <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-gray-100 dark:border-gray-800">
               <span>{new Date(course.start_date).toLocaleDateString()}</span>

@@ -54,39 +54,39 @@ export interface CourseImage {
   createdAt: string;
 }
 
-  export interface Course {
-    id: number;
-    teacher_id: number;
-    teacher: Teacher;
-    stage_id: number;
-    stage: Stage;
-    subject_id: number;
-    subject: Subject;
-    semester_id: number;
-    semester: Semester;
-    discount: string;
-    details: CourseDetail[];
-    students?: CourseStudent[];
-    title: string;
-    title_ar: string;
-    description: string;
-    description_ar: string;
-    star:number;
-    about: string;
-    about_ar: string;
-    hour_time_course: string;
-    type: 'center' | 'online';
-    count_student: number;
-    price: string;
-    start_date: string;
-    end_date: string;
-    active: number;
-    link_video: string | null;
-    imageUrl: string;
-    image: CourseImage;
-    createdAt: string;
-    offer_id:number
-  }
+export interface Course {
+  id: number;
+  teacher_id: number;
+  teacher: Teacher;
+  stage_id: number;
+  stage: Stage;
+  subject_id: number;
+  subject: Subject;
+  semester_id: number;
+  semester: Semester;
+  discount: string;
+  details: CourseDetail[];
+  students?: CourseStudent[];
+  title: string;
+  title_ar: string;
+  description: string;
+  description_ar: string;
+  star: number;
+  about: string;
+  about_ar: string;
+  hour_time_course: string;
+  type: 'center' | 'online';
+  count_student: number;
+  price: string;
+  start_date: string;
+  end_date: string;
+  active: number;
+  link_video: string | null; // ✅ حقل رابط الفيديو موجود بالفعل
+  imageUrl: string;
+  image: CourseImage;
+  createdAt: string;
+  offer_id: number;
+}
 export interface CourseStudent {
   id: number;
   name: string;
@@ -137,6 +137,7 @@ export interface CourseFormData {
   start_date: string;
   end_date: string;
   offer_id :number | null
+   link_video?: string | null; 
 }
 
 

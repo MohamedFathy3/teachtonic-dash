@@ -192,6 +192,7 @@ async createExam(data: CreateExamDTO): Promise<Exam> {
       time_start: (data as any).time_start || null,
       time_end: (data as any).time_end || null,
       ...(data.image && { image: data.image }),
+      
     };
 
     console.log('📤 Creating exam payload:', payload); // ✅ للتأكد
