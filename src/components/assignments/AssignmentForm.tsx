@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/assignments/AssignmentForm.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/contexts/AppContext';
 import { assignmentService } from '@/services/assignment.service';
@@ -13,8 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import FileUploader from '@/components/FileUploader';
-import { Loader2, Sparkles, Save, ChevronLeft, Settings2, Calendar, Clock, Monitor, Building2 } from 'lucide-react';
-import { toast  } from "@/hooks/use-toast";
+import { Loader2, Save, ChevronLeft, Settings2, Calendar, Clock, Monitor, Building2 } from 'lucide-react';
+import { toast } from "@/hooks/use-toast";
 
 interface AssignmentFormProps {
   assignmentId?: number | null;
@@ -28,10 +28,11 @@ interface AssignmentFormData {
   description: string;
   description_ar?: string;
   total_marks: number;
-  total_marks_pass_marks: number;
+  total_must_pass_marks: number; // ✅ نفس اسم الامتحان
   duration_minutes: number;
   course_detail_id: number | null;
   stage_id: number | null;
+  course_id: number | null; // ✅ إضافة course_id
   type_exam: 'center' | 'online' | '';
   time_start: string | null;
   time_end: string | null;
@@ -49,15 +50,17 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
     description: '',
     description_ar: '',
     total_marks: 0,
-    total_marks_pass_marks: 0,
+    total_must_pass_marks: 0, // ✅ نفس الاسم
     duration_minutes: 0,
     course_detail_id: null,
     stage_id: null,
+    course_id: null, // ✅ إضافة
     type_exam: '',
     time_start: null,
     time_end: null,
   });
 
+  // ✅ Load assignment data if editing
   useEffect(() => {
     if (assignmentId) {
       loadAssignmentData();
@@ -68,16 +71,54 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
     setLoading(true);
     try {
       const assignment = await assignmentService.getAssignment(assignmentId!);
+      console.log("📝 Assignment data loaded:", assignment);
+      
+      // ✅ استخراج الـ IDs بنفس طريقة الامتحان
+      let stageId = null;
+      let courseId = null;
+      let lessonId = null;
+
+      // ✅ Stage ID
+      if (assignment.stage_id) {
+        if (typeof assignment.stage_id === 'object' && assignment.stage_id !== null) {
+          stageId = assignment.stage_id.id;
+        } else {
+          stageId = assignment.stage_id;
+        }
+      }
+
+      // ✅ Course ID (من course_detail_id)
+      if (assignment.course_detail_id) {
+        if (typeof assignment.course_detail_id === 'object' && assignment.course_detail_id !== null) {
+          lessonId = assignment.course_detail_id.id;
+          courseId = assignment.course_detail_id.course_id || null;
+        } else {
+          lessonId = assignment.course_detail_id;
+        }
+      }
+
+      // ✅ لو في course_id منفصل
+      if (assignment.course_id) {
+        if (typeof assignment.course_id === 'object' && assignment.course_id !== null) {
+          courseId = assignment.course_id.id;
+        } else {
+          courseId = assignment.course_id;
+        }
+      }
+
+      console.log("🔍 Extracted IDs:", { stageId, courseId, lessonId });
+
       setFormData({
         title: assignment.title || '',
         title_ar: assignment.title_ar || '',
         description: assignment.description || '',
         description_ar: assignment.description_ar || '',
         total_marks: assignment.total_marks || 0,
-        total_marks_pass_marks: assignment.total_marks_pass_marks || 0,
+        total_must_pass_marks: assignment.total_must_pass_marks || 0, // ✅ نفس الاسم
         duration_minutes: assignment.duration_minutes || 0,
-        course_detail_id: assignment.course_detail_id?.id || assignment.course_detail_id || null,
-        stage_id: assignment.stage_id?.id || assignment.stage_id || null,
+        stage_id: stageId,
+        course_id: courseId,
+        course_detail_id: lessonId,
         type_exam: assignment.type_exam || '',
         time_start: assignment.time_start || null,
         time_end: assignment.time_end || null,
@@ -91,9 +132,37 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
     }
   };
 
+  // ✅ Get course filters with useCallback
+  const getCourseExtraFilters = useCallback(() => {
+    const filters: Record<string, any> = {};
+    if (user?.id) {
+      filters.teacher_id = user.id;
+    }
+    if (formData.stage_id) {
+      filters.stage_id = formData.stage_id;
+    }
+    return filters;
+  }, [user?.id, formData.stage_id]);
+
+  // ✅ Get lesson filters with useCallback
+  const getLessonExtraFilters = useCallback(() => {
+    const filters: Record<string, any> = {};
+    if (user?.id) {
+      filters.teacher_id = user.id;
+    }
+    if (formData.stage_id) {
+      filters.stage_id = formData.stage_id;
+    }
+    if (formData.course_id) {
+      filters.course_id = formData.course_id;
+    }
+    return filters;
+  }, [user?.id, formData.stage_id, formData.course_id]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // ✅ التحقق من صحة البيانات
     if (!formData.title) {
       toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الواجب' : 'Please enter assignment title');
       return;
@@ -102,8 +171,22 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
       toast.error(lang === 'ar' ? 'يرجى اختيار المرحلة' : 'Please select stage');
       return;
     }
+    if (!formData.course_id) {
+      toast.error(lang === 'ar' ? 'يرجى اختيار الكورس' : 'Please select course');
+      return;
+    }
     if (!formData.course_detail_id) {
       toast.error(lang === 'ar' ? 'يرجى اختيار الدرس' : 'Please select lesson');
+      return;
+    }
+
+    // ✅ التحقق من درجة النجاح
+    if (formData.total_must_pass_marks > formData.total_marks) {
+      toast.error(
+        lang === 'ar' 
+          ? 'درجة النجاح لا يمكن أن تتجاوز المجموع الكلي' 
+          : 'Pass marks cannot exceed total marks'
+      );
       return;
     }
 
@@ -113,7 +196,11 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
         ...formData,
         teacher_id: user?.id || 1,
         image: imageId || undefined,
+        type: 'assignment', // ✅ إضافة النوع
+        type_exam: formData.type_exam || 'online',
       };
+
+      console.log('📤 Sending assignment data:', assignmentData);
 
       if (assignmentId) {
         await assignmentService.updateAssignment(assignmentId, assignmentData);
@@ -143,17 +230,6 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
   const formatDateTimeLocal = (dateTime: string | null) => {
     if (!dateTime) return '';
     return dateTime.slice(0, 16);
-  };
-
-  const getLessonExtraFilters = () => {
-    const filters: Record<string, any> = {};
-    if (user?.id) {
-      filters.teacher_id = user.id;
-    }
-    if (formData.stage_id) {
-      filters.stage_id = formData.stage_id;
-    }
-    return filters;
   };
 
   if (loading && assignmentId) {
@@ -196,7 +272,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
             </div>
             <div>
               <CardTitle className="text-2xl font-bold">{lang === 'ar' ? 'بيانات الواجب' : 'Assignment Information'}</CardTitle>
-              <p className="text-muted-foreground text-sm mt-1">{lang === 'ar' ? 'أدخل جميع البيانات المطلوبة' : 'Fill all required assignment information'}</p>
+              <p className="text-muted-foreground text-sm mt-1">{lang === 'ar' ? 'أدخل جميع البيانات المطلوبة' : 'Fill all required information'}</p>
             </div>
           </div>
         </CardHeader>
@@ -231,16 +307,8 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
               />
             </div>
 
-            {/* Arabic Title (optional) */}
-            <div className="space-y-2">
-              <Label>{lang === 'ar' ? 'العنوان بالعربية' : 'Arabic Title'}</Label>
-              <Input
-                value={formData.title_ar}
-                onChange={(e) => setFormData({ ...formData, title_ar: e.target.value })}
-                placeholder={lang === 'ar' ? 'عنوان الواجب بالعربية (اختياري)' : 'Arabic title (optional)'}
-                className="rounded-2xl h-12"
-              />
-            </div>
+            {/* Title AR */}
+            
 
             {/* Description */}
             <div className="space-y-2">
@@ -254,34 +322,68 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
               />
             </div>
 
-            {/* Arabic Description (optional) */}
-            <div className="space-y-2">
-              <Label>{lang === 'ar' ? 'الوصف بالعربية' : 'Arabic Description'}</Label>
-              <Textarea
-                value={formData.description_ar}
-                onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })}
-                rows={4}
-                placeholder={lang === 'ar' ? 'وصف الواجب بالعربية (اختياري)' : 'Arabic description (optional)'}
-                className="rounded-2xl resize-none"
-              />
-            </div>
+         
 
-            {/* Stats Row */}
+            {/* ✅ Stats Row - مع درجة النجاح */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="space-y-2">
                 <Label>{t('totalMarks')}</Label>
                 <Input
                   type="number"
+                  min={0}
                   value={formData.total_marks}
-                  onChange={(e) => setFormData({ ...formData, total_marks: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setFormData({ 
+                      ...formData, 
+                      total_marks: val,
+                      total_must_pass_marks: Math.min(formData.total_must_pass_marks, val)
+                    });
+                  }}
                   className="rounded-xl"
                   required
                 />
               </div>
+              
+              <div className="space-y-2">
+                <Label>
+                  {lang === 'ar' ? 'درجة النجاح' : 'Pass Marks'}
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (من {formData.total_marks || 0})
+                  </span>
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={formData.total_marks || 100}
+                  value={formData.total_must_pass_marks}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    if (value <= formData.total_marks || formData.total_marks === 0) {
+                      setFormData({ ...formData, total_must_pass_marks: value });
+                    } else {
+                      toast.warning(
+                        lang === 'ar' 
+                          ? 'درجة النجاح لا يمكن أن تتجاوز المجموع الكلي' 
+                          : 'Pass marks cannot exceed total marks'
+                      );
+                    }
+                  }}
+                  className="rounded-xl"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  {lang === 'ar' 
+                    ? `الطالب يحتاج ${formData.total_must_pass_marks || 0} درجة للنجاح` 
+                    : `Student needs ${formData.total_must_pass_marks || 0} marks to pass`}
+                </p>
+              </div>
+              
               <div className="space-y-2">
                 <Label>{t('durationMinutes')}</Label>
                 <Input
                   type="number"
+                  min={0}
                   value={formData.duration_minutes}
                   onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 0 })}
                   className="rounded-xl"
@@ -290,7 +392,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
               </div>
             </div>
 
-            {/* Date and Time Section */}
+            {/* Schedule */}
             <div className="space-y-4">
               <Label className="text-base font-semibold flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
@@ -325,7 +427,7 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
               </div>
             </div>
 
-            {/* 🔥 Exam Type - أونلاين / سنتر */}
+            {/* 🔥 Exam Type */}
             <div className="space-y-2">
               <Label className="text-base font-semibold flex items-center gap-2">
                 <Monitor className="h-5 w-5 text-primary" />
@@ -398,8 +500,9 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
               </div>
             </div>
 
-            {/* Stage & Lesson */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* ✅ Stage, Course, Lesson - زي الامتحان بالظبط */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Stage */}
               <div className="space-y-2">
                 <Label>{t('stage')}</Label>
                 <select
@@ -409,7 +512,8 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
                     setFormData({ 
                       ...formData, 
                       stage_id: newStageId,
-                      course_detail_id: null 
+                      course_id: null, // ✅ إعادة تعيين الكورس
+                      course_detail_id: null // ✅ إعادة تعيين الدرس
                     });
                   }}
                   className="w-full px-3 py-2 rounded-xl border bg-background"
@@ -422,17 +526,61 @@ export const AssignmentForm: React.FC<AssignmentFormProps> = ({ assignmentId, on
                 </select>
               </div>
 
+              {/* Course */}
+              <div className="space-y-2">
+                <Label>{t('course')}</Label>
+                <AsyncSelect
+                  key={`course-${formData.stage_id}-${user?.id}`}
+                  configKey="courses"
+                  autoFetch={true}
+                  value={formData.course_id}
+                  onChange={(id) => {
+                    console.log("📚 Course selected:", id);
+                    setFormData({ 
+                      ...formData, 
+                      course_id: id,
+                      course_detail_id: null // ✅ إعادة تعيين الدرس
+                    });
+                  }}
+                  extraFilters={getCourseExtraFilters()}
+                  placeholder={lang === 'ar' ? 'اختر الكورس' : 'Select course'}
+                  required
+                  disabled={!formData.stage_id}
+                />
+                {!formData.stage_id && (
+                  <p className="text-xs text-amber-500 mt-1">
+                    {lang === 'ar' ? 'يرجى اختيار المرحلة أولاً' : 'Please select a stage first'}
+                  </p>
+                )}
+              </div>
+
+              {/* Lesson */}
               <div className="space-y-2">
                 <Label>{t('lesson')}</Label>
                 <AsyncSelect
-                  key={`lesson-${formData.stage_id}-${user?.id}`}
-                  configKey="lessons"
+                  key={`lesson-${formData.stage_id}-${formData.course_id}-${user?.id}`}
+                  configKey="courseLessons"
+                  autoFetch={true}
                   value={formData.course_detail_id}
-                  onChange={(id) => setFormData({ ...formData, course_detail_id: id })}
+                  onChange={(id) => {
+                    console.log("📖 Lesson selected:", id);
+                    setFormData({ ...formData, course_detail_id: id });
+                  }}
                   extraFilters={getLessonExtraFilters()}
-                  placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select Lesson'}
+                  placeholder={lang === 'ar' ? 'اختر الدرس' : 'Select lesson'}
                   required
+                  disabled={!formData.course_id}
                 />
+                {!formData.course_id && (
+                  <p className="text-xs text-amber-500 mt-1">
+                    {lang === 'ar' ? 'يرجى اختيار الكورس أولاً' : 'Please select a course first'}
+                  </p>
+                )}
+                {formData.course_id && formData.course_detail_id && (
+                  <p className="text-xs text-green-500 mt-1">
+                    ✅ {lang === 'ar' ? 'تم اختيار الدرس' : 'Lesson selected'}
+                  </p>
+                )}
               </div>
             </div>
 

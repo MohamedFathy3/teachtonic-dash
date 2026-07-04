@@ -19,29 +19,33 @@ const COLORS = {
     shadow: "shadow-emerald-500/30",
     icon: "text-emerald-500",
     ring: "ring-emerald-500/20",
+    border: "border-emerald-500/20",
   },
   error: {
     bg: "from-red-500 to-rose-600",
     shadow: "shadow-red-500/30",
     icon: "text-red-500",
     ring: "ring-red-500/20",
+    border: "border-red-500/20",
   },
   warning: {
     bg: "from-amber-500 to-orange-600",
     shadow: "shadow-amber-500/30",
     icon: "text-amber-500",
     ring: "ring-amber-500/20",
+    border: "border-amber-500/20",
   },
   info: {
     bg: "from-blue-500 to-indigo-600",
     shadow: "shadow-blue-500/30",
     icon: "text-blue-500",
     ring: "ring-blue-500/20",
+    border: "border-blue-500/20",
   },
 };
 
 export function Toaster() {
-  const { toasts, dismiss } = useToast(); // ✅ استدعاء dismiss
+  const { toasts, dismiss } = useToast();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -52,143 +56,120 @@ export function Toaster() {
 
   return (
     <ToastProvider>
-      <AnimatePresence mode="sync">
-        {toasts.map(({ id, title, description, action, variant = "success", ...props }) => {
-          const Icon = ICONS[variant as keyof typeof ICONS] || ICONS.info;
-          const colors = COLORS[variant as keyof typeof COLORS] || COLORS.info;
-          const isDark = document.documentElement.classList.contains('dark');
+      {/* ✅ حاوية الـ Toasts في الجنب الأيمن تحت */}
+      <div className="fixed bottom-4 right-4 z-[999] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+        <AnimatePresence mode="sync">
+          {toasts.map(({ id, title, description, action, variant = "success", ...props }) => {
+            const Icon = ICONS[variant as keyof typeof ICONS] || ICONS.info;
+            const colors = COLORS[variant as keyof typeof COLORS] || COLORS.info;
 
-          // ✅ دالة إغلاق الـ Toast
-          const handleDismiss = () => {
-            dismiss(id);
-          };
-
-          return (
-            <motion.div
-              key={id}
-              initial={{ 
-                opacity: 0,
-                scale: 0.9,
-                y: 30,
-              }}
-              animate={{ 
-                opacity: 1,
-                scale: 1,
-                y: 0,
-              }}
-              exit={{ 
-                opacity: 0,
-                scale: 0.9,
-                y: -30,
-                transition: { duration: 0.2 }
-              }}
-              transition={{ 
-                type: "spring",
-                damping: 20,
-                stiffness: 300,
-                duration: 0.4
-              }}
-              className="fixed inset-0 z-[999] flex items-center justify-center pointer-events-none"
-            >
-              {/* ✅ خلفية مظللة مع Blur */}
+            return (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto"
-                onClick={handleDismiss} // ✅ إغلاق عند الضغط على الخلفية
-              />
-
-              {/* ✅ الـ Toast - بدون Border */}
-              <motion.div
-                className={`
-                  relative pointer-events-auto
-                  w-[90%] max-w-sm mx-auto
-                  rounded-3xl
-                  bg-white dark:bg-gray-900
-                  shadow-2xl ${colors.shadow}
-                  ring-1 ${colors.ring}
-                  overflow-hidden
-                  transition-all duration-300
-                `}
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", damping: 20 }}
-                onClick={(e) => e.stopPropagation()} // ✅ منع انتشار الضغط للخلفية
+                key={id}
+                initial={{ 
+                  opacity: 0,
+                  x: 100, // ✅ تدخل من اليمين
+                  scale: 0.95,
+                }}
+                animate={{ 
+                  opacity: 1,
+                  x: 0,
+                  scale: 1,
+                }}
+                exit={{ 
+                  opacity: 0,
+                  x: 100,
+                  scale: 0.95,
+                  transition: { duration: 0.2 }
+                }}
+                transition={{ 
+                  type: "spring",
+                  damping: 25,
+                  stiffness: 300,
+                  duration: 0.4
+                }}
+                className="pointer-events-auto w-full"
               >
-                {/* ✅ شريط علوي ملون */}
-                <div className={`h-1.5 w-full bg-gradient-to-r ${colors.bg}`} />
+                {/* ✅ الـ Toast كـ notification عادي */}
+                <motion.div
+                  className={`
+                    relative
+                    bg-white dark:bg-gray-900
+                    rounded-2xl
+                    shadow-2xl shadow-black/10 dark:shadow-black/40
+                    border ${colors.border}
+                    overflow-hidden
+                    transition-all duration-300
+                  `}
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", damping: 20 }}
+                >
+                  {/* ✅ شريط علوي ملون صغير */}
+                  <div className={`h-1 w-full bg-gradient-to-r ${colors.bg}`} />
 
-                <div className="p-6 flex flex-col items-center text-center">
-                  {/* ✅ أيقونة كبيرة مع خلفية دائرية */}
+                  <div className="p-4 flex items-start gap-3">
+                    {/* ✅ أيقونة صغيرة */}
+                    <motion.div
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ 
+                        type: "spring",
+                        damping: 15,
+                        stiffness: 200,
+                        delay: 0.1
+                      }}
+                      className="flex-shrink-0 mt-0.5"
+                    >
+                      <Icon className={`w-5 h-5 ${colors.icon}`} strokeWidth={2} />
+                    </motion.div>
+
+                    {/* ✅ المحتوى */}
+                    <div className="flex-1 min-w-0">
+                      {title && (
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {title}
+                        </div>
+                      )}
+                      {description && (
+                        <div className="text-sm text-gray-600 dark:text-gray-300 mt-0.5 break-words">
+                          {description}
+                        </div>
+                      )}
+                      {action && (
+                        <div className="mt-2">
+                          {action}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ✅ زر الإغلاق */}
+                    <button
+                      className="flex-shrink-0 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                      onClick={() => dismiss(id)}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* ✅ شريط تقدم متحرك */}
                   <motion.div
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
+                    initial={{ width: "100%" }}
+                    animate={{ width: "0%" }}
                     transition={{ 
-                      type: "spring",
-                      damping: 15,
-                      stiffness: 200,
-                      delay: 0.1
+                      duration: (props.duration || 5000) / 1000,
+                      ease: "linear"
                     }}
                     className={`
-                      w-20 h-20 rounded-full 
-                      flex items-center justify-center
-                      bg-gradient-to-br from-gray-50 to-gray-100
-                      dark:from-gray-800 dark:to-gray-700
-                      shadow-inner
-                      mb-4
+                      absolute bottom-0 left-0 h-1
+                      bg-gradient-to-r ${colors.bg}
                     `}
-                  >
-                    <Icon className={`w-10 h-10 ${colors.icon}`} strokeWidth={1.5} />
-                  </motion.div>
-
-                  {/* ✅ العنوان */}
-                  {title && (
-                    <div className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-                      {title}
-                    </div>
-                  )}
-
-                  {/* ✅ الوصف */}
-                  {description && (
-                    <div className="text-sm text-gray-600 dark:text-gray-300 max-w-xs">
-                      {description}
-                    </div>
-                  )}
-
-                  {/* ✅ الأكشن */}
-                  {action && (
-                    <div className="mt-4">
-                      {action}
-                    </div>
-                  )}
-
-                  {/* ✅ زر الإغلاق */}
-                  <button
-                    className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-                    onClick={handleDismiss} // ✅ إغلاق مباشر
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* ✅ شريط تقدم متحرك */}
-                <motion.div
-                  initial={{ width: "100%" }}
-                  animate={{ width: "0%" }}
-                  transition={{ 
-                    duration: (props.duration || 5000) / 1000,
-                    ease: "linear"
-                  }}
-                  className={`
-                    absolute bottom-0 left-0 h-1
-                    bg-gradient-to-r ${colors.bg}
-                  `}
-                />
+                  />
+                </motion.div>
               </motion.div>
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+            );
+          })}
+        </AnimatePresence>
+      </div>
       <ToastViewport />
     </ToastProvider>
   );

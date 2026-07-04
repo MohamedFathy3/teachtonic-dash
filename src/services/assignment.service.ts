@@ -67,71 +67,114 @@ class AssignmentService extends BaseService<Exam> {
     }
   }
 
+  // ✅ جلب واجب معين
   async getAssignment(id: number): Promise<Exam> {
     const response = await api.get(`/${this.endpoint}/${id}`);
     return response.data.data;
   }
 
-  async createAssignment(data: CreateExamDTO): Promise<Exam> {
+  // ✅ إنشاء واجب جديد
+  async createAssignment(data: any): Promise<Exam> {
     try {
       const payload = {
         ...data,
         type: 'assignment',
       };
+      console.log('📤 Creating assignment payload:', payload);
+      
       const response = await api.post(`/${this.endpoint}`, payload);
-      toast({ title: "Success", description: "Assignment created successfully" });
+      
+      toast({ 
+        title: "Success", 
+        description: "Assignment created successfully" 
+      });
+      
       return response.data.data;
     } catch (error: any) {
-      toast({ title: 'Error', description: error.response?.data?.message || 'Failed to create assignment', variant: 'destructive' });
+      console.error('Create assignment error:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.response?.data?.message || 'Failed to create assignment', 
+        variant: 'destructive' 
+      });
       throw error;
     }
   }
 
-  async updateAssignment(id: number, data: UpdateExamDTO): Promise<Exam> {
+  // ✅ تحديث واجب
+  async updateAssignment(id: number, data: any): Promise<Exam> {
     try {
       const response = await api.patch(`/${this.endpoint}/${id}`, data);
-      toast({ title: "Success", description: "Assignment updated successfully" });
+      toast({ 
+        title: "Success", 
+        description: "Assignment updated successfully" 
+      });
       return response.data.data;
     } catch (error: any) {
-      toast({ title: "Error", description: error.response?.data?.message || "Failed to update assignment", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: error.response?.data?.message || "Failed to update assignment", 
+        variant: "destructive" 
+      });
       throw error;
     }
   }
 
+  // ✅ حذف واجب
   async deleteAssignment(id: number): Promise<void> {
     await this.delete(id);
     toast({ title: "Success", description: "Assignment deleted" });
   }
 
-  // ✅ دالة تبديل حالة النشاط
+  // ✅ تبديل حالة النشاط
   async toggleAssignmentActive(id: number): Promise<{ message: string }> {
     try {
       const response = await api.put(`/${this.endpoint}/${id}/active`);
-      toast({ title: "Success", description: response.data?.message || "Assignment status changed" });
+      toast({ 
+        title: "Success", 
+        description: response.data?.message || "Assignment status changed" 
+      });
       return response.data;
     } catch (error: any) {
-      toast({ title: "Error", description: error.response?.data?.message || "Failed to toggle status", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: error.response?.data?.message || "Failed to toggle status", 
+        variant: "destructive" 
+      });
       throw error;
     }
   }
 
+  // ✅ إضافة أسئلة
   async addQuestions(assignmentId: number, questions: any[]): Promise<boolean> {
-    const response = await api.post(`/${this.endpoint}/add-questions`, { exam_id: assignmentId, questions });
+    const response = await api.post(`/${this.endpoint}/add-questions`, { 
+      exam_id: assignmentId, 
+      questions 
+    });
     return true;
   }
 
+  // ✅ تبديل الترتيب العشوائي للأسئلة
   async toggleRandomQuestions(id: number, value: boolean): Promise<Exam> {
-    const response = await api.patch(`/${this.endpoint}/${id}`, { random_questions: value });
+    const response = await api.patch(`/${this.endpoint}/${id}`, { 
+      random_questions: value 
+    });
     return response.data.data;
   }
 
+  // ✅ تبديل الترتيب العشوائي للإجابات
   async toggleRandomAnswers(id: number, value: boolean): Promise<Exam> {
-    const response = await api.patch(`/${this.endpoint}/${id}`, { random_answers: value });
+    const response = await api.patch(`/${this.endpoint}/${id}`, { 
+      random_answers: value 
+    });
     return response.data.data;
   }
 
+  // ✅ تبديل إظهار النتيجة
   async toggleShowResult(id: number, value: boolean): Promise<Exam> {
-    const response = await api.patch(`/${this.endpoint}/${id}`, { show_result: value });
+    const response = await api.patch(`/${this.endpoint}/${id}`, { 
+      show_result: value 
+    });
     return response.data.data;
   }
 }
