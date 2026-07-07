@@ -5,6 +5,7 @@ import { BaseService, PaginationParams } from './base.service';
 import type { Stage, StageFilters, PaginatedResponse, StageFormData } from '@/types/stage.types';
 import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
+import { teacherService } from './teacher.service';
 
 class StageService extends BaseService<Stage> {
   constructor() {
@@ -57,12 +58,54 @@ class StageService extends BaseService<Stage> {
 
   async getStage(id: number): Promise<Stage> {
     try {
-      const stage = await this.getById(id);
-      return stage;
+      const response = await api.get(`/stage/${id}`);
+      return response.data.data;
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to fetch stage",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }
+
+  // ✅ دالة جديدة: تجلب المرحلة مع ID المعلم
+  async getStageWithTeacherId(id: number): Promise<any> {
+    try {
+      const stage = await this.getStage(id);
+      
+      // ✅ إذا كان هناك معلم مميز، نجلب ID المعلم
+      if (stage.distinctiveMarkForTeacherName) {
+        try {
+          // جلب جميع المدرسين
+          const response = await teacherService.getAllTeachers(
+            { active: true },
+            100,
+            1,
+            '',
+            false
+          );
+          
+          // البحث عن المعلم بالاسم
+          const teacher = response.data.find(
+            (t: any) => t.name === stage.distinctiveMarkForTeacherName
+          );
+          
+          if (teacher) {
+            // ✅ إضافة ID المعلم إلى الـ stage
+            (stage as any).distinctive_mark_for_teacher_id = teacher.id;
+          }
+        } catch (error) {
+          console.error('Error fetching teacher:', error);
+        }
+      }
+      
+      return stage;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to fetch stage with teacher",
         variant: "destructive",
       });
       throw error;
@@ -76,6 +119,11 @@ class StageService extends BaseService<Stage> {
       formData.append('name_ar', data.name_ar);
       formData.append('position', data.position.toString());
       formData.append('active', data.active ? '1' : '0');
+      
+      if (data.distinctive_mark_for_teacher_id) {
+        formData.append('distinctive_mark_for_teacher_id', data.distinctive_mark_for_teacher_id.toString());
+      }
+      
       if (data.image) {
         formData.append('image', data.image);
       }
@@ -103,11 +151,24 @@ class StageService extends BaseService<Stage> {
   async updateStage(id: number, data: Partial<StageFormData>): Promise<Stage> {
     try {
       const formData = new FormData();
+      
       if (data.name) formData.append('name', data.name);
       if (data.name_ar) formData.append('name_ar', data.name_ar);
-      if (data.position) formData.append('position', data.position.toString());
+      if (data.position !== undefined) formData.append('position', data.position.toString());
       if (data.active !== undefined) formData.append('active', data.active ? '1' : '0');
-      if (data.image) formData.append('image', data.image);
+      
+      if (data.distinctive_mark_for_teacher_id !== undefined) {
+        if (data.distinctive_mark_for_teacher_id) {
+          formData.append('distinctive_mark_for_teacher_id', data.distinctive_mark_for_teacher_id.toString());
+        } else {
+          formData.append('distinctive_mark_for_teacher_id', '');
+        }
+      }
+      
+      if (data.image) {
+        formData.append('image', data.image);
+      }
+      
       formData.append('_method', 'PATCH');
 
       const response = await api.post(`/stage/${id}`, formData, {
@@ -200,7 +261,6 @@ class StageService extends BaseService<Stage> {
     }
   }
 
-  // Bulk operations
   async bulkDeleteStages(ids: number[]): Promise<void> {
     try {
       await this.bulkDelete(ids);

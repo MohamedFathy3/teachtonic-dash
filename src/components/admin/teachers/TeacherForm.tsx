@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import FileUploader from '@/components/FileUploader';
 import { teacherService } from '@/services/teacher.service';
+import { stageService } from '@/services/stage.service';
 import type { TeacherFormData, TeacherStagePayload, TeacherSubjectPayload } from '@/types/teacher.types';
 import { teacherToFormData } from '@/types/teacher.types';
 import { 
@@ -41,10 +42,13 @@ import {
   Smartphone,
   Key,
   Layers,
-  FolderTree
+  FolderTree,
+  RefreshCw,
+  Users
 } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 // ✅ Drag & Drop imports
 import {
@@ -73,19 +77,25 @@ interface Props {
   loading?: boolean;
 }
 
-// ✅ مكون المرحلة القابل للسحب
+// ✅ مكون المرحلة القابل للسحب (معدل)
 const StageItem = ({ 
   item, 
   index, 
   onRemove, 
   getStageDisplayName, 
-  lang 
+  lang,
+  onUpdateImage,
+  updatingImage,
+  stagesMap, // ✅ new prop
 }: { 
   item: TeacherStagePayload; 
   index: number; 
   onRemove: (index: number) => void; 
   getStageDisplayName: (id: number) => string;
   lang: string;
+  onUpdateImage: (stageId: number, imageId: number) => void;
+  updatingImage: boolean;
+  stagesMap: Map<number, any>; // ✅ new
 }) => {
   const {
     attributes,
@@ -101,6 +111,15 @@ const StageItem = ({
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  const handleImageUpload = async (id: number) => {
+    onUpdateImage(item.stage_id, id);
+  };
+
+  // ✅ الحصول على صورة المرحلة من الـ Map كـ fallback
+  const stage = stagesMap.get(item.stage_id);
+  const imageId = item.image || stage?.image?.id || null;
+  const imageUrl = imageId ? `${import.meta.env.VITE_API_URL}/storage/media/files/${imageId}` : null;
 
   return (
     <div
@@ -127,17 +146,17 @@ const StageItem = ({
           <p className="font-medium text-gray-900 dark:text-white">
             {getStageDisplayName(item.stage_id)}
           </p>
-          {item.image && (
+          {imageId && (
             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
               <ImageIcon className="w-3 h-3" />
               <span>Image attached</span>
             </p>
           )}
         </div>
-        {item.image && (
+        {imageUrl && (
           <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
             <img
-              src={`${import.meta.env.VITE_API_URL}/storage/media/files/${item.image}`}
+              src={imageUrl}
               alt="Stage"
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -148,13 +167,28 @@ const StageItem = ({
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => onRemove(index)}
-        className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all opacity-0 group-hover:opacity-100"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      <div className="flex items-center gap-1">
+        <FileUploader
+          label=""
+          onUploadSuccess={handleImageUpload}
+          multiple={false}
+          accept="image/*"
+          maxFiles={1}
+          uniqueId={`stage-image-update-${item.stage_id}-${Date.now()}`}
+          className="w-auto"
+          buttonClassName="p-2 rounded-lg text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all opacity-0 group-hover:opacity-100"
+          buttonIcon={<RefreshCw className="w-4 h-4" />}
+          buttonText=""
+        />
+        
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all opacity-0 group-hover:opacity-100"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 };
@@ -184,7 +218,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   const [formData, setFormData] = useState<TeacherFormData>({
     name: '',
     email: '',
-    sub_domain: '.web-lec.com', // ✅ النطاق الافتراضي
+    sub_domain: '.web-lec.com',
     phone: '',
     password: '',
     stage: [],
@@ -202,6 +236,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [stageError, setStageError] = useState<string | null>(null);
   const [subjectError, setSubjectError] = useState<string | null>(null);
+  const [updatingImage, setUpdatingImage] = useState(false);
 
   const [stagesMap, setStagesMap] = useState<Map<number, any>>(new Map());
   const [subjectsMap, setSubjectsMap] = useState<Map<number, any>>(new Map());
@@ -304,6 +339,51 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     }
   };
 
+  // ✅ تحديث صورة المرحلة المضافة
+  const handleUpdateStageImage = async (stageId: number, imageId: number) => {
+    setUpdatingImage(true);
+    try {
+      await stageService.updateStage(stageId, {
+        image: imageId as any
+      });
+
+      // ✅ تحديث formData
+      setFormData(prev => ({
+        ...prev,
+        stage: prev.stage.map(s => 
+          s.stage_id === stageId 
+            ? { ...s, image: imageId }
+            : s
+        )
+      }));
+
+      // ✅ تحديث stagesMap
+      setStagesMap(prev => {
+        const newMap = new Map(prev);
+        const stage = newMap.get(stageId);
+        if (stage) {
+          stage.image = { id: imageId };
+          newMap.set(stageId, stage);
+        }
+        return newMap;
+      });
+
+      toast({
+        title: "Success",
+        description: "Stage image updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating stage image:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update stage image",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingImage(false);
+    }
+  };
+
   // معالج رفع الصورة الرئيسية
   const handleImageUpload = (id: number) => {
     setFormData(prev => ({ ...prev, image: id }));
@@ -370,7 +450,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     }
   };
 
-  // ✅ رفع صورة المرحلة
+  // ✅ رفع صورة المرحلة عند الإضافة
   const handleStageImageUpload = (id: number) => {
     setSelectedStageImage(id);
     const imageUrl = `${import.meta.env.VITE_API_URL}/storage/media/files/${id}`;
@@ -440,6 +520,24 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     return subject?.name || `Subject ${subjectId}`;
   };
 
+  // ✅ دالة لعرض خيار المرحلة مع المعلم المميز
+  const renderStageOption = (option: any) => {
+    const stageName = lang === 'ar' && option.name_ar ? option.name_ar : option.name;
+    const teacherName = option.distinctiveMarkForTeacherName;
+    
+    return (
+      <div className="flex items-center justify-between w-full py-1">
+        <span className="font-medium text-gray-900 dark:text-white">{stageName}</span>
+        {teacherName && (
+          <span className="text-xs text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-purple-200 dark:border-purple-800">
+            <Users className="w-3 h-3" />
+            {teacherName}
+          </span>
+        )}
+      </div>
+    );
+  };
+
   if (fetchingTeacher) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
@@ -456,7 +554,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0">
-        {/* ✅ Header - أنيق ونظيف */}
+        {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-6 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div>
@@ -479,7 +577,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-8">
-          {/* ✅ صورة المعلم - تصميم أنيق */}
+          {/* صورة المعلم */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-1">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -491,7 +589,6 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
             </div>
             <div className="lg:col-span-3">
               <div className="flex items-center gap-6">
-                {/* Image Preview */}
                 {(currentImageUrl || imagePreview) && (
                   <div className="relative group">
                     <div className="w-20 h-20 rounded-full border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -532,7 +629,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
             </div>
           </div>
 
-          {/* ✅ بيانات المعلم - تصميم نظيف */}
+          {/* بيانات المعلم */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
@@ -612,7 +709,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
             </div>
           </div>
 
-          {/* ✅ المراحل الدراسية - تصميم أنيق */}
+          {/* المراحل الدراسية */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -624,9 +721,12 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                   {formData.stage.length}
                 </span>
               </div>
+              <p className="text-xs text-gray-400">
+                {dir === 'rtl' ? 'اسحب لإعادة الترتيب' : 'Drag to reorder'}
+              </p>
             </div>
 
-            {/* ✅ إضافة مرحلة */}
+            {/* ✅ إضافة مرحلة - مع عرض المعلم المميز */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
               <div className="md:col-span-1">
                 <AsyncSelect
@@ -638,6 +738,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                   className="w-full"
                   perPageOptions={[10, 25, 50]}
                   defaultPerPage={25}
+                  renderOption={renderStageOption} // ✅ استخدم renderOption
                 />
               </div>
               
@@ -688,7 +789,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
               )}
             </div>
 
-            {/* ✅ قائمة المراحل مع Drag & Drop */}
+            {/* قائمة المراحل مع Drag & Drop */}
             {formData.stage.length > 0 ? (
               <DndContext
                 sensors={sensors}
@@ -708,6 +809,9 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                         onRemove={removeStage}
                         getStageDisplayName={getStageDisplayName}
                         lang={lang}
+                        onUpdateImage={handleUpdateStageImage}
+                        updatingImage={updatingImage}
+                        stagesMap={stagesMap} // ✅ تمرير الـ Map
                       />
                     ))}
                   </div>
@@ -722,7 +826,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
             )}
           </div>
 
-          {/* ✅ المواد الدراسية - تصميم أنيق */}
+          {/* المواد الدراسية */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -736,7 +840,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
               </div>
             </div>
 
-            {/* ✅ إضافة مادة */}
+            {/* إضافة مادة */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
               <div>
                 <AsyncSelect
@@ -776,7 +880,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
               )}
             </div>
 
-            {/* ✅ قائمة المواد */}
+            {/* قائمة المواد */}
             <div className="flex flex-wrap gap-2">
               {formData.subject.length === 0 ? (
                 <div className="text-center py-6 w-full border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
@@ -796,7 +900,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
             </div>
           </div>
 
-          {/* ✅ أزرار التحكم */}
+          {/* أزرار التحكم */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button 
               type="button" 

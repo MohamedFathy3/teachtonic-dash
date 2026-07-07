@@ -125,6 +125,7 @@ export function SubjectForm({ open, onClose, onSubmit, subjectId, loading }: Sub
               placeholder={dir === 'rtl' ? 'اختر المرحلة' : 'Select stage'}
               searchPlaceholder={dir === 'rtl' ? 'بحث عن مرحلة...' : 'Search stage...'}
               required
+              autoFetch={true}
               perPageOptions={[10, 25, 50, 100]}
               defaultPerPage={25}
               showPagination

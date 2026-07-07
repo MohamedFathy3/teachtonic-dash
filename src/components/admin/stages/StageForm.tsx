@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-    // src/components/admin/stages/StageForm.tsx
+// src/components/admin/stages/StageForm.tsx
 
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,15 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useState, useEffect } from 'react';
 import type { Stage, StageFormData } from '@/types/stage.types';
+import { teacherService } from '@/services/teacher.service';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
 
 interface StageFormProps {
   open: boolean;
@@ -26,16 +35,24 @@ export function StageForm({ open, onClose, onSubmit, initialData, loading }: Sta
     position: 0,
     active: true,
     image: null,
+    distinctive_mark_for_teacher_id: null,
   });
+
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [teachersLoading, setTeachersLoading] = useState(false);
+  const [teachersLoaded, setTeachersLoaded] = useState(false);
 
   useEffect(() => {
     if (initialData) {
+      const teacherId = (initialData as any).distinctive_mark_for_teacher_id || null;
+      
       setFormData({
         name: initialData.name,
         name_ar: initialData.name_ar || '',
         position: initialData.position,
         active: initialData.active,
         image: null,
+        distinctive_mark_for_teacher_id: teacherId,
       });
     } else {
       setFormData({
@@ -44,9 +61,35 @@ export function StageForm({ open, onClose, onSubmit, initialData, loading }: Sta
         position: 0,
         active: true,
         image: null,
+        distinctive_mark_for_teacher_id: null,
       });
     }
   }, [initialData]);
+
+  useEffect(() => {
+    if (open && !teachersLoaded) {
+      fetchTeachers();
+    }
+  }, [open, teachersLoaded]);
+
+  const fetchTeachers = async () => {
+    setTeachersLoading(true);
+    try {
+      const response = await teacherService.getAllTeachers(
+        { active: true },
+        100,
+        1,
+        '',
+        false
+      );
+      setTeachers(response.data);
+      setTeachersLoaded(true);
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+    } finally {
+      setTeachersLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,9 +104,33 @@ export function StageForm({ open, onClose, onSubmit, initialData, loading }: Sta
         position: 0,
         active: true,
         image: null,
+        distinctive_mark_for_teacher_id: null,
       });
     }
     onClose();
+  };
+
+  const getTeacherName = (teacher: any) => {
+    if (lang === 'ar' && teacher.name_ar) return teacher.name_ar;
+    return teacher.name;
+  };
+
+  const getSelectedTeacherName = () => {
+    if (formData.distinctive_mark_for_teacher_id) {
+      const teacher = teachers.find(t => t.id === formData.distinctive_mark_for_teacher_id);
+      return teacher ? getTeacherName(teacher) : null;
+    }
+    
+    if (initialData?.distinctiveMarkForTeacherName && !formData.distinctive_mark_for_teacher_id) {
+      return initialData.distinctiveMarkForTeacherName;
+    }
+    
+    return null;
+  };
+
+  const isFromInitialData = () => {
+    return initialData?.distinctiveMarkForTeacherName && 
+           !formData.distinctive_mark_for_teacher_id;
   };
 
   return (
@@ -116,6 +183,67 @@ export function StageForm({ open, onClose, onSubmit, initialData, loading }: Sta
               className="rounded-xl"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-gray-700 dark:text-gray-300">
+              {dir === 'rtl' ? 'المعلم المميز' : 'Distinctive Teacher'}
+            </Label>
+            
+            {teachersLoading ? (
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-gray-200 bg-gray-50">
+                <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                <span className="text-sm text-gray-500">
+                  {dir === 'rtl' ? 'جاري تحميل المدرسين...' : 'Loading teachers...'}
+                </span>
+              </div>
+            ) : (
+              <Select
+                value={formData.distinctive_mark_for_teacher_id?.toString()}
+                onValueChange={(value) => {
+                  setFormData({
+                    ...formData,
+                    distinctive_mark_for_teacher_id: value && value !== '0' ? parseInt(value) : null,
+                  });
+                }}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder={dir === 'rtl' ? 'اختر المعلم...' : 'Select teacher...'}>
+                    {getSelectedTeacherName()}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">
+                    {dir === 'rtl' ? 'لا يوجد معلم' : 'No teacher'}
+                  </SelectItem>
+                  {teachers.map((teacher) => (
+                    <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                      {getTeacherName(teacher)}
+                      {teacher.email && (
+                        <span className="text-xs text-gray-400 ml-2">
+                          ({teacher.email})
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {isFromInitialData() && (
+              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                <span>⚠️</span>
+                {dir === 'rtl' 
+                  ? `المعلم الحالي: ${initialData.distinctiveMarkForTeacherName}` 
+                  : `Current teacher: ${initialData.distinctiveMarkForTeacherName}`}
+              </p>
+            )}
+            
+            <p className="text-xs text-gray-500 mt-1">
+              {dir === 'rtl' 
+                ? 'اختر المعلم الذي سيكون مميزاً لهذه المرحلة (اختياري)' 
+                : 'Select the teacher who will be distinctive for this stage (optional)'}
+            </p>
           </div>
 
           <div className="flex items-center justify-between">

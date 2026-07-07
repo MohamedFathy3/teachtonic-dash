@@ -2,8 +2,9 @@
 // src/pages/admin/StagesPage.tsx
 import type { Stage, StageFilters, PaginatedResponse, StageFormData } from '@/types/stage.types';
 import { stageService } from '@/services/stage.service';
+import { teacherService } from '@/services/teacher.service';
 
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, User, Filter, Users } from 'lucide-react';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { useApp } from '@/contexts/AppContext';
 import { Card } from '@/components/ui/card';
@@ -11,14 +12,22 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
-import { Search, Plus, ChevronLeft, ChevronRight, Edit, Trash2, Layers, Trash, Archive, RotateCcw } from 'lucide-react';
+import { Search, Plus, ChevronLeft, ChevronRight, Edit, Trash2, Layers, Trash, Archive, RotateCcw, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useStages } from '@/hooks/useStages';
 import { StageStatusToggle } from '@/components/admin/stages/StageStatusToggle';
 import { StageForm } from '@/components/admin/stages/StageForm';
 import { StageDeleteDialog } from '@/components/admin/stages/StageDeleteDialog';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export function StagesPage() {
   const { dir, lang } = useApp();
@@ -52,6 +61,11 @@ export function StagesPage() {
   const [forceDeletingStage, setForceDeletingStage] = useState<any>(null);
   const [bulkActionDialog, setBulkActionDialog] = useState<{ type: 'delete' | 'restore' | 'forceDelete' | null; open: boolean }>({ type: null, open: false });
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // ✅ فلتر المعلم المميز
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('all');
+  const [teachersList, setTeachersList] = useState<any[]>([]);
+  const [teachersLoading, setTeachersLoading] = useState(false);
 
   const text = {
     searchPlaceholder: dir === 'rtl' ? 'البحث باسم المرحلة...' : 'Search by stage name...',
@@ -59,6 +73,7 @@ export function StagesPage() {
     stageName: dir === 'rtl' ? 'اسم المرحلة' : 'Stage Name',
     status: dir === 'rtl' ? 'الحالة' : 'Status',
     createdAt: dir === 'rtl' ? 'تاريخ الإنشاء' : 'Created At',
+    teacher: dir === 'rtl' ? 'المعلم المميز' : 'Distinctive Teacher',
     actions: dir === 'rtl' ? 'إجراءات' : 'Actions',
     edit: dir === 'rtl' ? 'تعديل' : 'Edit',
     delete: dir === 'rtl' ? 'حذف' : 'Delete',
@@ -77,17 +92,82 @@ export function StagesPage() {
     restoreSelected: dir === 'rtl' ? 'استعادة المحدد' : 'Restore Selected',
     forceDeleteSelected: dir === 'rtl' ? 'حذف نهائي للمحدد' : 'Force Delete Selected',
     selectAll: dir === 'rtl' ? 'تحديد الكل' : 'Select All',
+    noTeacher: dir === 'rtl' ? 'لا يوجد معلم' : 'No teacher',
+    allTeachers: dir === 'rtl' ? 'جميع المعلمين' : 'All Teachers',
+    filterByTeacher: dir === 'rtl' ? 'فلترة حسب المعلم' : 'Filter by Teacher',
+    clearFilter: dir === 'rtl' ? 'إزالة الفلتر' : 'Clear Filter',
+    selectTeacher: dir === 'rtl' ? 'اختر المعلم' : 'Select Teacher',
   };
 
+  // ✅ جلب قائمة المعلمين للفلتر
+  useEffect(() => {
+    const fetchTeachersForFilter = async () => {
+      setTeachersLoading(true);
+      try {
+        const response = await teacherService.getAllTeachers(
+          { active: true },
+          100,
+          1,
+          '',
+          false
+        );
+        setTeachersList(response.data || []);
+      } catch (error) {
+        console.error('Error fetching teachers for filter:', error);
+      } finally {
+        setTeachersLoading(false);
+      }
+    };
+    fetchTeachersForFilter();
+  }, []);
+
+  // ✅ فلترة المراحل حسب المعلم المميز
   const filteredStages = useMemo(() => {
-    if (!searchQuery) return stages;
-    const query = searchQuery.toLowerCase();
-    return stages.filter(
-      (stage) =>
-        (stage.name && stage.name.toLowerCase().includes(query)) ||
-        (stage.name_ar && stage.name_ar.toLowerCase().includes(query))
-    );
-  }, [stages, searchQuery]);
+    let result = stages;
+    
+    // ✅ فلترة حسب البحث
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (stage) =>
+          (stage.name && stage.name.toLowerCase().includes(query)) ||
+          (stage.name_ar && stage.name_ar.toLowerCase().includes(query)) ||
+          (stage.distinctiveMarkForTeacherName && stage.distinctiveMarkForTeacherName.toLowerCase().includes(query))
+      );
+    }
+    
+    // ✅ فلترة حسب المعلم المميز
+    if (selectedTeacherId !== 'all') {
+      if (selectedTeacherId === 'null') {
+        // ✅ عرض المراحل التي ليس لها معلم مميز
+        result = result.filter(stage => !stage.distinctiveMarkForTeacherName);
+      } else {
+        // ✅ عرض المراحل التي لها معلم مميز معين
+        const selectedTeacher = teachersList.find(t => t.id.toString() === selectedTeacherId);
+        if (selectedTeacher) {
+          result = result.filter(stage => 
+            stage.distinctiveMarkForTeacherName === selectedTeacher.name
+          );
+        }
+      }
+    }
+    
+    return result;
+  }, [stages, searchQuery, selectedTeacherId, teachersList]);
+
+  // ✅ الحصول على اسم المعلم للعرض
+  const getTeacherName = (teacher: any) => {
+    if (lang === 'ar' && teacher.name_ar) return teacher.name_ar;
+    return teacher.name;
+  };
+
+  // ✅ الحصول على اسم المعلم المختار في الفلتر
+  const getSelectedTeacherName = () => {
+    if (selectedTeacherId === 'all') return text.allTeachers;
+    if (selectedTeacherId === 'null') return text.noTeacher;
+    const teacher = teachersList.find(t => t.id.toString() === selectedTeacherId);
+    return teacher ? getTeacherName(teacher) : text.selectTeacher;
+  };
 
   const handleSelectAll = () => {
     if (selectedStages.size === filteredStages.length) {
@@ -188,6 +268,25 @@ export function StagesPage() {
     return name.charAt(0).toUpperCase() || '?';
   };
 
+  const handleEditStage = async (stage: any) => {
+    try {
+      setActionLoading(true);
+      const stageWithTeacher = await stageService.getStageWithTeacherId(stage.id);
+      setEditingStage(stageWithTeacher);
+    } catch (error) {
+      console.error('Error fetching stage with teacher:', error);
+      setEditingStage(stage);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ✅ مسح الفلتر
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedTeacherId('all');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -220,7 +319,6 @@ export function StagesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* EXPORT BUTTON */}
           <ExportExcelButton
             data={filteredStages} 
             fileName={showDeleted ? "deleted-stages" : "stages-list"}
@@ -233,51 +331,12 @@ export function StagesPage() {
                 <Download className="h-4 w-4" />
               )
             }
-            className="
-        h-10 rounded-xl
-        border border-emerald-200
-        bg-emerald-50
-        text-emerald-700
-        hover:bg-emerald-600
-        hover:text-white
-        dark:bg-emerald-900/20
-        dark:text-emerald-400
-        transition-all duration-300
-        shadow-sm
-      "
+            className="h-10 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-900/20 dark:text-emerald-400 transition-all duration-300 shadow-sm"
           />
 
-          {/* TOGGLE DELETED */}
-          {/* <Button
-            onClick={() => setShowDeleted(!showDeleted)}
-            variant={showDeleted ? "default" : "outline"}
-            className={`gap-2 rounded-xl h-10 ${showDeleted
-              ? 'bg-orange-600 hover:bg-orange-700 text-white'
-              : 'border-gray-200 dark:border-gray-700'
-              }`}
-          >
-            {showDeleted ? (
-              <>
-                <Archive className="h-4 w-4" />
-                {text.showActive}
-              </>
-            ) : (
-              <>
-                <Trash className="h-4 w-4" />
-                {text.showDeleted}
-              </>
-            )}
-          </Button> */}
-
-          {/* ADD BUTTON */}
           <Button
             onClick={() => setFormOpen(true)}
-            className="
-        gap-2 h-10 rounded-xl
-        bg-gradient-to-r from-purple-600 to-indigo-600
-        hover:from-purple-700 hover:to-indigo-700
-        shadow-md
-      "
+            className="gap-2 h-10 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-md"
           >
             <Plus className="h-4 w-4" />
             {text.addStage}
@@ -335,14 +394,116 @@ export function StagesPage() {
       {/* Main Card */}
       <Card className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
         <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-          <div className="relative">
-            <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400`} />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={text.searchPlaceholder}
-              className={`${dir === 'rtl' ? 'pr-9' : 'pl-9'} rounded-lg`}
-            />
+          {/* ✅ البحث والفلتر */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400`} />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={text.searchPlaceholder}
+                className={`${dir === 'rtl' ? 'pr-9' : 'pl-9'} rounded-lg`}
+              />
+            </div>
+            
+            {/* ✅ Dropdown فلتر المعلم المميز */}
+            <div className="flex items-center gap-2 min-w-[200px]">
+              <Users className="h-4 w-4 text-purple-500" />
+              <Select
+                value={selectedTeacherId}
+                onValueChange={setSelectedTeacherId}
+              >
+                <SelectTrigger className="rounded-lg border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20 hover:bg-purple-100/50 dark:hover:bg-purple-900/30 transition-colors">
+                  <SelectValue placeholder={text.selectTeacher}>
+                    <div className="flex items-center gap-2">
+                      <span>{getSelectedTeacherName()}</span>
+                    </div>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  <SelectItem value="all" className="font-medium text-purple-600">
+                    <div className="flex items-center gap-2">
+                      <span>📋</span>
+                      <span>{text.allTeachers}</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="null" className="text-gray-500">
+                    <div className="flex items-center gap-2">
+                      <span>🚫</span>
+                      <span>{text.noTeacher}</span>
+                    </div>
+                  </SelectItem>
+                  
+                  {/* ✅ فصل بين الخيارات */}
+                  <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
+                  
+                  {teachersLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                      <span className="ml-2 text-sm text-gray-500">
+                        {dir === 'rtl' ? 'جاري التحميل...' : 'Loading...'}
+                      </span>
+                    </div>
+                  ) : teachersList.length === 0 ? (
+                    <div className="py-4 text-center text-sm text-gray-500">
+                      {dir === 'rtl' ? 'لا يوجد مدرسين' : 'No teachers found'}
+                    </div>
+                  ) : (
+                    teachersList.map((teacher) => (
+                      <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                            <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                              {getTeacherName(teacher).charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <span>{getTeacherName(teacher)}</span>
+                          {teacher.email && (
+                            <span className="text-xs text-gray-400 ml-2">
+                              ({teacher.email})
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              
+              {/* ✅ زر مسح الفلتر */}
+              {(searchQuery || selectedTeacherId !== 'all') && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearFilters}
+                  className="h-8 w-8 rounded-lg text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                  title={text.clearFilter}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          {/* ✅ عرض معلومات الفلتر */}
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-gray-500">
+              {filteredStages.length} {text.stages}
+            </span>
+            
+            {selectedTeacherId !== 'all' && (
+              <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                <Users className="h-3 w-3 mr-1" />
+                {getSelectedTeacherName()}
+              </Badge>
+            )}
+            
+            {searchQuery && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                <Search className="h-3 w-3 mr-1" />
+                {searchQuery}
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -358,6 +519,7 @@ export function StagesPage() {
                 </TableHead>
                 <TableHead>{text.stageName}</TableHead>
                 {!showDeleted && <TableHead className="text-center w-32">{text.status}</TableHead>}
+                <TableHead className="text-center min-w-[150px]">{text.teacher}</TableHead>
                 <TableHead className="text-center hidden lg:table-cell">{text.createdAt}</TableHead>
                 <TableHead className="text-center w-24">{text.actions}</TableHead>
               </TableRow>
@@ -390,6 +552,19 @@ export function StagesPage() {
                         <StageStatusToggle stageId={stage.id} active={stage.active} onToggle={toggleActive} />
                       </TableCell>
                     )}
+                    <TableCell className="text-center">
+                      {stage.distinctiveMarkForTeacherName ? (
+                        <Badge 
+                          variant="secondary" 
+                          className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800"
+                        >
+                          <User className="h-3 w-3 mr-1" />
+                          {stage.distinctiveMarkForTeacherName}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-gray-400">{text.noTeacher}</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-center text-gray-500 text-sm hidden lg:table-cell">{stage.createdAt}</TableCell>
                     <TableCell className="text-center">
                       {showDeleted ? (
@@ -416,7 +591,7 @@ export function StagesPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={() => setEditingStage(stage)}
+                            onClick={() => handleEditStage(stage)}
                             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                           >
                             <Edit className="h-4 w-4" />
@@ -444,7 +619,18 @@ export function StagesPage() {
             <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
               <Search className="h-6 w-6 text-gray-400" />
             </div>
-            <p className="text-gray-500">{showDeleted ? 'لا توجد مراحل محذوفة' : 'لا توجد نتائج'}</p>
+            <p className="text-gray-500">
+              {showDeleted ? 'لا توجد مراحل محذوفة' : 'لا توجد نتائج'}
+            </p>
+            {(searchQuery || selectedTeacherId !== 'all') && (
+              <Button
+                variant="link"
+                onClick={clearFilters}
+                className="mt-2 text-purple-600"
+              >
+                {dir === 'rtl' ? 'إزالة جميع الفلاتر' : 'Clear all filters'}
+              </Button>
+            )}
           </div>
         )}
 

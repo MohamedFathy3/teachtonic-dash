@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/ui/AsyncSelect.tsx
 
-import { useState, useEffect, useCallback, useRef, forwardRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, forwardRef, useMemo, ReactNode } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -46,9 +46,9 @@ interface AsyncSelectProps {
   placeholder?: string;
   searchPlaceholder?: string;
   label?: string;
-    autoFetch?: boolean; // ✅ إضافة prop
-  initialData?: AsyncSelectOption[]; // ✅ بيانات أولية
-  initialSelected?: number | null; 
+  autoFetch?: boolean;
+  initialData?: AsyncSelectOption[];
+  initialSelected?: number | null;
   required?: boolean;
   extraFilters?: Record<string, any>;
   disabled?: boolean;
@@ -67,6 +67,7 @@ interface AsyncSelectProps {
   debounceDelay?: number;
   cacheData?: boolean;
   initialSearch?: string;
+  renderOption?: (option: AsyncSelectOption) => ReactNode; // ✅ NEW
 }
 
 export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
@@ -75,7 +76,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       value,
       onChange,
       configKey,
-         autoFetch = false, // ✅ افتراضي false
+      autoFetch = false,
       initialData = [],
       initialSelected = null,
       fetchFn: customFetchFn,
@@ -100,6 +101,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       debounceDelay = 500,
       cacheData = true,
       initialSearch = '',
+      renderOption, // ✅ NEW
     },
     ref
   ) => {
@@ -122,18 +124,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
     const triggerRef = useRef<HTMLButtonElement>(null);
     const isFirstOpenRef = useRef(true);
     const prevExtraFiltersRef = useRef<string>();
-    useEffect(() => {
-      if (autoFetch && !initialLoaded) {
-        fetchOptions(1, perPage, '', false);
-      }
-    }, [autoFetch]);
 
-    // ✅ جلب البيانات عند فتح الـ Popover (إذا مش autoFetch)
-    useEffect(() => {
-      if (open && !initialLoaded && !autoFetch) {
-        fetchOptions(page, perPage, searchDebounced, false);
-      }
-    }, [open]);
     const fetchFn = configKey
       ? selectFactory.createSelectFetcher(configKey)
       : customFetchFn;
@@ -146,94 +137,86 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       return `${configKey || 'custom'}:${pageNum}:${perPageNum}:${searchTerm}:${JSON.stringify(filters)}`;
     }, [configKey]);
 
-// src/components/ui/AsyncSelect.tsx
+    const fetchOptions = useCallback(async (
+      pageNum: number,
+      perPageNum: number,
+      searchTerm: string,
+      append = false
+    ) => {
+      if (!fetchFn) return;
 
-const fetchOptions = useCallback(async (
-  pageNum: number,
-  perPageNum: number,
-  searchTerm: string,
-  append = false
-) => {
-  if (!fetchFn) return;
+      const cacheKey = getCacheKey(pageNum, perPageNum, searchTerm, extraFilters);
 
-  const cacheKey = getCacheKey(pageNum, perPageNum, searchTerm, extraFilters);
+      if (cacheData && cacheRef.current.has(cacheKey) && !append) {
+        const cached = cacheRef.current.get(cacheKey)!;
+        setOptions(cached.data);
+        if (cached.meta) {
+          setTotal(cached.meta.total);
+          setLastPage(cached.meta.lastPage);
+        }
+        setInitialLoaded(true);
+        return;
+      }
 
-  if (cacheData && cacheRef.current.has(cacheKey) && !append) {
-    const cached = cacheRef.current.get(cacheKey)!;
-    setOptions(cached.data);
-    if (cached.meta) {
-      setTotal(cached.meta.total);
-      setLastPage(cached.meta.lastPage);
-    }
-    setInitialLoaded(true);
-    return;
-  }
-
-  if (append) {
-    setFetchingMore(true);
-  } else {
-    setLoading(true);
-  }
-
-  try {
-    // ✅ بناء الـ searchFilters بناءً على extraFilters
-    const searchFilters = { ...extraFilters }; // 🔥 نبدأ بالـ extraFilters
-    
-    // ✅ إذا كان في searchTerm، نضيفه كـ filter
-    if (searchTerm && searchTerm.trim()) {
-      // ✅ حسب الـ configKey نحدد اسم حقل البحث
-      if (configKey === 'courses') {
-        searchFilters.title = searchTerm.trim();
-        searchFilters.title_ar = searchTerm.trim();
-      } else if (configKey === 'lessons' || configKey === 'courseLessons') {
-        searchFilters.titles = searchTerm.trim();
-        searchFilters.titles_ar = searchTerm.trim();
-        searchFilters.description = searchTerm.trim();
-        searchFilters.description_ar = searchTerm.trim();
-      } else if (configKey === 'stages' || configKey === 'subjects') {
-        searchFilters.name = searchTerm.trim();
-      } else if (configKey === 'semesters') {
-        searchFilters.name = searchTerm.trim();
+      if (append) {
+        setFetchingMore(true);
       } else {
-        searchFilters.search = searchTerm.trim();
+        setLoading(true);
       }
-    }
 
+      try {
+        const searchFilters = { ...extraFilters };
+        if (searchTerm && searchTerm.trim()) {
+          if (configKey === 'courses') {
+            searchFilters.title = searchTerm.trim();
+            searchFilters.title_ar = searchTerm.trim();
+          } else if (configKey === 'lessons' || configKey === 'courseLessons') {
+            searchFilters.titles = searchTerm.trim();
+            searchFilters.titles_ar = searchTerm.trim();
+            searchFilters.description = searchTerm.trim();
+            searchFilters.description_ar = searchTerm.trim();
+          } else if (configKey === 'stages' || configKey === 'subjects') {
+            searchFilters.name = searchTerm.trim();
+          } else if (configKey === 'semesters') {
+            searchFilters.name = searchTerm.trim();
+          } else {
+            searchFilters.search = searchTerm.trim();
+          }
+        }
 
+        const response = await fetchFn({
+          page: pageNum,
+          perPage: perPageNum,
+          search: searchTerm || undefined,
+          extraFilters: searchFilters,
+        });
 
-    const response = await fetchFn({
-      page: pageNum,
-      perPage: perPageNum,
-      search: searchTerm || undefined, 
-      extraFilters: searchFilters, 
-    });
+        const newOptions = response.data || [];
+        const meta = response.meta;
 
-    const newOptions = response.data || [];
-    const meta = response.meta;
+        if (append) {
+          setOptions(prev => [...prev, ...newOptions]);
+        } else {
+          setOptions(newOptions);
+          if (cacheData) {
+            cacheRef.current.set(cacheKey, { data: newOptions, meta });
+          }
+        }
 
-    if (append) {
-      setOptions(prev => [...prev, ...newOptions]);
-    } else {
-      setOptions(newOptions);
-      if (cacheData) {
-        cacheRef.current.set(cacheKey, { data: newOptions, meta });
+        if (meta) {
+          setTotal(meta.total);
+          setLastPage(meta.lastPage);
+        }
+      } catch (error) {
+        console.error('Failed to fetch options:', error);
+      } finally {
+        setLoading(false);
+        setFetchingMore(false);
+        setInitialLoaded(true);
       }
-    }
+    }, [fetchFn, cacheData, getCacheKey, extraFilters, configKey]);
 
-    if (meta) {
-      setTotal(meta.total);
-      setLastPage(meta.lastPage);
-    }
-  } catch (error) {
-    console.error('Failed to fetch options:', error);
-  } finally {
-    setLoading(false);
-    setFetchingMore(false);
-    setInitialLoaded(true);
-  }
-}, [fetchFn, cacheData, getCacheKey, extraFilters, configKey]);
-
-    // ✅ Debounce للـ Search
+    // Debounce search
     useEffect(() => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -243,7 +226,6 @@ const fetchOptions = useCallback(async (
         if (searchDebounced !== search) {
           setSearchDebounced(search);
           setPage(1);
-          // ✅ نقوم بجلب البيانات بعد الـ Debounce
           if (open) {
             fetchOptions(1, perPage, search, false);
           }
@@ -257,21 +239,28 @@ const fetchOptions = useCallback(async (
       };
     }, [search, debounceDelay]);
 
-    // ✅ جلب البيانات عند فتح الـ Popover
+    // Load on open
     useEffect(() => {
-      if (open && !initialLoaded) {
+      if (open && !initialLoaded && !autoFetch) {
         fetchOptions(page, perPage, searchDebounced, false);
       }
     }, [open]);
 
-    // ✅ جلب بيانات الصفحة التالية (Infinite Scroll)
+    // Auto fetch
+    useEffect(() => {
+      if (autoFetch && !initialLoaded) {
+        fetchOptions(1, perPage, '', false);
+      }
+    }, [autoFetch]);
+
+    // Infinite scroll
     useEffect(() => {
       if (open && page > 1 && enableInfiniteScroll) {
         fetchOptions(page, perPage, searchDebounced, true);
       }
     }, [page, open, enableInfiniteScroll]);
 
-    // ✅ تغيير عدد العناصر في الصفحة
+    // Per page change
     useEffect(() => {
       if (open && initialLoaded) {
         setPage(1);
@@ -279,7 +268,7 @@ const fetchOptions = useCallback(async (
       }
     }, [perPage]);
 
-    // ✅ تغيير extraFilters - فقط إذا تغير فعلاً
+    // Extra filters change
     useEffect(() => {
       const currentFilters = JSON.stringify(extraFilters || {});
       const prevFilters = prevExtraFiltersRef.current;
@@ -292,14 +281,6 @@ const fetchOptions = useCallback(async (
         fetchOptions(1, perPage, searchDebounced, false);
       }
     }, [extraFilters, open]);
-
-    // ✅ جلب البيانات الأولية
-    useEffect(() => {
-      if (configKey && isFirstOpenRef.current) {
-        isFirstOpenRef.current = false;
-        // لا نجلب البيانات هنا، ننتظر حتى فتح الـ Popover
-      }
-    }, [configKey]);
 
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
       if (!enableInfiniteScroll) return;
@@ -467,9 +448,13 @@ const fetchOptions = useCallback(async (
                           value === option.id && 'bg-purple-50 dark:bg-purple-900/20 text-purple-600'
                         )}
                       >
-                        <span className="block truncate pr-6">
-                          {getOptionName(option)}
-                        </span>
+                        {renderOption ? (
+                          renderOption(option)
+                        ) : (
+                          <span className="block truncate pr-6">
+                            {getOptionName(option)}
+                          </span>
+                        )}
                         {value === option.id && (
                           <Check className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-600" />
                         )}
