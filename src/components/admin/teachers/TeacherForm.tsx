@@ -184,13 +184,18 @@ const StageItem = ({
 };
 
 // ✅ مكون المادة
-const SubjectBadge = ({ subject, onRemove, getSubjectDisplayName }: any) => {
+const SubjectBadge = ({ subject, onRemove, getSubjectDisplayName, getStageName }: any) => {
   return (
     <div className="group inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 transition-all">
       <BookMarked className="w-4 h-4 text-purple-500" />
       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
         {getSubjectDisplayName(subject.subject_id)}
       </span>
+      {getStageName && (
+        <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+          {getStageName}
+        </span>
+      )}
       <button
         type="button"
         onClick={onRemove}
@@ -406,10 +411,12 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
 
   // ✅ Search states
   const [stageSearch, setStageSearch] = useState<string>('');
+  const [subjectSearch, setSubjectSearch] = useState<string>('');
 
   const [stagesMap, setStagesMap] = useState<Map<number, any>>(new Map());
   const [subjectsMap, setSubjectsMap] = useState<Map<number, any>>(new Map());
   const [allStages, setAllStages] = useState<any[]>([]);
+  const [allSubjects, setAllSubjects] = useState<any[]>([]); // ✅ كل المواد
   const [filteredSubjects, setFilteredSubjects] = useState<any[]>([]);
 
   // ✅ Drag & Drop Sensors
@@ -445,63 +452,60 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     }
   }, [open]);
 
-  // ✅ دالة لجلب المواد حسب المرحلة مع فلتر البحث
-  const fetchSubjectsByStageId = useCallback(async (stageId: number, search: string = '') => {
-    setLoadingSubjects(true);
-    try {
-      const filters: any = {
-        stage_id: stageId
-      };
-
-      // ✅ إضافة فلتر البحث حسب اللغة
-      if (search.trim()) {
-        const searchTerm = search.trim();
-        if (lang === 'ar') {
-          filters.name_ar = searchTerm;
-        } else {
-          filters.name = searchTerm;
-        }
-      }
-
-      const subjectsRes = await api.post('/subject/index', {
-        filters: filters,
-        perPage: 1000,
-      });
-      const subjectsData = subjectsRes.data?.data || [];
-      setFilteredSubjects(subjectsData);
-      
-      // ✅ تحديث الـ Map
-      const subjectsMapData = new Map();
-      subjectsData.forEach((subject: any) => {
-        subjectsMapData.set(subject.id, subject);
-      });
-      setSubjectsMap(subjectsMapData);
-    } catch (error) {
-      console.error('Failed to fetch subjects by stage:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch subjects for this stage",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingSubjects(false);
-    }
-  }, [lang]);
-
-  // ✅ جلب المواد حسب المرحلة المختارة
+  // ✅ جلب كل المواد عند فتح الفورم
   useEffect(() => {
-    const fetchSubjectsByStage = async () => {
-      if (formData.stage.length > 0) {
-        const firstStageId = formData.stage[0].stage_id;
-        await fetchSubjectsByStageId(firstStageId);
-      } else {
-        setFilteredSubjects([]);
-        setSubjectsMap(new Map());
+    const fetchAllSubjects = async () => {
+      try {
+        const subjectsRes = await api.post('/subject/index', {
+          perPage: 1000,
+        });
+        const subjectsData = subjectsRes.data?.data || [];
+        
+        // ✅ حفظ اسم المرحلة مع كل مادة
+        const subjectsWithStage = subjectsData.map((subject: any) => {
+          if (subject.stage) {
+            const stageName = lang === 'ar' && subject.stage.name_ar 
+              ? subject.stage.name_ar 
+              : subject.stage.name;
+            return { ...subject, name_stage: stageName };
+          }
+          return subject;
+        });
+        
+        setAllSubjects(subjectsWithStage);
+        setFilteredSubjects(subjectsWithStage);
+        
+        // ✅ تحديث الـ Map
+        const subjectsMapData = new Map();
+        subjectsWithStage.forEach((subject: any) => {
+          subjectsMapData.set(subject.id, subject);
+        });
+        setSubjectsMap(subjectsMapData);
+      } catch (error) {
+        console.error('Failed to fetch subjects:', error);
       }
     };
+    
+    if (open) {
+      fetchAllSubjects();
+    }
+  }, [open, lang]);
 
-    fetchSubjectsByStage();
-  }, [formData.stage, fetchSubjectsByStageId]);
+  // ✅ فلترة المواد حسب البحث
+  useEffect(() => {
+    if (!subjectSearch.trim()) {
+      setFilteredSubjects(allSubjects);
+    } else {
+      const searchTerm = subjectSearch.trim().toLowerCase();
+      const filtered = allSubjects.filter((subject: any) => {
+        const name = lang === 'ar' && subject.name_ar ? subject.name_ar : subject.name;
+        const stageName = subject.name_stage || '';
+        return name.toLowerCase().includes(searchTerm) || 
+               stageName.toLowerCase().includes(searchTerm);
+      });
+      setFilteredSubjects(filtered);
+    }
+  }, [subjectSearch, allSubjects, lang]);
 
   // جلب بيانات المعلم عند التعديل
   useEffect(() => {
@@ -622,6 +626,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     setSelectedStageImagePreview(null);
     setStageError(null);
     setStageSearch('');
+    setSubjectSearch('');
   };
 
   // ✅ حذف مرحلة
@@ -671,6 +676,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     }));
     setSelectedSubjectId('');
     setSubjectError(null);
+    setSubjectSearch('');
   };
 
   const removeSubject = (index: number) => {
@@ -741,16 +747,20 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     return subject?.name || `Subject ${subjectId}`;
   };
 
-  // ✅ معالج تغيير المرحلة - يجيب المواد فوراً
+  // ✅ دالة للحصول على اسم المرحلة للمادة
+  const getSubjectStageName = (subjectId: number) => {
+    const subject = subjectsMap.get(subjectId);
+    return subject?.name_stage || '';
+  };
+
+  // ✅ معالج تغيير المرحلة
   const handleStageSelectChange = (value: string) => {
     setSelectedStageId(value);
-    
-    if (value) {
-      fetchSubjectsByStageId(parseInt(value));
-    } else {
-      setFilteredSubjects([]);
-      setSubjectsMap(new Map());
-    }
+  };
+
+  // ✅ معالج تغيير البحث في المواد
+  const handleSubjectSearchChange = (search: string) => {
+    setSubjectSearch(search);
   };
 
   if (fetchingTeacher) {
@@ -952,12 +962,6 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                   placeholder="Select stage..."
                   searchPlaceholder={lang === 'ar' ? 'بحث عن مرحلة...' : 'Search stage...'}
                 />
-                {loadingSubjects && (
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Loading subjects...
-                  </p>
-                )}
               </div>
               
               <div className="flex items-center gap-2">
@@ -1044,7 +1048,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
             )}
           </div>
 
-          {/* المواد الدراسية - بنفس الطريقة */}
+          {/* المواد الدراسية */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1065,29 +1069,20 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                   value={selectedSubjectId}
                   onChange={setSelectedSubjectId}
                   options={filteredSubjects}
-                  getDisplayName={(subject: any) => 
-                    lang === 'ar' && subject.name_ar ? subject.name_ar : subject.name
-                  }
+                  getDisplayName={(subject: any) => {
+                    const name = lang === 'ar' && subject.name_ar ? subject.name_ar : subject.name;
+                    if (subject.name_stage) {
+                      return `${name} (${subject.name_stage})`;
+                    }
+                    return name;
+                  }}
                   placeholder="Select subject..."
                   searchPlaceholder={lang === 'ar' ? 'بحث عن مادة...' : 'Search subject...'}
-                  disabled={formData.stage.length === 0 || loadingSubjects}
-                  loading={loadingSubjects}
+                  onSearchChange={handleSubjectSearchChange}
                 />
-                {formData.stage.length > 0 && filteredSubjects.length > 0 && !loadingSubjects && (
-                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                    Showing {filteredSubjects.length} subjects for: {getStageDisplayName(formData.stage[0].stage_id)}
-                  </p>
-                )}
-                {formData.stage.length > 0 && filteredSubjects.length === 0 && !loadingSubjects && (
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                    No subjects found for this stage
-                  </p>
-                )}
-                {formData.stage.length === 0 && (
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                    Please add a stage first to see subjects
-                  </p>
-                )}
+                <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                  Showing {filteredSubjects.length} subjects
+                </p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -1095,7 +1090,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                   type="button" 
                   onClick={addSubject}
                   className="flex-1"
-                  disabled={formData.stage.length === 0 || filteredSubjects.length === 0 || loadingSubjects}
+                  disabled={filteredSubjects.length === 0}
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   Add Subject
@@ -1124,6 +1119,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                     subject={item}
                     onRemove={() => removeSubject(idx)}
                     getSubjectDisplayName={getSubjectDisplayName}
+                    getStageName={getSubjectStageName(item.subject_id)}
                   />
                 ))
               )}

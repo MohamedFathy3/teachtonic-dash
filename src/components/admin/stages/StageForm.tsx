@@ -7,17 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Stage, StageFormData } from '@/types/stage.types';
 import { teacherService } from '@/services/teacher.service';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search, X, Check, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface StageFormProps {
   open: boolean;
@@ -26,6 +20,171 @@ interface StageFormProps {
   initialData?: Stage | null;
   loading?: boolean;
 }
+
+// ✅ مكون Searchable Select
+const SearchableSelect = ({
+  value,
+  onChange,
+  options,
+  getDisplayName,
+  placeholder,
+  searchPlaceholder,
+  disabled = false,
+  className = '',
+  loading = false,
+}: {
+  value: number | null;
+  onChange: (value: number | null) => void;
+  options: any[];
+  getDisplayName: (item: any) => string;
+  placeholder: string;
+  searchPlaceholder?: string;
+  disabled?: boolean;
+  className?: string;
+  loading?: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filteredOptions, setFilteredOptions] = useState<any[]>(options);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // فلترة الخيارات حسب البحث
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredOptions(options);
+    } else {
+      const searchTerm = search.trim().toLowerCase();
+      const filtered = options.filter((item) =>
+        getDisplayName(item).toLowerCase().includes(searchTerm)
+      );
+      setFilteredOptions(filtered);
+    }
+  }, [search, options, getDisplayName]);
+
+  // تحديث الخيارات عند تغيير الـ options
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredOptions(options);
+    }
+  }, [options, search]);
+
+  // إغلاق الـ dropdown عند الضغط بره
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.id === value);
+
+  const handleSelect = (option: any) => {
+    onChange(option.id);
+    setIsOpen(false);
+    setSearch('');
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+    setIsOpen(true);
+  };
+
+  return (
+    <div ref={containerRef} className={cn("relative", className)}>
+      {/* زر الاختيار */}
+      <div
+        className={cn(
+          "flex items-center justify-between w-full h-10 px-3 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer transition-all",
+          "hover:border-purple-400 dark:hover:border-purple-500",
+          isOpen && "border-purple-500 ring-2 ring-purple-500/20",
+          disabled && "opacity-50 cursor-not-allowed",
+          className
+        )}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+      >
+        <span className={cn(
+          "truncate text-sm",
+          !selectedOption && "text-gray-400 dark:text-gray-500"
+        )}>
+          {selectedOption ? getDisplayName(selectedOption) : placeholder}
+        </span>
+        <ChevronDown className={cn(
+          "h-4 w-4 text-gray-400 transition-transform",
+          isOpen && "rotate-180"
+        )} />
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && !disabled && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg overflow-hidden">
+          {/* Search Input */}
+          <div className="relative p-2 border-b border-gray-200 dark:border-gray-700">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={search}
+              onChange={handleSearchChange}
+              placeholder={searchPlaceholder || 'Search...'}
+              className="w-full h-8 pl-8 pr-3 text-sm bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSearch('');
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2"
+              >
+                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+              </button>
+            )}
+          </div>
+
+          {/* Options */}
+          <div className="max-h-48 overflow-y-auto">
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                <span className="ml-2 text-sm text-gray-500">Loading...</span>
+              </div>
+            ) : filteredOptions.length === 0 ? (
+              <div className="py-4 text-center text-sm text-gray-500">
+                {search ? 'No results found' : 'No options available'}
+              </div>
+            ) : (
+              filteredOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => handleSelect(option)}
+                  className={cn(
+                    "w-full px-3 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors",
+                    value === option.id && "bg-purple-50 dark:bg-purple-900/20 text-purple-600"
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="truncate">{getDisplayName(option)}</span>
+                    {value === option.id && (
+                      <Check className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                    )}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export function StageForm({ open, onClose, onSubmit, initialData, loading }: StageFormProps) {
   const { t, dir, lang } = useApp();
@@ -115,6 +274,14 @@ export function StageForm({ open, onClose, onSubmit, initialData, loading }: Sta
     return teacher.name;
   };
 
+  const getTeacherDisplayWithEmail = (teacher: any) => {
+    const name = getTeacherName(teacher);
+    if (teacher.email) {
+      return `${name} (${teacher.email})`;
+    }
+    return name;
+  };
+
   const getSelectedTeacherName = () => {
     if (formData.distinctive_mark_for_teacher_id) {
       const teacher = teachers.find(t => t.id === formData.distinctive_mark_for_teacher_id);
@@ -132,6 +299,12 @@ export function StageForm({ open, onClose, onSubmit, initialData, loading }: Sta
     return initialData?.distinctiveMarkForTeacherName && 
            !formData.distinctive_mark_for_teacher_id;
   };
+
+  // ✅ تحضير خيارات المعلمين مع خيار "لا يوجد معلم"
+  const teacherOptions = [
+    { id: null, name: dir === 'rtl' ? 'لا يوجد معلم' : 'No teacher' },
+    ...teachers
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -198,36 +371,19 @@ export function StageForm({ open, onClose, onSubmit, initialData, loading }: Sta
                 </span>
               </div>
             ) : (
-              <Select
-                value={formData.distinctive_mark_for_teacher_id?.toString()}
-                onValueChange={(value) => {
+              <SearchableSelect
+                value={formData.distinctive_mark_for_teacher_id}
+                onChange={(value) => {
                   setFormData({
                     ...formData,
-                    distinctive_mark_for_teacher_id: value && value !== '0' ? parseInt(value) : null,
+                    distinctive_mark_for_teacher_id: value,
                   });
                 }}
-              >
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder={dir === 'rtl' ? 'اختر المعلم...' : 'Select teacher...'}>
-                    {getSelectedTeacherName()}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">
-                    {dir === 'rtl' ? 'لا يوجد معلم' : 'No teacher'}
-                  </SelectItem>
-                  {teachers.map((teacher) => (
-                    <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                      {getTeacherName(teacher)}
-                      {teacher.email && (
-                        <span className="text-xs text-gray-400 ml-2">
-                          ({teacher.email})
-                        </span>
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={teacherOptions}
+                getDisplayName={getTeacherDisplayWithEmail}
+                placeholder={dir === 'rtl' ? 'اختر المعلم...' : 'Select teacher...'}
+                searchPlaceholder={dir === 'rtl' ? 'بحث عن معلم...' : 'Search teacher...'}
+              />
             )}
 
             {isFromInitialData() && (
