@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/teachers/TeacherForm.tsx
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import FileUploader from '@/components/FileUploader';
 import { teacherService } from '@/services/teacher.service';
 import { stageService } from '@/services/stage.service';
@@ -20,12 +19,8 @@ import {
   Image as ImageIcon, 
   Trash2, 
   GripVertical,
-  Eye,
   Check,
   AlertCircle,
-  Upload,
-  ArrowUp,
-  ArrowDown,
   School,
   BookOpen,
   User,
@@ -33,18 +28,14 @@ import {
   Phone,
   Globe,
   Lock,
-  Sparkles,
-  Building2,
-  GraduationCap,
   BookMarked,
   UserCircle2,
-  AtSign,
-  Smartphone,
   Key,
-  Layers,
   FolderTree,
   RefreshCw,
-  Users
+  Users,
+  Search,
+  ChevronDown
 } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -77,7 +68,7 @@ interface Props {
   loading?: boolean;
 }
 
-// ✅ مكون المرحلة القابل للسحب (معدل)
+// ✅ مكون المرحلة القابل للسحب
 const StageItem = ({ 
   item, 
   index, 
@@ -86,7 +77,7 @@ const StageItem = ({
   lang,
   onUpdateImage,
   updatingImage,
-  stagesMap, // ✅ new prop
+  stagesMap,
 }: { 
   item: TeacherStagePayload; 
   index: number; 
@@ -95,7 +86,7 @@ const StageItem = ({
   lang: string;
   onUpdateImage: (stageId: number, imageId: number) => void;
   updatingImage: boolean;
-  stagesMap: Map<number, any>; // ✅ new
+  stagesMap: Map<number, any>;
 }) => {
   const {
     attributes,
@@ -116,7 +107,6 @@ const StageItem = ({
     onUpdateImage(item.stage_id, id);
   };
 
-  // ✅ الحصول على صورة المرحلة من الـ Map كـ fallback
   const stage = stagesMap.get(item.stage_id);
   const imageId = item.image || stage?.image?.id || null;
   const imageUrl = imageId ? `${import.meta.env.VITE_API_URL}/storage/media/files/${imageId}` : null;
@@ -212,6 +202,181 @@ const SubjectBadge = ({ subject, onRemove, getSubjectDisplayName }: any) => {
   );
 };
 
+// ✅ مكون Select مع Search (Combobox)
+const SearchableSelect = ({
+  value,
+  onChange,
+  options,
+  getDisplayName,
+  placeholder,
+  searchPlaceholder,
+  disabled = false,
+  className = '',
+  loading = false,
+  onSearchChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: any[];
+  getDisplayName: (item: any) => string;
+  placeholder: string;
+  searchPlaceholder?: string;
+  disabled?: boolean;
+  className?: string;
+  loading?: boolean;
+  onSearchChange?: (search: string) => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filteredOptions, setFilteredOptions] = useState<any[]>(options);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // فلترة الخيارات حسب البحث
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredOptions(options);
+    } else {
+      const searchTerm = search.trim().toLowerCase();
+      const filtered = options.filter((item) =>
+        getDisplayName(item).toLowerCase().includes(searchTerm)
+      );
+      setFilteredOptions(filtered);
+    }
+  }, [search, options, getDisplayName]);
+
+  // تحديث الخيارات عند تغيير الـ options
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredOptions(options);
+    }
+  }, [options, search]);
+
+  // إغلاق الـ dropdown عند الضغط بره
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.id?.toString() === value);
+
+  const handleSelect = (option: any) => {
+    onChange(option.id?.toString() || '');
+    setIsOpen(false);
+    setSearch('');
+    if (onSearchChange) {
+      onSearchChange('');
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearch = e.target.value;
+    setSearch(newSearch);
+    if (onSearchChange) {
+      onSearchChange(newSearch);
+    }
+    setIsOpen(true);
+  };
+
+  return (
+    <div ref={containerRef} className={cn("relative", className)}>
+      {/* زر الاختيار */}
+      <div
+        className={cn(
+          "flex items-center justify-between w-full h-10 px-3 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer transition-all",
+          "hover:border-blue-400 dark:hover:border-blue-500",
+          isOpen && "border-blue-500 ring-2 ring-blue-500/20",
+          disabled && "opacity-50 cursor-not-allowed",
+          className
+        )}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+      >
+        <span className={cn(
+          "truncate text-sm",
+          !selectedOption && "text-gray-400 dark:text-gray-500"
+        )}>
+          {selectedOption ? getDisplayName(selectedOption) : placeholder}
+        </span>
+        <ChevronDown className={cn(
+          "h-4 w-4 text-gray-400 transition-transform",
+          isOpen && "rotate-180"
+        )} />
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && !disabled && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg overflow-hidden">
+          {/* Search Input */}
+          <div className="relative p-2 border-b border-gray-200 dark:border-gray-700">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={search}
+              onChange={handleSearchChange}
+              placeholder={searchPlaceholder || 'Search...'}
+              className="w-full h-8 pl-8 pr-3 text-sm bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSearch('');
+                  if (onSearchChange) onSearchChange('');
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2"
+              >
+                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+              </button>
+            )}
+          </div>
+
+          {/* Options */}
+          <div className="max-h-48 overflow-y-auto">
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                <span className="ml-2 text-sm text-gray-500">Loading...</span>
+              </div>
+            ) : filteredOptions.length === 0 ? (
+              <div className="py-4 text-center text-sm text-gray-500">
+                {search ? 'No results found' : 'No options available'}
+              </div>
+            ) : (
+              filteredOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => handleSelect(option)}
+                  className={cn(
+                    "w-full px-3 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors",
+                    value === option.id?.toString() && "bg-blue-50 dark:bg-blue-900/20 text-blue-600"
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="truncate">{getDisplayName(option)}</span>
+                    {value === option.id?.toString() && (
+                      <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                    )}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Props) {
   const { t, dir, lang } = useApp();
   
@@ -237,9 +402,14 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   const [stageError, setStageError] = useState<string | null>(null);
   const [subjectError, setSubjectError] = useState<string | null>(null);
   const [updatingImage, setUpdatingImage] = useState(false);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+
+  // ✅ Search states
+  const [stageSearch, setStageSearch] = useState<string>('');
 
   const [stagesMap, setStagesMap] = useState<Map<number, any>>(new Map());
   const [subjectsMap, setSubjectsMap] = useState<Map<number, any>>(new Map());
+  const [allStages, setAllStages] = useState<any[]>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<any[]>([]);
 
   // ✅ Drag & Drop Sensors
@@ -250,37 +420,88 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     })
   );
 
-  // جلب البيانات عند تحميل الفورم
+  // ✅ جلب المراحل عند فتح الفورم
   useEffect(() => {
-    const fetchMaps = async () => {
+    const fetchStages = async () => {
       try {
-        const stagesRes = await api.get('/stage?perPage=100');
-        const stagesMapData = new Map();
-        if (stagesRes.data?.data) {
-          stagesRes.data.data.forEach((stage: any) => {
-            stagesMapData.set(stage.id, stage);
-          });
-        }
-        setStagesMap(stagesMapData);
+        const stagesRes = await api.post('/stage/index', {
+          perPage: 1000,
+        });
+        const stagesData = stagesRes.data?.data || [];
+        setAllStages(stagesData);
         
-        const subjectsRes = await api.get('/subject?perPage=100');
-        const subjectsMapData = new Map();
-        if (subjectsRes.data?.data) {
-          subjectsRes.data.data.forEach((subject: any) => {
-            subjectsMapData.set(subject.id, subject);
-          });
-        }
-        setSubjectsMap(subjectsMapData);
-        setFilteredSubjects(subjectsRes.data?.data || []);
+        const stagesMapData = new Map();
+        stagesData.forEach((stage: any) => {
+          stagesMapData.set(stage.id, stage);
+        });
+        setStagesMap(stagesMapData);
       } catch (error) {
-        console.error('Failed to fetch stages/subjects:', error);
+        console.error('Failed to fetch stages:', error);
       }
     };
     
     if (open) {
-      fetchMaps();
+      fetchStages();
     }
   }, [open]);
+
+  // ✅ دالة لجلب المواد حسب المرحلة مع فلتر البحث
+  const fetchSubjectsByStageId = useCallback(async (stageId: number, search: string = '') => {
+    setLoadingSubjects(true);
+    try {
+      const filters: any = {
+        stage_id: stageId
+      };
+
+      // ✅ إضافة فلتر البحث حسب اللغة
+      if (search.trim()) {
+        const searchTerm = search.trim();
+        if (lang === 'ar') {
+          filters.name_ar = searchTerm;
+        } else {
+          filters.name = searchTerm;
+        }
+      }
+
+      const subjectsRes = await api.post('/subject/index', {
+        filters: filters,
+        perPage: 1000,
+      });
+      const subjectsData = subjectsRes.data?.data || [];
+      setFilteredSubjects(subjectsData);
+      
+      // ✅ تحديث الـ Map
+      const subjectsMapData = new Map();
+      subjectsData.forEach((subject: any) => {
+        subjectsMapData.set(subject.id, subject);
+      });
+      setSubjectsMap(subjectsMapData);
+    } catch (error) {
+      console.error('Failed to fetch subjects by stage:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch subjects for this stage",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingSubjects(false);
+    }
+  }, [lang]);
+
+  // ✅ جلب المواد حسب المرحلة المختارة
+  useEffect(() => {
+    const fetchSubjectsByStage = async () => {
+      if (formData.stage.length > 0) {
+        const firstStageId = formData.stage[0].stage_id;
+        await fetchSubjectsByStageId(firstStageId);
+      } else {
+        setFilteredSubjects([]);
+        setSubjectsMap(new Map());
+      }
+    };
+
+    fetchSubjectsByStage();
+  }, [formData.stage, fetchSubjectsByStageId]);
 
   // جلب بيانات المعلم عند التعديل
   useEffect(() => {
@@ -313,32 +534,6 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     fetchTeacherData();
   }, [teacherId, open]);
 
-  // ✅ فلترة المواد حسب المرحلة المختارة
-  const filterSubjectsByStage = useCallback(async (stageId: string) => {
-    if (!stageId) {
-      const res = await api.get('/subject?perPage=100');
-      setFilteredSubjects(res.data?.data || []);
-      return;
-    }
-
-    try {
-      const res = await api.get(`/subject?perPage=100&filters[stage_id]=${stageId}`);
-      setFilteredSubjects(res.data?.data || []);
-    } catch (error) {
-      console.error('Failed to fetch subjects by stage:', error);
-    }
-  }, []);
-
-  // ✅ عند تغيير المرحلة في AsyncSelect
-  const handleStageChange = (value: any, selectedItem: any) => {
-    setSelectedStageId(value?.toString() || '');
-    if (selectedItem) {
-      filterSubjectsByStage(value?.toString() || '');
-    } else {
-      filterSubjectsByStage('');
-    }
-  };
-
   // ✅ تحديث صورة المرحلة المضافة
   const handleUpdateStageImage = async (stageId: number, imageId: number) => {
     setUpdatingImage(true);
@@ -347,7 +542,6 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
         image: imageId as any
       });
 
-      // ✅ تحديث formData
       setFormData(prev => ({
         ...prev,
         stage: prev.stage.map(s => 
@@ -357,7 +551,6 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
         )
       }));
 
-      // ✅ تحديث stagesMap
       setStagesMap(prev => {
         const newMap = new Map(prev);
         const stage = newMap.get(stageId);
@@ -428,6 +621,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     setSelectedStageImage(null);
     setSelectedStageImagePreview(null);
     setStageError(null);
+    setStageSearch('');
   };
 
   // ✅ حذف مرحلة
@@ -508,10 +702,37 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     onClose();
   };
 
+  // ✅ دالة للحصول على اسم المرحلة حسب اللغة
   const getStageDisplayName = (stageId: number) => {
     const stage = stagesMap.get(stageId);
-    if (lang === 'ar' && stage?.name_ar) return stage.name_ar;
-    return stage?.name || `Stage ${stageId}`;
+    if (!stage) return `Stage ${stageId}`;
+    
+    if (lang === 'ar' && stage.name_ar) {
+      return stage.name_ar;
+    }
+    if (stage.name) {
+      return stage.name;
+    }
+    return `Stage ${stageId}`;
+  };
+
+  // ✅ دالة للحصول على اسم المرحلة للعرض في الـ Select مع المعلم المميز
+  const getStageDisplayWithTeacher = (stage: any) => {
+    let name = '';
+    
+    if (lang === 'ar' && stage.name_ar) {
+      name = stage.name_ar;
+    } else if (stage.name) {
+      name = stage.name;
+    } else {
+      name = `Stage ${stage.id}`;
+    }
+    
+    if (stage.distinctiveMarkForTeacherName) {
+      return `${name} (${stage.distinctiveMarkForTeacherName})`;
+    }
+    
+    return name;
   };
 
   const getSubjectDisplayName = (subjectId: number) => {
@@ -520,22 +741,16 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     return subject?.name || `Subject ${subjectId}`;
   };
 
-  // ✅ دالة لعرض خيار المرحلة مع المعلم المميز
-  const renderStageOption = (option: any) => {
-    const stageName = lang === 'ar' && option.name_ar ? option.name_ar : option.name;
-    const teacherName = option.distinctiveMarkForTeacherName;
+  // ✅ معالج تغيير المرحلة - يجيب المواد فوراً
+  const handleStageSelectChange = (value: string) => {
+    setSelectedStageId(value);
     
-    return (
-      <div className="flex items-center justify-between w-full py-1">
-        <span className="font-medium text-gray-900 dark:text-white">{stageName}</span>
-        {teacherName && (
-          <span className="text-xs text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-purple-200 dark:border-purple-800">
-            <Users className="w-3 h-3" />
-            {teacherName}
-          </span>
-        )}
-      </div>
-    );
+    if (value) {
+      fetchSubjectsByStageId(parseInt(value));
+    } else {
+      setFilteredSubjects([]);
+      setSubjectsMap(new Map());
+    }
   };
 
   if (fetchingTeacher) {
@@ -726,20 +941,23 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
               </p>
             </div>
 
-            {/* ✅ إضافة مرحلة - مع عرض المعلم المميز */}
+            {/* ✅ إضافة مرحلة - مع Searchable Select */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
               <div className="md:col-span-1">
-                <AsyncSelect
-                  configKey="stages"
-                  value={selectedStageId ? parseInt(selectedStageId) : null}
-                  onChange={handleStageChange}
-                  placeholder="Select stage"
-                  searchPlaceholder="Search stage..."
-                  className="w-full"
-                  perPageOptions={[10, 25, 50]}
-                  defaultPerPage={25}
-                  renderOption={renderStageOption} // ✅ استخدم renderOption
+                <SearchableSelect
+                  value={selectedStageId}
+                  onChange={handleStageSelectChange}
+                  options={allStages}
+                  getDisplayName={getStageDisplayWithTeacher}
+                  placeholder="Select stage..."
+                  searchPlaceholder={lang === 'ar' ? 'بحث عن مرحلة...' : 'Search stage...'}
                 />
+                {loadingSubjects && (
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Loading subjects...
+                  </p>
+                )}
               </div>
               
               <div className="flex items-center gap-2">
@@ -811,7 +1029,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                         lang={lang}
                         onUpdateImage={handleUpdateStageImage}
                         updatingImage={updatingImage}
-                        stagesMap={stagesMap} // ✅ تمرير الـ Map
+                        stagesMap={stagesMap}
                       />
                     ))}
                   </div>
@@ -821,12 +1039,12 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
               <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
                 <School className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
                 <p className="text-sm text-gray-500 dark:text-gray-400">No stages added yet</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">Select a stage and click add</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">Search and select a stage then click add</p>
               </div>
             )}
           </div>
 
-          {/* المواد الدراسية */}
+          {/* المواد الدراسية - بنفس الطريقة */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -840,25 +1058,36 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
               </div>
             </div>
 
-            {/* إضافة مادة */}
+            {/* إضافة مادة - مع Searchable Select */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
               <div>
-                <AsyncSelect
-                  configKey="subjects"
-                  value={selectedSubjectId ? parseInt(selectedSubjectId) : null}
-                  onChange={(value) => setSelectedSubjectId(value?.toString() || '')}
-                  placeholder="Select subject"
-                  searchPlaceholder="Search subject..."
-                  className="w-full"
-                  perPageOptions={[10, 25, 50]}
-                  defaultPerPage={25}
-                  debounceDelay={500}
-                  cacheData={true}
-                  enableInfiniteScroll={false}
-                  extraFilters={{ 
-                    stage_id: formData.stage.length > 0 ? formData.stage[0].stage_id : undefined 
-                  }}
+                <SearchableSelect
+                  value={selectedSubjectId}
+                  onChange={setSelectedSubjectId}
+                  options={filteredSubjects}
+                  getDisplayName={(subject: any) => 
+                    lang === 'ar' && subject.name_ar ? subject.name_ar : subject.name
+                  }
+                  placeholder="Select subject..."
+                  searchPlaceholder={lang === 'ar' ? 'بحث عن مادة...' : 'Search subject...'}
+                  disabled={formData.stage.length === 0 || loadingSubjects}
+                  loading={loadingSubjects}
                 />
+                {formData.stage.length > 0 && filteredSubjects.length > 0 && !loadingSubjects && (
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                    Showing {filteredSubjects.length} subjects for: {getStageDisplayName(formData.stage[0].stage_id)}
+                  </p>
+                )}
+                {formData.stage.length > 0 && filteredSubjects.length === 0 && !loadingSubjects && (
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                    No subjects found for this stage
+                  </p>
+                )}
+                {formData.stage.length === 0 && (
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                    Please add a stage first to see subjects
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -866,6 +1095,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                   type="button" 
                   onClick={addSubject}
                   className="flex-1"
+                  disabled={formData.stage.length === 0 || filteredSubjects.length === 0 || loadingSubjects}
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   Add Subject
