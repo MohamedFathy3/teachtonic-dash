@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -12,7 +11,7 @@ import {
   BookOpen, GraduationCap, Video, Clock, DollarSign,
   Loader2, Sparkles, Trophy, Award, Calendar as CalendarIcon,
   Monitor, Building2, Users, Eye, FileQuestion, FileText,
-  Edit3, Save, X, AlertCircle, TrendingUp, Star
+  Edit3, Save, X, AlertCircle, TrendingUp, Star, Download, FileText as FileTextIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
@@ -24,11 +23,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast  } from "@/hooks/use-toast";
 import api from '@/lib/api';
+
+// استيراد مكتبة الباركود
+import JsBarcode from 'jsbarcode';
 
 interface StudentLearningPageProps {
   studentId?: number;
@@ -55,8 +59,6 @@ interface StudentExam {
   };
   student_mark: number | null;
   questions: ExamQuestion[];
-  // type_of_study: 'general' | 'azhar' | null;  // ✅ أضف هذا 
-
 }
 
 interface GradeEssayModalProps {
@@ -261,6 +263,267 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
     }
   };
 
+  const downloadBarcodeImage = () => {
+    if (!data?.student?.barcode) {
+      toast.error(lang === 'ar' ? 'لا يوجد باركود لهذا الطالب' : 'No barcode available');
+      return;
+    }
+
+    try {
+      // نعمل canvas جديد
+      const canvas = document.createElement('canvas');
+      canvas.id = 'barcode-canvas';
+      
+      // نرسم الباركود على canvas
+      JsBarcode(canvas, data.student.barcode, {
+        format: "CODE128",
+        width: 2,
+        height: 80,
+        displayValue: true,
+        fontSize: 18,
+        font: 'Arial',
+        textAlign: 'center',
+        textPosition: 'bottom',
+        textMargin: 5,
+        margin: 10,
+        background: '#ffffff',
+        lineColor: '#000000'
+      });
+
+      // نضيف اسم الطالب تحت الباركود
+      const ctx = canvas.getContext('2d');
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#1e293b';
+      ctx.fillText(studentName, canvas.width / 2, canvas.height + 30);
+      
+      // معلومات إضافية
+      ctx.font = '12px Arial';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(`Code: ${data.student.barcode}`, canvas.width / 2, canvas.height + 55);
+      ctx.fillText(`Phone: ${data.student.phone || 'N/A'}`, canvas.width / 2, canvas.height + 75);
+
+      // نحول canvas لصورة
+      const link = document.createElement('a');
+      link.download = `barcode-${data.student.barcode}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+
+      toast.success(lang === 'ar' ? 'تم تحميل الباركود بنجاح' : 'Barcode downloaded successfully');
+    } catch (error) {
+      console.error('Error generating barcode:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ أثناء تحميل الباركود' : 'Error downloading barcode');
+    }
+  };
+
+  // ===== دالة تحميل الباركود كـ PDF مع تصميم =====
+const downloadBarcodePDF = async () => {
+  if (!data?.student?.barcode) {
+    toast.error(lang === 'ar' ? 'لا يوجد باركود' : 'No barcode');
+    return;
+  }
+
+  try {
+    // نعمل canvas للباركود
+    const canvas = document.createElement('canvas');
+    
+    JsBarcode(canvas, data.student.barcode, {
+      format: "CODE128",
+      width: 3,
+      height: 80,
+      displayValue: true,
+      fontSize: 18,
+      font: 'Arial',
+      textAlign: 'center',
+      textPosition: 'bottom',
+      textMargin: 5,
+      margin: 10,
+      background: '#ffffff',
+      lineColor: '#000000'
+    });
+
+    // نعمل container للتصميم
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '500px';
+    container.style.padding = '30px';
+    container.style.backgroundColor = 'white';
+    container.style.textAlign = 'center';
+    container.style.fontFamily = 'Arial, sans-serif';
+    
+    // نحول canvas لصورة
+    const barcodeImage = canvas.toDataURL('image/png');
+    
+    // معلومات centerHour
+    const centerHour = data.student.centerHour;
+    const centerTitle = centerHour?.title || 'N/A';
+    const centerDate = centerHour?.date || 'N/A';
+    const centerTime = centerHour?.hours_start && centerHour?.hours_end 
+      ? `${centerHour.hours_start} - ${centerHour.hours_end}` 
+      : 'N/A';
+    const centerAddress = centerHour?.address || 'N/A';
+    const centerPhone = centerHour?.phone || 'N/A';
+    
+    container.innerHTML = `
+      <div style="
+        padding: 30px;
+        border: 2px solid #e2e8f0;
+        border-radius: 16px;
+        background: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      ">
+        <!-- Header -->
+        <div style="margin-bottom: 20px;">
+          <h2 style="color: #1e293b; margin: 0; font-size: 22px; font-weight: bold;">
+            ${studentName}
+          </h2>
+          <p style="color: #64748b; margin: 5px 0 0; font-size: 14px;">
+            ${stageName || (lang === 'ar' ? 'بطاقة الطالب' : 'Student ID')}
+          </p>
+          ${centerTitle !== 'N/A' ? `
+            <div style="
+              display: inline-block;
+              margin-top: 8px;
+              background: #2563eb;
+              color: white;
+              padding: 4px 12px;
+              border-radius: 20px;
+              font-size: 12px;
+              font-weight: bold;
+            ">
+              ${centerTitle}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Barcode -->
+        <div style="
+          background: white;
+          padding: 20px;
+          border-radius: 8px;
+          margin: 20px 0;
+        ">
+          <img 
+            src="${barcodeImage}" 
+            style="width: 100%; max-width: 400px; height: auto;"
+          />
+        </div>
+
+        <!-- Student Info -->
+        <div style="
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          margin-top: 15px;
+          text-align: left;
+          font-size: 12px;
+          color: #475569;
+          background: #f8fafc;
+          padding: 12px;
+          border-radius: 8px;
+        ">
+          <div><strong>${lang === 'ar' ? 'الكود:' : 'Code:'}</strong> ${data.student.barcode}</div>
+          <div><strong>${lang === 'ar' ? 'الهاتف:' : 'Phone:'}</strong> ${data.student.phone || 'N/A'}</div>
+          <div><strong>${lang === 'ar' ? 'النوع:' : 'Type:'}</strong> ${data.student.type_of_attendance || 'N/A'}</div>
+          <div><strong>${lang === 'ar' ? 'المرحلة:' : 'Stage:'}</strong> ${stageName || 'N/A'}</div>
+        </div>
+
+        <!-- Center Hour Info -->
+        ${centerTitle !== 'N/A' ? `
+          <div style="
+            margin-top: 15px;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f0f7ff;
+          ">
+            <div style="
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 6px;
+              text-align: left;
+              font-size: 11px;
+              color: #1e293b;
+            ">
+              <div>
+                <strong style="color: #2563eb;">${lang === 'ar' ? 'المركز:' : 'Center:'}</strong> 
+                ${centerTitle}
+              </div>
+              <div>
+                <strong style="color: #2563eb;">${lang === 'ar' ? 'اليوم:' : 'Day:'}</strong> 
+                ${centerDate}
+              </div>
+              <div>
+                <strong style="color: #2563eb;">${lang === 'ar' ? 'الموعد:' : 'Time:'}</strong> 
+                ${centerTime}
+              </div>
+              <div>
+                <strong style="color: #2563eb;">${lang === 'ar' ? 'الهاتف:' : 'Phone:'}</strong> 
+                ${centerPhone}
+              </div>
+              <div style="grid-column: 1 / -1;">
+                <strong style="color: #2563eb;">${lang === 'ar' ? 'العنوان:' : 'Address:'}</strong> 
+                ${centerAddress}
+              </div>
+            </div>
+          </div>
+        ` : ''}
+        
+       
+      </div>
+    `;
+    
+    document.body.appendChild(container);
+
+    // نعمل PDF
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const canvasPDF = await html2canvas(container, {
+      scale: 3,
+      useCORS: true,
+      backgroundColor: '#ffffff'
+    });
+    
+    const imgData = canvasPDF.toDataURL('image/png');
+    const imgWidth = 190;
+    const imgHeight = (canvasPDF.height * imgWidth) / canvasPDF.width;
+    
+    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+    pdf.save(`barcode-${data.student.barcode}.pdf`);
+    
+    document.body.removeChild(container);
+    
+    toast.success(lang === 'ar' ? 'تم تحميل الباركود بنجاح' : 'Barcode downloaded successfully');
+  } catch (error) {
+    console.error('Error:', error);
+    toast.error(lang === 'ar' ? 'حدث خطأ أثناء تحميل الباركود' : 'Error downloading barcode');
+  }
+};
+
+  // عرض الباركود في الصفحة
+  useEffect(() => {
+    if (data?.student?.barcode) {
+      const canvas = document.getElementById('barcode-display') as HTMLCanvasElement;
+      if (canvas) {
+        JsBarcode(canvas, data.student.barcode, {
+          format: "CODE128",
+          width: 2,
+          height: 60,
+          displayValue: true,
+          fontSize: 14,
+          font: 'Arial',
+          textAlign: 'center',
+          textPosition: 'bottom',
+          textMargin: 5,
+          margin: 5,
+          background: '#ffffff',
+          lineColor: '#000000'
+        });
+      }
+    }
+  }, [data]);
+
   // إذا لم يتم تحديد studentId
   if (!studentId) {
     return (
@@ -368,7 +631,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
           </Button>
         </div>
 
-        {/* باقي الكود كما هو بدون تغيير - نفس الـ JSX */}
         {/* Student Profile Card */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -406,6 +668,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
             </div>
 
             <div className="p-6 pt-14">
+              {/* Student Header with Barcode Button */}
               <div className="flex flex-wrap justify-between items-start gap-4">
                 <div>
                   <h1 className="text-2xl font-bold">{studentName}</h1>
@@ -422,7 +685,48 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                     </Badge>
                   </div>
                 </div>
+                
+                {/* Barcode Download Buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  {data?.student?.barcode && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={downloadBarcodeImage}
+                        className="gap-2 border-primary/20 hover:border-primary"
+                      >
+                        <Download className="h-4 w-4" />
+                        {lang === 'ar' ? 'تحميل صورة' : 'Download Image'}
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={downloadBarcodePDF}
+                        className="gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                      >
+                        <FileTextIcon className="h-4 w-4" />
+                        {lang === 'ar' ? 'تحميل PDF' : 'Download PDF'}
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
+
+              {/* Barcode Display */}
+              {data?.student?.barcode && (
+                <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {lang === 'ar' ? 'باركود الطالب' : 'Student Barcode'}
+                    </p>
+                    <canvas id="barcode-display" className="mx-auto" />
+                    <p className="text-xs text-muted-foreground mt-2 font-mono">
+                      {data.student.barcode}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 p-4 bg-muted/30 rounded-2xl">
                 <div className="flex items-center gap-3">
@@ -462,7 +766,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
           </Card>
         </motion.div>
 
-        {/* Stats Cards - استمرار نفس الكود */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
           {[
             { label: t('courses') || 'الكورسات', value: stats.totalCourses, icon: BookOpen, color: 'from-blue-500 to-cyan-500' },
@@ -523,7 +827,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
           </div>
         )}
 
-        {/* Learning Content Tabs - نفس الكود السابق */}
+        {/* Learning Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start overflow-x-auto rounded-2xl bg-muted/60 p-1 h-auto flex-nowrap">
             <TabsTrigger value="courses" className="rounded-xl px-4 py-2 gap-2">
@@ -547,7 +851,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
               {t('assignments') || 'الواجبات'} ({stats.totalAssignments})
             </TabsTrigger>
           </TabsList>
-
 
           {/* Courses Tab */}
           <TabsContent value="courses" className="mt-6">
@@ -740,7 +1043,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                     transition={{ delay: idx * 0.1 }}
                   >
                     <Card className="overflow-hidden rounded-xl">
-                      {/* Exam Header */}
                       <div className="p-4 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border-b">
                         <div className="flex flex-wrap justify-between items-start gap-3">
                           <div>
@@ -764,7 +1066,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                         </div>
                       </div>
 
-                      {/* Exam Questions */}
                       <div className="divide-y">
                         {exam.questions?.map((question, qIdx) => {
                           const typeInfo = getQuestionTypeLabel(question.question_type);
@@ -789,7 +1090,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                                   </div>
                                   <p className="text-sm font-medium">{question.question}</p>
 
-                                  {/* Student Answer */}
                                   {question.student_answer && (
                                     <div className="mt-2 p-2 bg-muted/30 rounded-lg">
                                       <p className="text-xs text-muted-foreground mb-1">
@@ -807,7 +1107,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                                   )}
                                 </div>
 
-                                {/* Grade Essay Button */}
                                 {isEssay && question.student_answer && (
                                   <Button
                                     size="sm"
@@ -857,7 +1156,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                     transition={{ delay: idx * 0.1 }}
                   >
                     <Card className="overflow-hidden rounded-xl">
-                      {/* Assignment Header */}
                       <div className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border-b">
                         <div className="flex flex-wrap justify-between items-start gap-3">
                           <div>
@@ -881,7 +1179,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                         </div>
                       </div>
 
-                      {/* Assignment Questions */}
                       <div className="divide-y">
                         {assignment.questions?.map((question, qIdx) => {
                           const typeInfo = getQuestionTypeLabel(question.question_type);
@@ -906,7 +1203,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                                   </div>
                                   <p className="text-sm font-medium">{question.question}</p>
 
-                                  {/* Student Answer */}
                                   {question.student_answer && (
                                     <div className="mt-2 p-2 bg-muted/30 rounded-lg">
                                       <p className="text-xs text-muted-foreground mb-1">
@@ -924,7 +1220,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
                                   )}
                                 </div>
 
-                                {/* Grade Essay Button */}
                                 {isEssay && question.student_answer && (
                                   <Button
                                     size="sm"

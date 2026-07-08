@@ -33,7 +33,8 @@ import {
   Smartphone,
   Code,
   User,
-  Info
+  Info,
+  ShieldCheck // ✅ أيقونة جديدة للتحقق
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
@@ -97,6 +98,8 @@ const FIELDS = {
     { key: 'seo_title', label: 'SEO Title', label_ar: 'عنوان SEO', type: 'text', placeholder: 'Enter SEO title', placeholder_ar: 'أدخل عنوان SEO' },
     { key: 'seo_description', label: 'SEO Description', label_ar: 'وصف SEO', type: 'textarea', placeholder: 'Enter SEO description', placeholder_ar: 'أدخل وصف SEO' },
     { key: 'seo_keywords', label: 'SEO Keywords', label_ar: 'كلمات SEO', type: 'text', placeholder: 'Enter SEO keywords', placeholder_ar: 'أدخل كلمات SEO' },
+    // ✅ إضافة حقل google_site_verification الجديد هنا
+    { key: 'google_site_verification', label: 'Google Site Verification', label_ar: 'التحقق من جوجل', type: 'text', placeholder: 'Enter Google site verification code', placeholder_ar: 'أدخل رمز التحقق من جوجل' },
     { key: 'og_title', label: 'OG Title', label_ar: 'عنوان OG', type: 'text', placeholder: 'Enter OG title', placeholder_ar: 'أدخل عنوان OG' },
     { key: 'og_description', label: 'OG Description', label_ar: 'وصف OG', type: 'textarea', placeholder: 'Enter OG description', placeholder_ar: 'أدخل وصف OG' },
     { key: 'og_image', label: 'OG Image', label_ar: 'صورة OG', type: 'image', placeholder: 'Enter OG image URL', placeholder_ar: 'أدخل رابط صورة OG' },
@@ -478,6 +481,10 @@ const SettingsPage = () => {
                           >
                             <div className="flex items-center justify-between">
                               <label className="text-sm font-medium flex items-center gap-2">
+                                {/* ✅ عرض أيقونة خاصة بحقل التحقق من جوجل */}
+                                {field.key === 'google_site_verification' && (
+                                  <ShieldCheck className="h-4 w-4 text-green-600" />
+                                )}
                                 {label}
                                 {isChanged && (
                                   <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px]">
