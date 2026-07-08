@@ -35,7 +35,9 @@ import {
   RefreshCw,
   Users,
   Search,
-  ChevronDown
+  ChevronDown,
+  Eye,        // ✅ أيقونة إظهار
+  EyeOff,     // ✅ أيقونة إخفاء
 } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -409,6 +411,9 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   const [updatingImage, setUpdatingImage] = useState(false);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
 
+  // ✅ State لإظهار/إخفاء كلمة المرور
+  const [showPassword, setShowPassword] = useState(false);
+
   // ✅ Search states
   const [stageSearch, setStageSearch] = useState<string>('');
   const [subjectSearch, setSubjectSearch] = useState<string>('');
@@ -763,6 +768,11 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     setSubjectSearch(search);
   };
 
+  // ✅ تبديل إظهار/إخفاء كلمة المرور
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   if (fetchingTeacher) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
@@ -918,19 +928,59 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
               />
             </div>
             
+            {/* ✅ حقل كلمة المرور مع زر إظهار/إخفاء */}
             <div className="space-y-1.5 md:col-span-2">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                 <Key className="w-4 h-4 text-gray-400" />
                 Password {teacherId && <span className="text-xs text-gray-400 font-normal">(leave empty to keep current)</span>}
               </Label>
-              <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                required={!teacherId}
-                placeholder={teacherId ? '••••••••' : 'Enter password'}
-                className="h-11"
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  required={!teacherId}
+                  placeholder={teacherId ? '••••••••' : 'Enter password'}
+                  className="h-11 pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+              {/* ✅ مؤشر قوة كلمة المرور (اختياري) */}
+              {formData.password && formData.password.length > 0 && (
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                      className={cn(
+                        "h-full transition-all duration-500",
+                        formData.password.length < 6 && "w-1/3 bg-red-500",
+                        formData.password.length >= 6 && formData.password.length < 10 && "w-2/3 bg-yellow-500",
+                        formData.password.length >= 10 && "w-full bg-green-500"
+                      )}
+                    />
+                  </div>
+                  <span className={cn(
+                    "text-xs font-medium",
+                    formData.password.length < 6 && "text-red-500",
+                    formData.password.length >= 6 && formData.password.length < 10 && "text-yellow-500",
+                    formData.password.length >= 10 && "text-green-500"
+                  )}>
+                    {formData.password.length < 6 && 'Weak'}
+                    {formData.password.length >= 6 && formData.password.length < 10 && 'Medium'}
+                    {formData.password.length >= 10 && 'Strong'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

@@ -34,7 +34,29 @@ import {
   Code,
   User,
   Info,
-  ShieldCheck // ✅ أيقونة جديدة للتحقق
+  ShieldCheck,
+  HelpCircle,
+  ExternalLink,
+  Check,
+  Facebook,
+  Instagram,
+  Youtube,
+  Linkedin,
+  MapPinned,
+  Activity,
+  Hash,
+  FileImage,
+  Globe2,
+  Languages,
+  Link2,
+  Twitter,
+  Tag,
+  PenTool,
+  Image,
+  Chrome,
+  Smartphone as SmartphoneIcon,
+  Tablet,
+  Monitor as MonitorIcon,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
@@ -91,51 +113,339 @@ const GROUPS = [
   },
 ];
 
-// ✅ تعريف الحقول - مع دعم اللغتين
+// ✅ تعريف الحقول مع Help Text لكل حقل
 const FIELDS = {
-
   seo: [
-    { key: 'seo_title', label: 'SEO Title', label_ar: 'عنوان SEO', type: 'text', placeholder: 'Enter SEO title', placeholder_ar: 'أدخل عنوان SEO' },
-    { key: 'seo_description', label: 'SEO Description', label_ar: 'وصف SEO', type: 'textarea', placeholder: 'Enter SEO description', placeholder_ar: 'أدخل وصف SEO' },
-    { key: 'seo_keywords', label: 'SEO Keywords', label_ar: 'كلمات SEO', type: 'text', placeholder: 'Enter SEO keywords', placeholder_ar: 'أدخل كلمات SEO' },
-    // ✅ إضافة حقل google_site_verification الجديد هنا
-    { key: 'google_site_verification', label: 'Google Site Verification', label_ar: 'التحقق من جوجل', type: 'text', placeholder: 'Enter Google site verification code', placeholder_ar: 'أدخل رمز التحقق من جوجل' },
-    { key: 'og_title', label: 'OG Title', label_ar: 'عنوان OG', type: 'text', placeholder: 'Enter OG title', placeholder_ar: 'أدخل عنوان OG' },
-    { key: 'og_description', label: 'OG Description', label_ar: 'وصف OG', type: 'textarea', placeholder: 'Enter OG description', placeholder_ar: 'أدخل وصف OG' },
-    { key: 'og_image', label: 'OG Image', label_ar: 'صورة OG', type: 'image', placeholder: 'Enter OG image URL', placeholder_ar: 'أدخل رابط صورة OG' },
-    { key: 'og_type', label: 'OG Type', label_ar: 'نوع OG', type: 'text', placeholder: 'website', placeholder_ar: 'website' },
-    { key: 'og_url', label: 'OG URL', label_ar: 'رابط OG', type: 'url', placeholder: 'Enter OG URL', placeholder_ar: 'أدخل رابط OG' },
-    { key: 'og_site_name', label: 'OG Site Name', label_ar: 'اسم موقع OG', type: 'text', placeholder: 'My Website', placeholder_ar: 'My Website' },
-    { key: 'canonical_url', label: 'Canonical URL', label_ar: 'رابط Canonical', type: 'url', placeholder: 'Enter canonical URL', placeholder_ar: 'أدخل رابط canonical' },
-    { key: 'language', label: 'Language', label_ar: 'اللغة', type: 'text', placeholder: 'en', placeholder_ar: 'en' },
-    { key: 'twitter_card', label: 'Twitter Card', label_ar: 'بطاقة تويتر', type: 'text', placeholder: 'summary/summary_large_image', placeholder_ar: 'summary/summary_large_image' },
+    { 
+      key: 'seo_title', 
+      label: 'SEO Title', 
+      label_ar: 'عنوان SEO', 
+      type: 'text', 
+      placeholder: 'Enter SEO title', 
+      placeholder_ar: 'أدخل عنوان SEO',
+      helpText: 'The main title that appears in search engine results. Should be descriptive and include keywords.',
+      helpText_ar: 'العنوان الرئيسي الذي يظهر في نتائج محركات البحث. يجب أن يكون وصفياً ويحتوي على كلمات مفتاحية.',
+    },
+    { 
+      key: 'seo_description', 
+      label: 'SEO Description', 
+      label_ar: 'وصف SEO', 
+      type: 'textarea', 
+      placeholder: 'Enter SEO description', 
+      placeholder_ar: 'أدخل وصف SEO',
+      helpText: 'A brief summary that appears below the title in search results. Keep it between 150-160 characters.',
+      helpText_ar: 'ملخص مختصر يظهر تحت العنوان في نتائج البحث. احرص على أن يكون بين 150-160 حرفاً.',
+    },
+    { 
+      key: 'seo_keywords', 
+      label: 'SEO Keywords', 
+      label_ar: 'كلمات SEO', 
+      type: 'text', 
+      placeholder: 'Enter SEO keywords', 
+      placeholder_ar: 'أدخل كلمات SEO',
+      helpText: 'Comma-separated keywords that describe your content. Helps search engines understand your page.',
+      helpText_ar: 'كلمات مفتاحية مفصولة بفواصل تصف محتواك. تساعد محركات البحث على فهم صفحتك.',
+    },
+    { 
+      key: 'google_site_verification', 
+      label: 'Google Site Verification', 
+      label_ar: 'التحقق من جوجل', 
+      type: 'text', 
+      placeholder: 'Enter Google site verification code', 
+      placeholder_ar: 'أدخل رمز التحقق من جوجل',
+      helpText: 'This code verifies your site ownership with Google Search Console. Adds a meta tag to your site header.',
+      helpText_ar: 'هذا الكود يتحقق من ملكية موقعك في Google Search Console. يضيف علامة ميتا في رأس الموقع.',
+      helpLink: 'https://support.google.com/webmasters/answer/9008080',
+      helpLink_ar: 'https://support.google.com/webmasters/answer/9008080?hl=ar',
+    },
+    { 
+      key: 'og_title', 
+      label: 'OG Title', 
+      label_ar: 'عنوان OG', 
+      type: 'text', 
+      placeholder: 'Enter OG title', 
+      placeholder_ar: 'أدخل عنوان OG',
+      helpText: 'Title used when your page is shared on social media (Facebook, LinkedIn, WhatsApp).',
+      helpText_ar: 'العنوان المستخدم عند مشاركة صفحتك على وسائل التواصل الاجتماعي (فيسبوك، لينكد إن، واتساب).',
+    },
+    { 
+      key: 'og_description', 
+      label: 'OG Description', 
+      label_ar: 'وصف OG', 
+      type: 'textarea', 
+      placeholder: 'Enter OG description', 
+      placeholder_ar: 'أدخل وصف OG',
+      helpText: 'Description shown when your page is shared on social media. Should be engaging and clear.',
+      helpText_ar: 'الوصف الذي يظهر عند مشاركة صفحتك على وسائل التواصل. يجب أن يكون جذاباً وواضحاً.',
+    },
+    { 
+      key: 'og_image', 
+      label: 'OG Image', 
+      label_ar: 'صورة OG', 
+      type: 'image', 
+      placeholder: 'Enter OG image URL', 
+      placeholder_ar: 'أدخل رابط صورة OG',
+      helpText: 'Image displayed when your page is shared on social media. Recommended size: 1200x630px.',
+      helpText_ar: 'الصورة التي تظهر عند مشاركة صفحتك على وسائل التواصل. الحجم الموصى به: 1200×630 بكسل.',
+    },
+    { 
+      key: 'og_type', 
+      label: 'OG Type', 
+      label_ar: 'نوع OG', 
+      type: 'text', 
+      placeholder: 'website', 
+      placeholder_ar: 'website',
+      helpText: 'Type of content (website, article, video, etc.). Default is "website".',
+      helpText_ar: 'نوع المحتوى (موقع، مقال، فيديو، إلخ). القيمة الافتراضية هي "website".',
+    },
+    { 
+      key: 'og_url', 
+      label: 'OG URL', 
+      label_ar: 'رابط OG', 
+      type: 'url', 
+      placeholder: 'Enter OG URL', 
+      placeholder_ar: 'أدخل رابط OG',
+      helpText: 'The canonical URL of your page. Used for social media sharing.',
+      helpText_ar: 'الرابط الرسمي لصفحتك. يُستخدم للمشاركة على وسائل التواصل.',
+    },
+    { 
+      key: 'og_site_name', 
+      label: 'OG Site Name', 
+      label_ar: 'اسم موقع OG', 
+      type: 'text', 
+      placeholder: 'My Website', 
+      placeholder_ar: 'My Website',
+      helpText: 'The name of your website as it appears on social media shares.',
+      helpText_ar: 'اسم موقعك كما يظهر في مشاركات وسائل التواصل الاجتماعي.',
+    },
+    { 
+      key: 'canonical_url', 
+      label: 'Canonical URL', 
+      label_ar: 'رابط Canonical', 
+      type: 'url', 
+      placeholder: 'Enter canonical URL', 
+      placeholder_ar: 'أدخل رابط canonical',
+      helpText: 'The preferred URL for duplicate content. Helps prevent SEO issues.',
+      helpText_ar: 'الرابط المفضل للمحتوى المكرر. يساعد في تجنب مشاكل SEO.',
+    },
+    { 
+      key: 'language', 
+      label: 'Language', 
+      label_ar: 'اللغة', 
+      type: 'text', 
+      placeholder: 'en', 
+      placeholder_ar: 'en',
+      helpText: 'The primary language of your website (e.g., en, ar, fr).',
+      helpText_ar: 'اللغة الأساسية لموقعك (مثال: en، ar، fr).',
+    },
+    { 
+      key: 'twitter_card', 
+      label: 'Twitter Card', 
+      label_ar: 'بطاقة تويتر', 
+      type: 'text', 
+      placeholder: 'summary/summary_large_image', 
+      placeholder_ar: 'summary/summary_large_image',
+      helpText: 'Twitter card type. Use "summary_large_image" for image-rich sharing.',
+      helpText_ar: 'نوع بطاقة تويتر. استخدم "summary_large_image" للمشاركات الغنية بالصور.',
+    },
   ],
   social: [
-    { key: 'facebook_page', label: 'Facebook Page', label_ar: 'صفحة فيسبوك', type: 'url', placeholder: 'Enter Facebook page URL', placeholder_ar: 'أدخل رابط صفحة فيسبوك' },
-    { key: 'instagram_url', label: 'Instagram URL', label_ar: 'رابط انستغرام', type: 'url', placeholder: 'Enter Instagram URL', placeholder_ar: 'أدخل رابط انستغرام' },
-    { key: 'youtube_url', label: 'YouTube URL', label_ar: 'رابط يوتيوب', type: 'url', placeholder: 'Enter YouTube URL', placeholder_ar: 'أدخل رابط يوتيوب' },
-    { key: 'linkedin_url', label: 'LinkedIn URL', label_ar: 'رابط لينكد إن', type: 'url', placeholder: 'Enter LinkedIn URL', placeholder_ar: 'أدخل رابط لينكد إن' },
+    { 
+      key: 'facebook_page', 
+      label: 'Facebook Page', 
+      label_ar: 'صفحة فيسبوك', 
+      type: 'url', 
+      placeholder: 'Enter Facebook page URL', 
+      placeholder_ar: 'أدخل رابط صفحة فيسبوك',
+      helpText: 'Link to your official Facebook page.',
+      helpText_ar: 'رابط صفحة الفيسبوك الرسمية الخاصة بك.',
+    },
+    { 
+      key: 'instagram_url', 
+      label: 'Instagram URL', 
+      label_ar: 'رابط انستغرام', 
+      type: 'url', 
+      placeholder: 'Enter Instagram URL', 
+      placeholder_ar: 'أدخل رابط انستغرام',
+      helpText: 'Link to your Instagram profile.',
+      helpText_ar: 'رابط حسابك على انستغرام.',
+    },
+    { 
+      key: 'youtube_url', 
+      label: 'YouTube URL', 
+      label_ar: 'رابط يوتيوب', 
+      type: 'url', 
+      placeholder: 'Enter YouTube URL', 
+      placeholder_ar: 'أدخل رابط يوتيوب',
+      helpText: 'Link to your YouTube channel.',
+      helpText_ar: 'رابط قناتك على يوتيوب.',
+    },
+    { 
+      key: 'linkedin_url', 
+      label: 'LinkedIn URL', 
+      label_ar: 'رابط لينكد إن', 
+      type: 'url', 
+      placeholder: 'Enter LinkedIn URL', 
+      placeholder_ar: 'أدخل رابط لينكد إن',
+      helpText: 'Link to your LinkedIn company page or profile.',
+      helpText_ar: 'رابط صفحة شركتك أو ملفك الشخصي على لينكد إن.',
+    },
   ],
   geo: [
-    { key: 'geo_region', label: 'Geo Region', label_ar: 'المنطقة الجغرافية', type: 'text', placeholder: 'US-CA', placeholder_ar: 'US-CA' },
-    { key: 'geo_placename', label: 'Place Name', label_ar: 'اسم المكان', type: 'text', placeholder: 'San Francisco', placeholder_ar: 'سان فرانسيسكو' },
-    { key: 'geo_position', label: 'Position', label_ar: 'الإحداثيات', type: 'text', placeholder: '37.7749; -122.4194', placeholder_ar: '37.7749; -122.4194' },
-    { key: 'geo_icbm', label: 'ICBM', label_ar: 'إحداثيات ICBM', type: 'text', placeholder: '37.7749, -122.4194', placeholder_ar: '37.7749, -122.4194' },
+    { 
+      key: 'geo_region', 
+      label: 'Geo Region', 
+      label_ar: 'المنطقة الجغرافية', 
+      type: 'text', 
+      placeholder: 'US-CA', 
+      placeholder_ar: 'US-CA',
+      helpText: 'Your geographical region code (e.g., US-CA for California).',
+      helpText_ar: 'رمز منطقتك الجغرافية (مثال: US-CA لكاليفورنيا).',
+    },
+    { 
+      key: 'geo_placename', 
+      label: 'Place Name', 
+      label_ar: 'اسم المكان', 
+      type: 'text', 
+      placeholder: 'San Francisco', 
+      placeholder_ar: 'سان فرانسيسكو',
+      helpText: 'The name of your city or location.',
+      helpText_ar: 'اسم مدينتك أو موقعك.',
+    },
+    { 
+      key: 'geo_position', 
+      label: 'Position', 
+      label_ar: 'الإحداثيات', 
+      type: 'text', 
+      placeholder: '37.7749; -122.4194', 
+      placeholder_ar: '37.7749; -122.4194',
+      helpText: 'Latitude and longitude coordinates (separated by semicolon).',
+      helpText_ar: 'إحداثيات خط الطول والعرض (مفصولة بفاصلة منقوطة).',
+    },
+    { 
+      key: 'geo_icbm', 
+      label: 'ICBM', 
+      label_ar: 'إحداثيات ICBM', 
+      type: 'text', 
+      placeholder: '37.7749, -122.4194', 
+      placeholder_ar: '37.7749, -122.4194',
+      helpText: 'Alternative format for latitude and longitude (comma-separated).',
+      helpText_ar: 'صيغة بديلة لخط الطول والعرض (مفصولة بفاصلة).',
+    },
   ],
   analytics: [
-    { key: 'google_analytics_id', label: 'Google Analytics ID', label_ar: 'معرف جوجل أناليتكس', type: 'text', placeholder: 'Enter Google Analytics ID', placeholder_ar: 'أدخل معرف جوجل أناليتكس' },
-    { key: 'google_tag_manager_id', label: 'Google Tag Manager ID', label_ar: 'معرف جوجل تاغ مانجر', type: 'text', placeholder: 'Enter GTM ID', placeholder_ar: 'أدخل معرف GTM' },
-    { key: 'facebook_pixel_id', label: 'Facebook Pixel ID', label_ar: 'معرف فيسبوك بكسل', type: 'text', placeholder: 'Enter Facebook Pixel ID', placeholder_ar: 'أدخل معرف فيسبوك بكسل' },
-    { key: 'clarity_id', label: 'Microsoft Clarity ID', label_ar: 'معرف مايكروسوفت كلاريتي', type: 'text', placeholder: 'Enter Clarity ID', placeholder_ar: 'أدخل معرف كلاريتي' },
+    { 
+      key: 'google_analytics_id', 
+      label: 'Google Analytics ID', 
+      label_ar: 'معرف جوجل أناليتكس', 
+      type: 'text', 
+      placeholder: 'Enter Google Analytics ID', 
+      placeholder_ar: 'أدخل معرف جوجل أناليتكس',
+      helpText: 'Your Google Analytics tracking ID (starts with UA- or G-).',
+      helpText_ar: 'معرف التتبع الخاص بجوجل أناليتكس (يبدأ بـ UA- أو G-).',
+    },
+    { 
+      key: 'google_tag_manager_id', 
+      label: 'Google Tag Manager ID', 
+      label_ar: 'معرف جوجل تاغ مانجر', 
+      type: 'text', 
+      placeholder: 'Enter GTM ID', 
+      placeholder_ar: 'أدخل معرف GTM',
+      helpText: 'Your Google Tag Manager container ID (starts with GTM-).',
+      helpText_ar: 'معرف الحاوية في جوجل تاغ مانجر (يبدأ بـ GTM-).',
+    },
+    { 
+      key: 'facebook_pixel_id', 
+      label: 'Facebook Pixel ID', 
+      label_ar: 'معرف فيسبوك بكسل', 
+      type: 'text', 
+      placeholder: 'Enter Facebook Pixel ID', 
+      placeholder_ar: 'أدخل معرف فيسبوك بكسل',
+      helpText: 'Your Facebook Pixel ID for tracking conversions and retargeting.',
+      helpText_ar: 'معرف فيسبوك بكسل لتتبع التحويلات وإعادة الاستهداف.',
+    },
+    { 
+      key: 'clarity_id', 
+      label: 'Microsoft Clarity ID', 
+      label_ar: 'معرف مايكروسوفت كلاريتي', 
+      type: 'text', 
+      placeholder: 'Enter Clarity ID', 
+      placeholder_ar: 'أدخل معرف كلاريتي',
+      helpText: 'Your Microsoft Clarity project ID for user behavior analytics.',
+      helpText_ar: 'معرف مشروع مايكروسوفت كلاريتي لتحليل سلوك المستخدمين.',
+    },
   ],
   favicon: [
-    { key: 'favicon', label: 'Favicon (.ico)', label_ar: 'أيقونة الموقع .ico', type: 'image', placeholder: 'https://example.com/favicon.ico', placeholder_ar: 'https://example.com/favicon.ico' },
-    { key: 'favicon_svg', label: 'Favicon SVG', label_ar: 'أيقونة SVG', type: 'image', placeholder: 'https://example.com/favicon.svg', placeholder_ar: 'https://example.com/favicon.svg' },
-    { key: 'favicon_32', label: 'Favicon 32x32', label_ar: 'أيقونة 32×32', type: 'image', placeholder: 'https://example.com/favicon-32x32.png', placeholder_ar: 'https://example.com/favicon-32x32.png' },
-    { key: 'favicon_16', label: 'Favicon 16x16', label_ar: 'أيقونة 16×16', type: 'image', placeholder: 'https://example.com/favicon-16x16.png', placeholder_ar: 'https://example.com/favicon-16x16.png' },
-    { key: 'favicon_apple', label: 'Apple Touch Icon', label_ar: 'أيقونة آبل', type: 'image', placeholder: 'https://example.com/apple-touch-icon.png', placeholder_ar: 'https://example.com/apple-touch-icon.png' },
-    { key: 'favicon_android', label: 'Android Chrome Icon', label_ar: 'أيقونة أندرويد', type: 'image', placeholder: 'https://example.com/android-chrome-192x192.png', placeholder_ar: 'https://example.com/android-chrome-192x192.png' },
-    { key: 'browserconfig_xml', label: 'Browser Config', label_ar: 'ملف إعدادات المتصفح', type: 'url', placeholder: 'https://example.com/browserconfig.xml', placeholder_ar: 'https://example.com/browserconfig.xml' },
+    { 
+      key: 'favicon', 
+      label: 'Favicon (.ico)', 
+      label_ar: 'أيقونة الموقع .ico', 
+      type: 'image', 
+      placeholder: 'https://example.com/favicon.ico', 
+      placeholder_ar: 'https://example.com/favicon.ico',
+      helpText: 'Standard favicon in .ico format. Works on all browsers.',
+      helpText_ar: 'أيقونة الموقع بصيغة .ico. تعمل على جميع المتصفحات.',
+    },
+    { 
+      key: 'favicon_svg', 
+      label: 'Favicon SVG', 
+      label_ar: 'أيقونة SVG', 
+      type: 'image', 
+      placeholder: 'https://example.com/favicon.svg', 
+      placeholder_ar: 'https://example.com/favicon.svg',
+      helpText: 'SVG favicon for modern browsers. Supports scaling without quality loss.',
+      helpText_ar: 'أيقونة SVG للمتصفحات الحديثة. تدعم التكبير دون فقدان الجودة.',
+    },
+    { 
+      key: 'favicon_32', 
+      label: 'Favicon 32x32', 
+      label_ar: 'أيقونة 32×32', 
+      type: 'image', 
+      placeholder: 'https://example.com/favicon-32x32.png', 
+      placeholder_ar: 'https://example.com/favicon-32x32.png',
+      helpText: 'PNG favicon for desktop browsers. Size: 32x32 pixels.',
+      helpText_ar: 'أيقونة PNG لمتصفحات سطح المكتب. الحجم: 32×32 بكسل.',
+    },
+    { 
+      key: 'favicon_16', 
+      label: 'Favicon 16x16', 
+      label_ar: 'أيقونة 16×16', 
+      type: 'image', 
+      placeholder: 'https://example.com/favicon-16x16.png', 
+      placeholder_ar: 'https://example.com/favicon-16x16.png',
+      helpText: 'Small PNG favicon for browser tabs. Size: 16x16 pixels.',
+      helpText_ar: 'أيقونة PNG صغيرة لعلامات تبويب المتصفح. الحجم: 16×16 بكسل.',
+    },
+    { 
+      key: 'favicon_apple', 
+      label: 'Apple Touch Icon', 
+      label_ar: 'أيقونة آبل', 
+      type: 'image', 
+      placeholder: 'https://example.com/apple-touch-icon.png', 
+      placeholder_ar: 'https://example.com/apple-touch-icon.png',
+      helpText: 'Icon for Apple devices (iPhone, iPad) when added to home screen.',
+      helpText_ar: 'أيقونة لأجهزة آبل (آيفون، آيباد) عند إضافتها إلى الشاشة الرئيسية.',
+    },
+    { 
+      key: 'favicon_android', 
+      label: 'Android Chrome Icon', 
+      label_ar: 'أيقونة أندرويد', 
+      type: 'image', 
+      placeholder: 'https://example.com/android-chrome-192x192.png', 
+      placeholder_ar: 'https://example.com/android-chrome-192x192.png',
+      helpText: 'Icon for Android devices when added to home screen. Size: 192x192px.',
+      helpText_ar: 'أيقونة لأجهزة أندرويد عند إضافتها إلى الشاشة الرئيسية. الحجم: 192×192 بكسل.',
+    },
+    { 
+      key: 'browserconfig_xml', 
+      label: 'Browser Config', 
+      label_ar: 'ملف إعدادات المتصفح', 
+      type: 'url', 
+      placeholder: 'https://example.com/browserconfig.xml', 
+      placeholder_ar: 'https://example.com/browserconfig.xml',
+      helpText: 'XML configuration file for Windows 8+ tiles and pinned sites.',
+      helpText_ar: 'ملف تكوين XML لبلاط ويندوز 8+ والمواقع المثبتة.',
+    },
   ],
 };
 
@@ -187,6 +497,49 @@ const OGPreview = ({ formData, isRTL }: { formData: Record<string, string>; isRT
   );
 };
 
+// ✅ مكون الـ Help Text
+const HelpText = ({ 
+  helpText, 
+  helpLink, 
+  isRTL 
+}: { 
+  helpText?: string; 
+  helpLink?: string; 
+  isRTL: boolean;
+}) => {
+  if (!helpText) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-3 p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-800"
+    >
+      <div className="flex items-start gap-3">
+        <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-900/50 shrink-0 mt-0.5">
+          <HelpCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        </div>
+        <div className="flex-1 space-y-2">
+          <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
+            {helpText}
+          </p>
+          {helpLink && (
+            <a
+              href={helpLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline-offset-2 hover:underline transition-colors"
+            >
+              <ExternalLink className="h-3 w-3" />
+              {isRTL ? 'معرفة المزيد' : 'Learn more'}
+            </a>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 // ✅ المكون الرئيسي
 const SettingsPage = () => {
   const { lang } = useApp();
@@ -213,10 +566,8 @@ const SettingsPage = () => {
       const data: Record<string, string> = {};
       Object.keys(settings).forEach(key => {
         const value = settings[key as keyof typeof settings];
-        // ✅ حول null و undefined لـ string فارغ
         data[key] = value !== null && value !== undefined ? String(value) : '';
       });
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData(data);
       setOriginalData(data);
     }
@@ -467,6 +818,8 @@ const SettingsPage = () => {
                         const isChanged = formData[field.key] !== originalData[field.key];
                         const label = isRTL ? field.label_ar : field.label;
                         const placeholder = isRTL ? field.placeholder_ar : field.placeholder;
+                        const helpText = isRTL ? field.helpText_ar : field.helpText;
+                        const helpLink = isRTL ? field.helpLink_ar : field.helpLink;
                         
                         return (
                           <motion.div 
@@ -481,7 +834,6 @@ const SettingsPage = () => {
                           >
                             <div className="flex items-center justify-between">
                               <label className="text-sm font-medium flex items-center gap-2">
-                                {/* ✅ عرض أيقونة خاصة بحقل التحقق من جوجل */}
                                 {field.key === 'google_site_verification' && (
                                   <ShieldCheck className="h-4 w-4 text-green-600" />
                                 )}
@@ -566,14 +918,25 @@ const SettingsPage = () => {
                                 )}
                               </div>
                             ) : (
-                              <Input
-                                type="text"
-                                value={value}
-                                onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                                placeholder={placeholder}
-                                className="w-full"
-                                dir={isRTL ? 'rtl' : 'ltr'}
-                              />
+                              <>
+                                <Input
+                                  type="text"
+                                  value={value}
+                                  onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                                  placeholder={placeholder}
+                                  className="w-full"
+                                  dir={isRTL ? 'rtl' : 'ltr'}
+                                />
+                                
+                                {/* ✅ عرض الـ Help Text تحت كل حقل */}
+                                {helpText && (
+                                  <HelpText 
+                                    helpText={helpText} 
+                                    helpLink={helpLink} 
+                                    isRTL={isRTL} 
+                                  />
+                                )}
+                              </>
                             )}
                           </motion.div>
                         );
