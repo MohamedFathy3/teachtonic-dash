@@ -1,38 +1,67 @@
 // src/hooks/useFavicon.ts
 
-import { useEffect } from 'react';
-import { useApp } from '@/contexts/AppContext';
-import api from '@/lib/api';
+import { useEffect } from "react";
+import { useApp } from "@/contexts/AppContext";
+import api from "@/lib/api";
+
+// حفظ القيم الأصلية الموجودة في index.html
+const DEFAULTS = {
+  title: document.title,
+  favicon:
+    document.querySelector<HTMLLinkElement>("link[rel='icon']")?.href ||
+    document.querySelector<HTMLLinkElement>("link[rel*='icon']")?.href ||
+    "",
+  shortcut:
+    document.querySelector<HTMLLinkElement>("link[rel='shortcut icon']")?.href ||
+    "",
+  ogImage:
+    document.querySelector<HTMLMetaElement>("meta[property='og:image']")
+      ?.content || "",
+  twitterImage:
+    document.querySelector<HTMLMetaElement>("meta[name='twitter:image']")
+      ?.content || "",
+  jsonLd:
+    document.querySelector<HTMLScriptElement>(
+      'script[type="application/ld+json"]'
+    )?.textContent || "",
+};
 
 export const useFavicon = () => {
   const { role, instructorData } = useApp();
 
   useEffect(() => {
     const updateFavicon = async () => {
-      try {
-        // إذا كان المستخدم معلم
-        if (role === 'teacher' || role === 'instructor') {
-          // إذا كانت البيانات موجودة بالفعل في الـ Context
-          if (instructorData?.image?.fullUrl) {
-            updateFaviconElement(instructorData.image.fullUrl, instructorData.name);
-            return;
-          }
+      // Admin أو أي Role غير Teacher
+      if (role !== "teacher" && role !== "instructor") {
+        return;
+      }
 
-          // إذا لم تكن موجودة، جلبها من الـ API
-          const response = await api.get('/admin/check-auth');
-          
-          if (response.data?.result === 'Success' && response.data?.data) {
-            const data = response.data.data;
-            if (data.image?.fullUrl) {
-              updateFaviconElement(data.image.fullUrl, data.name);
-            }
-          }
+      try {
+        // البيانات موجودة بالفعل
+        if (instructorData?.image?.fullUrl) {
+          updateFaviconElement(
+            instructorData.image.fullUrl,
+            instructorData.name
+          );
+          return;
+        }
+
+        // جلب البيانات
+        const response = await api.get("/admin/check-auth");
+
+        if (
+          response.data?.result === "Success" &&
+          response.data?.data?.image?.fullUrl
+        ) {
+          updateFaviconElement(
+            response.data.data.image.fullUrl,
+            response.data.data.name
+          );
         } else {
-          // إعادة الشعار الافتراضي
           resetFavicon();
         }
       } catch (error) {
-        console.warn('⚠️ Could not update favicon:', error);
+        console.warn("⚠️ Could not update favicon:", error);
         resetFavicon();
       }
     };
@@ -41,72 +70,93 @@ export const useFavicon = () => {
   }, [role, instructorData]);
 };
 
-// دالة مساعدة لتحديث عناصر الـ Favicon
-const updateFaviconElement = (imageUrl: string, teacherName?: string) => {
-  // تحديث Favicon
-  const faviconLink = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-  if (faviconLink) {
-    faviconLink.href = imageUrl;
-  }
+const updateFaviconElement = (
+  imageUrl: string,
+  teacherName?: string
+) => {
+  document
+    .querySelectorAll<HTMLLinkElement>("link[rel*='icon']")
+    .forEach((link) => {
+      link.href = imageUrl;
+    });
 
-  // تحديث Shortcut Icon
-  const shortcutIcon = document.querySelector("link[rel='shortcut icon']") as HTMLLinkElement;
-  if (shortcutIcon) {
-    shortcutIcon.href = imageUrl;
-  }
+  const ogImage = document.querySelector(
+    "meta[property='og:image']"
+  ) as HTMLMetaElement;
 
-  // تحديث Open Graph Image
-  const ogImage = document.querySelector("meta[property='og:image']") as HTMLMetaElement;
   if (ogImage) {
     ogImage.content = imageUrl;
   }
 
-  // تحديث Twitter Image
-  const twitterImage = document.querySelector("meta[name='twitter:image']") as HTMLMetaElement;
+  const twitterImage = document.querySelector(
+    "meta[name='twitter:image']"
+  ) as HTMLMetaElement;
+
   if (twitterImage) {
     twitterImage.content = imageUrl;
   }
 
-  // تحديث Title
   if (teacherName) {
     document.title = `${teacherName} | Teacher Dashboard`;
   }
 
-  // تحديث JSON-LD
-  const jsonLd = document.querySelector('script[type="application/ld+json"]');
+  const jsonLd = document.querySelector(
+    'script[type="application/ld+json"]'
+  ) as HTMLScriptElement;
+
   if (jsonLd) {
     try {
-      const data = JSON.parse(jsonLd.textContent || '{}');
+      const data = JSON.parse(jsonLd.textContent || "{}");
+
       data.logo = imageUrl;
-      data.name = teacherName || 'Teacher';
+
+      if (teacherName) {
+        data.name = teacherName;
+      }
+
       jsonLd.textContent = JSON.stringify(data);
-    } catch (e) {
-      // ignore
-    }
+    } catch {}
   }
 };
 
-// دالة لإعادة الشعار الافتراضي
 const resetFavicon = () => {
-  const faviconLink = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-  if (faviconLink) {
-    faviconLink.href = '/logo.png';
+  document.title = DEFAULTS.title;
+
+  document
+    .querySelectorAll<HTMLLinkElement>("link[rel*='icon']")
+    .forEach((link) => {
+      link.href = DEFAULTS.favicon;
+    });
+
+  const shortcut = document.querySelector(
+    "link[rel='shortcut icon']"
+  ) as HTMLLinkElement;
+
+  if (shortcut) {
+    shortcut.href = DEFAULTS.shortcut;
   }
 
-  const shortcutIcon = document.querySelector("link[rel='shortcut icon']") as HTMLLinkElement;
-  if (shortcutIcon) {
-    shortcutIcon.href = '/logo.png';
-  }
+  const ogImage = document.querySelector(
+    "meta[property='og:image']"
+  ) as HTMLMetaElement;
 
-  const ogImage = document.querySelector("meta[property='og:image']") as HTMLMetaElement;
   if (ogImage) {
-    ogImage.content = '/logo.png';
+    ogImage.content = DEFAULTS.ogImage;
   }
 
-  const twitterImage = document.querySelector("meta[name='twitter:image']") as HTMLMetaElement;
+  const twitterImage = document.querySelector(
+    "meta[name='twitter:image']"
+  ) as HTMLMetaElement;
+
   if (twitterImage) {
-    twitterImage.content = '/logo.png';
+    twitterImage.content = DEFAULTS.twitterImage;
   }
 
-  document.title = 'Teacher Planet | Modern LMS Dashboard';
+  const jsonLd = document.querySelector(
+    'script[type="application/ld+json"]'
+  ) as HTMLScriptElement;
+
+  if (jsonLd && DEFAULTS.jsonLd) {
+    jsonLd.textContent = DEFAULTS.jsonLd;
+  }
 };
