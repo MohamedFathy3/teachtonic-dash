@@ -1,6 +1,6 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/hooks/useStages.ts
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { stageService } from '@/services/stage.service';
 import type { Stage, StageFilters } from '@/types/stage.types';
@@ -32,6 +32,8 @@ interface UseStagesReturn {
   bulkDelete: (ids: number[]) => Promise<void>;
   bulkForceDelete: (ids: number[]) => Promise<void>;
   bulkRestore: (ids: number[]) => Promise<void>;
+  updateFilters: (newFilters: Partial<StageFilters>) => void;
+  clearFilters: () => void;
 }
 
 export const useStages = (): UseStagesReturn => {
@@ -58,7 +60,7 @@ export const useStages = (): UseStagesReturn => {
   const fetchStages = useCallback(async () => {
     if (!isMounted.current) return;
     
-    setLoading(false);
+    setLoading(true);
     try {
       const response = await stageService.getAllStages(
         filters, 
@@ -67,15 +69,34 @@ export const useStages = (): UseStagesReturn => {
         searchQuery,
         showDeleted
       );
+      
+      console.log('📦 fetchStages - response:', response);
+      
       if (isMounted.current) {
-        setStages(response.data);
-        setTotal(response.meta.total);
-        setCurrentPage(response.meta.current_page);
-        setLastPage(response.meta.last_page);
+        // ✅ التحقق من وجود البيانات بالشكل الصحيح
+        if (response && response.data && Array.isArray(response.data)) {
+          setStages(response.data);
+          setTotal(response.meta?.total || response.data.length || 0);
+          setCurrentPage(response.meta?.current_page || currentPage);
+          setLastPage(response.meta?.last_page || 1);
+        } else {
+          // ✅ إذا كانت البيانات مش بالشكل المطلوب
+          console.warn('⚠️ Unexpected response structure:', response);
+          setStages([]);
+          setTotal(0);
+          setCurrentPage(1);
+          setLastPage(1);
+        }
         setSelectedStages(new Set());
       }
     } catch (error) {
-      console.error('Failed to fetch stages:', error);
+      console.error('❌ Failed to fetch stages:', error);
+      if (isMounted.current) {
+        setStages([]);
+        setTotal(0);
+        setCurrentPage(1);
+        setLastPage(1);
+      }
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -92,6 +113,33 @@ export const useStages = (): UseStagesReturn => {
       setCurrentPage(page);
     }
   }, [lastPage]);
+
+  // ✅ دالة تحديث الفلاتر
+  const updateFilters = useCallback((newFilters: Partial<StageFilters>) => {
+    setFilters(prev => {
+      // تنظيف الفلاتر من القيم الفارغة
+      const cleanedFilters: StageFilters = {};
+      Object.keys(newFilters).forEach(key => {
+        const value = newFilters[key as keyof StageFilters];
+        if (value !== undefined && value !== null && value !== '') {
+          cleanedFilters[key as keyof StageFilters] = value;
+        }
+      });
+      
+      return {
+        ...prev,
+        ...cleanedFilters
+      };
+    });
+    setCurrentPage(1);
+  }, []);
+
+  // ✅ دالة مسح الفلاتر
+  const clearFilters = useCallback(() => {
+    setFilters({});
+    setSearchQuery('');
+    setCurrentPage(1);
+  }, []);
 
   const createStage = useCallback(async (data: any) => {
     await stageService.createStage(data);
@@ -191,5 +239,7 @@ export const useStages = (): UseStagesReturn => {
     bulkDelete,
     bulkForceDelete,
     bulkRestore,
+    updateFilters,
+    clearFilters,
   };
 };

@@ -50,10 +50,14 @@ export function StagesPage() {
     goToPage,
     bulkDelete,
     bulkForceDelete,
-    bulkRestore
+    bulkRestore,
+    updateFilters,
+    clearFilters,
+    filters,
+    searchQuery,
+    setSearchQuery,
   } = useStages();
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<any>(null);
   const [deletingStage, setDeletingStage] = useState<any>(null);
@@ -121,39 +125,39 @@ export function StagesPage() {
     fetchTeachersForFilter();
   }, []);
 
-  // ✅ فلترة المراحل حسب المعلم المميز
-  const filteredStages = useMemo(() => {
-    let result = stages;
-    
-    // ✅ فلترة حسب البحث
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (stage) =>
-          (stage.name && stage.name.toLowerCase().includes(query)) ||
-          (stage.name_ar && stage.name_ar.toLowerCase().includes(query)) ||
-          (stage.distinctiveMarkForTeacherName && stage.distinctiveMarkForTeacherName.toLowerCase().includes(query))
-      );
-    }
-    
-    // ✅ فلترة حسب المعلم المميز
-    if (selectedTeacherId !== 'all') {
-      if (selectedTeacherId === 'null') {
-        // ✅ عرض المراحل التي ليس لها معلم مميز
-        result = result.filter(stage => !stage.distinctiveMarkForTeacherName);
+  // ✅ تطبيق فلتر المعلم على الـ API
+  useEffect(() => {
+    if (selectedTeacherId === 'all') {
+      // إزالة فلتر المعلم من الفلاتر
+      const { distinctive_mark_for_teacher_id, ...restFilters } = filters;
+      if (Object.keys(restFilters).length > 0) {
+        updateFilters(restFilters);
       } else {
-        // ✅ عرض المراحل التي لها معلم مميز معين
-        const selectedTeacher = teachersList.find(t => t.id.toString() === selectedTeacherId);
-        if (selectedTeacher) {
-          result = result.filter(stage => 
-            stage.distinctiveMarkForTeacherName === selectedTeacher.name
-          );
-        }
+        clearFilters();
+      }
+    } else if (selectedTeacherId === 'null') {
+      // فلتر المعلم = null (بدون معلم مميز)
+      updateFilters({ distinctive_mark_for_teacher_id: null });
+    } else {
+      // فلتر بمعلم محدد
+      updateFilters({ distinctive_mark_for_teacher_id: parseInt(selectedTeacherId) });
+    }
+  }, [selectedTeacherId]);
+
+  // ✅ معالجة البحث
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (value.trim()) {
+      updateFilters({ search: value.trim() });
+    } else {
+      const { search, ...restFilters } = filters;
+      if (Object.keys(restFilters).length > 0) {
+        updateFilters(restFilters);
+      } else {
+        clearFilters();
       }
     }
-    
-    return result;
-  }, [stages, searchQuery, selectedTeacherId, teachersList]);
+  };
 
   // ✅ الحصول على اسم المعلم للعرض
   const getTeacherName = (teacher: any) => {
@@ -170,10 +174,10 @@ export function StagesPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedStages.size === filteredStages.length) {
+    if (selectedStages.size === stages.length) {
       setSelectedStages(new Set());
     } else {
-      setSelectedStages(new Set(filteredStages.map(s => s.id)));
+      setSelectedStages(new Set(stages.map(s => s.id)));
     }
   };
 
@@ -281,10 +285,11 @@ export function StagesPage() {
     }
   };
 
-  // ✅ مسح الفلتر
-  const clearFilters = () => {
-    setSearchQuery('');
+  // ✅ مسح جميع الفلاتر
+  const handleClearFilters = () => {
     setSelectedTeacherId('all');
+    setSearchQuery('');
+    clearFilters();
   };
 
   if (loading) {
@@ -320,10 +325,10 @@ export function StagesPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <ExportExcelButton
-            data={filteredStages} 
+            data={stages} 
             fileName={showDeleted ? "deleted-stages" : "stages-list"}
             label={loading ? "Exporting..." : "Export"}
-            disabled={loading || filteredStages.length === 0}
+            disabled={loading || stages.length === 0}
             icon={
               loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -400,7 +405,7 @@ export function StagesPage() {
               <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400`} />
               <Input
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder={text.searchPlaceholder}
                 className={`${dir === 'rtl' ? 'pr-9' : 'pl-9'} rounded-lg`}
               />
@@ -475,7 +480,7 @@ export function StagesPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={clearFilters}
+                  onClick={handleClearFilters}
                   className="h-8 w-8 rounded-lg text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                   title={text.clearFilter}
                 >
@@ -488,7 +493,7 @@ export function StagesPage() {
           {/* ✅ عرض معلومات الفلتر */}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-gray-500">
-              {filteredStages.length} {text.stages}
+              {stages.length} {text.stages}
             </span>
             
             {selectedTeacherId !== 'all' && (
@@ -513,7 +518,7 @@ export function StagesPage() {
               <TableRow className="bg-gray-50 dark:bg-gray-900/50">
                 <TableHead className="w-10">
                   <Checkbox
-                    checked={filteredStages.length > 0 && selectedStages.size === filteredStages.length}
+                    checked={stages.length > 0 && selectedStages.size === stages.length}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
@@ -526,7 +531,7 @@ export function StagesPage() {
             </TableHeader>
             <TableBody>
               <AnimatePresence mode="wait">
-                {filteredStages.map((stage, index) => (
+                {stages.map((stage, index) => (
                   <motion.tr
                     key={stage.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -614,7 +619,7 @@ export function StagesPage() {
           </Table>
         </div>
 
-        {filteredStages.length === 0 && (
+        {stages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
               <Search className="h-6 w-6 text-gray-400" />
@@ -625,7 +630,7 @@ export function StagesPage() {
             {(searchQuery || selectedTeacherId !== 'all') && (
               <Button
                 variant="link"
-                onClick={clearFilters}
+                onClick={handleClearFilters}
                 className="mt-2 text-purple-600"
               >
                 {dir === 'rtl' ? 'إزالة جميع الفلاتر' : 'Clear all filters'}
@@ -636,13 +641,27 @@ export function StagesPage() {
 
         {total > 0 && (
           <div className="flex items-center justify-between border-t p-4">
-            <p className="text-sm text-gray-500">{text.showing} {filteredStages.length} {text.of} {total} {text.stages}</p>
+            <p className="text-sm text-gray-500">
+              {text.showing} {stages.length} {text.of} {total} {text.stages}
+            </p>
             <div className="flex gap-1">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8" 
+                onClick={() => goToPage(currentPage - 1)} 
+                disabled={currentPage === 1}
+              >
                 <ChevronLeft className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
               </Button>
               <span className="px-3 text-sm">{currentPage}</span>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === lastPage}>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8" 
+                onClick={() => goToPage(currentPage + 1)} 
+                disabled={currentPage === lastPage}
+              >
                 <ChevronRight className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
               </Button>
             </div>

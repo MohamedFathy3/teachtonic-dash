@@ -12,7 +12,7 @@ class StageService extends BaseService<Stage> {
     super('stage');
   }
 
-  async getAllStages(
+    async getAllStages(
     filters?: StageFilters, 
     perPage: number = 10,
     page: number = 1,
@@ -20,8 +20,14 @@ class StageService extends BaseService<Stage> {
     showDeleted: boolean = false
   ): Promise<PaginatedResponse<Stage>> {
     try {
+      // ✅ دمج الـ search في الـ filters
+      const mergedFilters = { ...filters };
+      if (search && search.trim()) {
+        mergedFilters.search = search.trim();
+      }
+
       const params: PaginationParams = {
-        filters: filters || {},
+        filters: mergedFilters,
         orderBy: 'position',
         orderByDirection: 'asc',
         perPage,
@@ -30,15 +36,33 @@ class StageService extends BaseService<Stage> {
         delete: showDeleted,
       };
 
-      if (search && search.trim()) {
-        params.search = search.trim();
-        params.searchFields = ['name', 'name_ar'];
-      }
+      console.log('🚀 Sending request with params:', params);
 
       const response = await this.getAll(params);
+      
+      console.log('📦 Full API Response:', response);
+      console.log('📦 Response data:', response.data);
+      console.log('📦 Response meta:', response.meta);
+      console.log('📦 Response status:', response.status);
+      
+      // ✅ تأكد من وجود data و meta
+      if (!response || !response.data) {
+        console.error('❌ Invalid response structure:', response);
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            per_page: perPage,
+            current_page: page,
+            last_page: 1,
+          }
+        };
+      }
+
       return response;
     } catch (error: any) {
-      console.error('API Error:', error);
+      console.error('❌ API Error:', error);
+      console.error('❌ Error response:', error.response);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to fetch stages",
