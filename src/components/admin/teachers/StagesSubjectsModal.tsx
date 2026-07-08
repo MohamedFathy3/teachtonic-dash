@@ -601,7 +601,9 @@ const StageGroup = ({
         </div>
       </div>
 
-      {/* Subjects */}
+      {/* ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ */}
+      {/* ✅ Subjects - بنستخدم getSubjectDisplayName اللي بتجيب الاسم */}
+      {/* ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ */}
       <div className="flex flex-wrap gap-1.5 mt-2 pl-11 max-h-32 overflow-y-auto">
         {subjects.map((subject, idx) => (
           <span 
@@ -696,6 +698,9 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
       setAllSubjects(subjectsWithStage);
       setFilteredSubjects(subjectsWithStage);
       
+      // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+      // ✅ تحديث subjectsMap بكل المواد
+      // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
       const subjectsMapData = new Map();
       subjectsWithStage.forEach((subject: any) => {
         subjectsMapData.set(subject.id, subject);
@@ -871,9 +876,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     });
   };
 
-  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
   // ✅ حذف Stage مع Subjects
-  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
   const removeStageGroup = (index: number) => {
     const subjectsPerStage = Math.ceil(subjects.length / stages.length);
     const start = index * subjectsPerStage;
@@ -883,9 +886,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     setSubjects(prev => prev.filter((_, i) => i < start || i >= end));
   };
 
-  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
   // ✅ تحديث Stage مع Subjects
-  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
   const updateStageGroup = (index: number, newStageId: number, newSubjectIds: number[], newImageId: number) => {
     // ✅ تحديث المرحلة
     setStages(prev => {
@@ -932,6 +933,19 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     onClose();
   };
 
+  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+  // ✅ دالة جلب اسم المادة - بتجيب من subjectsMap
+  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+  const getSubjectDisplayName = (subjectId: number) => {
+    const subject = subjectsMap.get(subjectId);
+    if (!subject) return `Subject #${subjectId}`;
+    
+    if (lang === 'ar' && subject.name_ar) {
+      return subject.name_ar;
+    }
+    return subject.name || `Subject #${subjectId}`;
+  };
+
   const getStageDisplayName = (stageId: number) => {
     const stage = stagesMap.get(stageId);
     if (!stage) return `Stage ${stageId}`;
@@ -961,12 +975,6 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     }
     
     return name;
-  };
-
-  const getSubjectDisplayName = (subjectId: number) => {
-    const subject = subjectsMap.get(subjectId);
-    if (lang === 'ar' && subject?.name_ar) return subject.name_ar;
-    return subject?.name || `Subject ${subjectId}`;
   };
 
   const handleStageSelectChange = (value: string) => {

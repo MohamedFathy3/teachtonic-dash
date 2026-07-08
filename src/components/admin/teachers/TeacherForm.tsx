@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StagesSubjectsModal } from './StagesSubjectsModal';
+import api from '@/lib/api';
 
 interface Props {
   open: boolean;
@@ -59,6 +60,45 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
   
   // ✅ State للـ Modal الخاص بالمراحل والمواد
   const [showStagesModal, setShowStagesModal] = useState(false);
+
+  // ✅ State لجلب أسماء المراحل والمواد
+  const [stagesMap, setStagesMap] = useState<Map<number, any>>(new Map());
+  const [subjectsMap, setSubjectsMap] = useState<Map<number, any>>(new Map());
+
+  // ✅ جلب المراحل والمواد عند فتح الفورم
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // جلب المراحل
+        const stagesRes = await api.post('/stage/index', {
+          perPage: 1000,
+        });
+        const stagesData = stagesRes.data?.data || [];
+        const stagesMapData = new Map();
+        stagesData.forEach((stage: any) => {
+          stagesMapData.set(stage.id, stage);
+        });
+        setStagesMap(stagesMapData);
+
+        // جلب المواد
+        const subjectsRes = await api.post('/subject/index', {
+          perPage: 1000,
+        });
+        const subjectsData = subjectsRes.data?.data || [];
+        const subjectsMapData = new Map();
+        subjectsData.forEach((subject: any) => {
+          subjectsMapData.set(subject.id, subject);
+        });
+        setSubjectsMap(subjectsMapData);
+      } catch (error) {
+        console.error('Failed to fetch stages/subjects:', error);
+      }
+    };
+
+    if (open) {
+      fetchData();
+    }
+  }, [open]);
 
   // جلب بيانات المعلم عند التعديل
   useEffect(() => {
@@ -137,6 +177,31 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
       stage: stages,
       subject: subjects,
     }));
+  };
+
+  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+  // ✅ دوال لجلب الأسماء من الـ Map
+  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+  const getStageName = (stageId: number): string => {
+    const stage = stagesMap.get(stageId);
+    if (!stage) return `Stage #${stageId}`;
+    
+    // ✅ جيب الاسم حسب اللغة
+    if (lang === 'ar' && stage.name_ar) {
+      return stage.name_ar;
+    }
+    return stage.name || `Stage #${stageId}`;
+  };
+
+  const getSubjectName = (subjectId: number): string => {
+    const subject = subjectsMap.get(subjectId);
+    if (!subject) return `Subject #${subjectId}`;
+    
+    // ✅ جيب الاسم حسب اللغة
+    if (lang === 'ar' && subject.name_ar) {
+      return subject.name_ar;
+    }
+    return subject.name || `Subject #${subjectId}`;
   };
 
   if (fetchingTeacher) {
@@ -375,7 +440,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                 </Button>
               </div>
 
-              {/* ✅ عرض مختصر للمراحل والمواد المضافة */}
+              {/* ✅ عرض مختصر للمراحل والمواد المضافة مع الأسماء */}
               <div className="bg-gray-50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
                 {formData.stage.length === 0 && formData.subject.length === 0 ? (
                   <div className="text-center py-4">
@@ -388,7 +453,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {/* عرض المراحل */}
+                    {/* ✅ عرض المراحل بالأسماء */}
                     {formData.stage.length > 0 && (
                       <div>
                         <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
@@ -401,14 +466,14 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                               className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full"
                             >
                               <FolderTree className="w-3 h-3" />
-                              Stage #{stage.stage_id}
+                              {getStageName(stage.stage_id)}
                             </span>
                           ))}
                         </div>
                       </div>
                     )}
                     
-                    {/* عرض المواد */}
+                    {/* ✅ عرض المواد بالأسماء */}
                     {formData.subject.length > 0 && (
                       <div>
                         <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
@@ -421,7 +486,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                               className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full"
                             >
                               <BookMarked className="w-3 h-3" />
-                              Subject #{subject.subject_id}
+                              {getSubjectName(subject.subject_id)}
                             </span>
                           ))}
                         </div>
