@@ -15,7 +15,6 @@ import {
   Loader2, 
   Image as ImageIcon, 
   Trash2, 
-  GripVertical,
   Check,
   AlertCircle,
   School,
@@ -25,29 +24,12 @@ import {
   RefreshCw,
   Search,
   ChevronDown,
+  Edit,
+  Save,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-
-// ✅ Drag & Drop imports
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 
 interface Props {
   open: boolean;
@@ -57,98 +39,17 @@ interface Props {
   onSave: (stages: TeacherStagePayload[], subjects: TeacherSubjectPayload[]) => void;
 }
 
-// ✅ مكون العنصر المختار (Stage + Subject + Image)
-const SelectedItem = ({ 
-  stageId, 
-  subjectId, 
-  onRemove, 
-  getStageDisplayName, 
-  getSubjectDisplayName,
-  stagesMap,
-  onUpdateImage,
-  updatingImage,
-}: { 
-  stageId: number;
-  subjectId: number;
-  onRemove: () => void;
-  getStageDisplayName: (id: number) => string;
-  getSubjectDisplayName: (id: number) => string;
-  stagesMap: Map<number, any>;
-  onUpdateImage: (stageId: number, imageId: number) => Promise<void>;
-  updatingImage: boolean;
-}) => {
-  const stage = stagesMap.get(stageId);
-  const imageId = stage?.image?.id || null;
-  const imageUrl = imageId ? `${import.meta.env.VITE_API_URL}/storage/media/files/${imageId}` : null;
-
-  const handleImageUpload = async (id: number) => {
-    await onUpdateImage(stageId, id);
-  };
-
-  return (
-    <div className="flex items-center gap-4 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 transition-all hover:border-purple-400 dark:hover:border-purple-500 group">
-      {/* Stage */}
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-          <School className="w-4 h-4 text-blue-500" />
-        </div>
-        <span className="font-medium text-gray-900 dark:text-white truncate">
-          {getStageDisplayName(stageId)}
-        </span>
-      </div>
-
-      {/* Subject */}
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-          <BookMarked className="w-4 h-4 text-purple-500" />
-        </div>
-        <span className="font-medium text-gray-900 dark:text-white truncate">
-          {getSubjectDisplayName(subjectId)}
-        </span>
-      </div>
-
-      {/* Image */}
-      <div className="flex items-center gap-2">
-        {imageUrl && (
-          <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
-            <img
-              src={imageUrl}
-              alt="Stage"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          </div>
-        )}
-        
-        <FileUploader
-          label=""
-          onUploadSuccess={handleImageUpload}
-          multiple={false}
-          accept="image/*"
-          maxFiles={1}
-          uniqueId={`stage-image-update-${stageId}-${Date.now()}`}
-          className="w-auto"
-          buttonClassName={cn(
-            "p-2 rounded-lg text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all",
-            "opacity-0 group-hover:opacity-100"
-          )}
-          buttonIcon={<RefreshCw className={cn("w-4 h-4", updatingImage && "animate-spin")} />}
-          buttonText=""
-          disabled={updatingImage}
-        />
-
-        <button
-          type="button"
-          onClick={onRemove}
-          className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all opacity-0 group-hover:opacity-100"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
+// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+// ✅ دالة مساعدة لجلب fullUrl من الـ API
+// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+const fetchImageUrl = async (imageId: number): Promise<string | null> => {
+  try {
+    const response = await api.get(`/media/${imageId}`);
+    return response.data?.data?.fullUrl || null;
+  } catch (error) {
+    console.error('❌ Failed to fetch image URL:', error);
+    return null;
+  }
 };
 
 // ✅ مكون Select مع Search (Combobox)
@@ -319,14 +220,370 @@ const SearchableSelect = ({
   );
 };
 
+// ✅ مكون العنصر المختار مع Edit Mode
+const SelectedItem = ({ 
+  stageId, 
+  subjectId, 
+  index,
+  onRemove, 
+  onUpdate,
+  getStageDisplayName, 
+  getSubjectDisplayName,
+  stagesMap,
+  allStages,
+  allSubjects,
+  lang,
+  onUpdateImage,
+  updatingImage,
+  imageId,
+}: { 
+  stageId: number;
+  subjectId: number;
+  index: number;
+  onRemove: (index: number) => void;
+  onUpdate: (index: number, stageId: number, subjectId: number) => void;
+  getStageDisplayName: (id: number) => string;
+  getSubjectDisplayName: (id: number) => string;
+  stagesMap: Map<number, any>;
+  allStages: any[];
+  allSubjects: any[];
+  lang: string;
+  onUpdateImage: (stageId: number, imageId: number) => Promise<void>;
+  updatingImage: boolean;
+  imageId: number | null;
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editStageId, setEditStageId] = useState<string>(stageId.toString());
+  const [editSubjectId, setEditSubjectId] = useState<string>(subjectId.toString());
+  const [editImageId, setEditImageId] = useState<number | null>(imageId);
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [filteredSubjects, setFilteredSubjects] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [uploadKey, setUploadKey] = useState<number>(Date.now());
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState(false);
+
+  const stage = stagesMap.get(stageId);
+  const currentImageId = imageId || stage?.image?.id || null;
+
+  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+  // ✅ جلب fullUrl من الـ API
+  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+  useEffect(() => {
+    if (currentImageId) {
+      setLoadingImage(true);
+      fetchImageUrl(currentImageId).then((url) => {
+        setImageUrl(url);
+        setLoadingImage(false);
+      });
+    } else {
+      setImageUrl(null);
+    }
+  }, [currentImageId]);
+
+  // ✅ جلب المواد عند التعديل
+  const fetchEditSubjects = useCallback(async (stageId: number) => {
+    if (!stageId) {
+      setFilteredSubjects([]);
+      return;
+    }
+
+    setLoadingSubjects(true);
+    try {
+      const response = await api.post('/subject/index', {
+        perPage: 1000,
+        filter: {
+          stage_id: stageId
+        }
+      });
+      
+      const subjectsData = response.data?.data || [];
+      setFilteredSubjects(subjectsData);
+    } catch (error) {
+      console.error('Failed to fetch subjects:', error);
+    } finally {
+      setLoadingSubjects(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isEditing && editStageId) {
+      fetchEditSubjects(parseInt(editStageId));
+    }
+  }, [isEditing, editStageId, fetchEditSubjects]);
+
+  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+  // ✅ رفع الصورة في وضع التعديل
+  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+  const handleImageUploadEdit = async (id: number) => {
+    setEditImageId(id);
+    const url = await fetchImageUrl(id);
+    setEditImagePreview(url);
+    setUploadKey(Date.now());
+  };
+
+  const handleSaveEdit = () => {
+    setError(null);
+    
+    if (!editStageId || !editSubjectId) {
+      setError('Please select both stage and subject');
+      return;
+    }
+
+    const newStageId = parseInt(editStageId);
+    const newSubjectId = parseInt(editSubjectId);
+
+    onUpdate(index, newStageId, newSubjectId);
+    
+    if (editImageId && editImageId !== imageId) {
+      onUpdateImage(newStageId, editImageId);
+    }
+
+    setIsEditing(false);
+    setEditImagePreview(null);
+    toast({
+      title: "Success",
+      description: "Combination updated successfully",
+    });
+  };
+
+  const getStageDisplayWithTeacher = (stage: any) => {
+    let name = '';
+    
+    if (lang === 'ar' && stage.name_ar) {
+      name = stage.name_ar;
+    } else if (stage.name) {
+      name = stage.name;
+    } else {
+      name = `Stage ${stage.id}`;
+    }
+    
+    if (stage.distinctiveMarkForTeacherName) {
+      return `${name} (${stage.distinctiveMarkForTeacherName})`;
+    }
+    
+    return name;
+  };
+
+  const getSubjectDisplay = (subject: any) => {
+    if (lang === 'ar' && subject?.name_ar) return subject.name_ar;
+    return subject?.name || `Subject ${subject.id}`;
+  };
+
+  // ✅ عرض عادي
+  if (!isEditing) {
+    return (
+      <div className="flex items-center gap-4 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 transition-all hover:border-purple-400 dark:hover:border-purple-500 group">
+        {/* Stage */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+            <School className="w-4 h-4 text-blue-500" />
+          </div>
+          <span className="font-medium text-gray-900 dark:text-white truncate">
+            {getStageDisplayName(stageId)}
+          </span>
+        </div>
+
+        {/* Subject */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+            <BookMarked className="w-4 h-4 text-purple-500" />
+          </div>
+          <span className="font-medium text-gray-900 dark:text-white truncate">
+            {getSubjectDisplayName(subjectId)}
+          </span>
+        </div>
+
+        {/* Image */}
+        <div className="flex items-center gap-2">
+          {loadingImage ? (
+            <div className="w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center">
+              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+            </div>
+          ) : imageUrl ? (
+            <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <img
+                src={imageUrl}
+                alt="Stage"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error('❌ Image failed to load:', imageUrl);
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center flex-shrink-0">
+              <ImageIcon className="w-4 h-4 text-gray-400" />
+            </div>
+          )}
+          
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="p-2 rounded-lg text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all opacity-0 group-hover:opacity-100"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all opacity-0 group-hover:opacity-100"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ وضع التعديل
+  return (
+    <div className="bg-blue-50 dark:bg-blue-950/20 border-2 border-blue-400 dark:border-blue-500 rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-blue-600 dark:text-blue-400 flex items-center gap-2">
+          <Edit className="w-4 h-4" />
+          Editing Combination #{index + 1}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setIsEditing(false);
+            setEditImagePreview(null);
+            setError(null);
+          }}
+          className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Stage Select */}
+        <div>
+          <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Stage</Label>
+          <SearchableSelect
+            value={editStageId}
+            onChange={setEditStageId}
+            options={allStages}
+            getDisplayName={getStageDisplayWithTeacher}
+            placeholder="Select stage..."
+            searchPlaceholder={lang === 'ar' ? 'بحث عن مرحلة...' : 'Search stage...'}
+          />
+        </div>
+
+        {/* Subject Select */}
+        <div>
+          <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Subject</Label>
+          {loadingSubjects ? (
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+            </div>
+          ) : (
+            <SearchableSelect
+              value={editSubjectId}
+              onChange={setEditSubjectId}
+              options={filteredSubjects}
+              getDisplayName={getSubjectDisplay}
+              placeholder={filteredSubjects.length === 0 ? "No subjects" : "Select subject..."}
+              searchPlaceholder={lang === 'ar' ? 'بحث عن مادة...' : 'Search subject...'}
+              disabled={filteredSubjects.length === 0}
+            />
+          )}
+        </div>
+
+        {/* Image Upload */}
+        <div>
+          <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Image</Label>
+          <div className="flex items-center gap-2">
+            <FileUploader
+              key={`edit-upload-${index}-${uploadKey}`}
+              label=""
+              onUploadSuccess={handleImageUploadEdit}
+              multiple={false}
+              accept="image/*"
+              maxFiles={1}
+              uniqueId={`edit-image-${index}-${uploadKey}`}
+              className="flex-1"
+              defaultImageUrl={imageUrl}
+              defaultImageId={currentImageId}
+              onRemoveImage={() => {
+                setEditImageId(null);
+                setEditImagePreview(null);
+                setUploadKey(Date.now());
+              }}
+            />
+            {(editImagePreview || imageUrl) && (
+              <div className="relative flex-shrink-0">
+                <img
+                  src={editImagePreview || imageUrl || ''}
+                  alt="Preview"
+                  className="w-10 h-10 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                  onError={(e) => {
+                    console.error('❌ Preview image failed to load:', editImagePreview || imageUrl);
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditImageId(null);
+                    setEditImagePreview(null);
+                    setUploadKey(Date.now());
+                  }}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="text-xs text-red-500 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </div>
+      )}
+
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setIsEditing(false);
+            setEditImagePreview(null);
+            setError(null);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleSaveEdit}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          <Save className="w-4 h-4 mr-1" />
+          Save Changes
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 export function StagesSubjectsModal({ open, onClose, initialStages, initialSubjects, onSave }: Props) {
   const { t, dir, lang } = useApp();
   
-  // ✅ State للمراحل والمواد
   const [stages, setStages] = useState<TeacherStagePayload[]>(initialStages);
   const [subjects, setSubjects] = useState<TeacherSubjectPayload[]>(initialSubjects);
   
-  // ✅ State للإضافة (Stage + Subject + Image مع بعض)
   const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
@@ -334,6 +591,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
   const [error, setError] = useState<string | null>(null);
   const [updatingImage, setUpdatingImage] = useState(false);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [uploadKey, setUploadKey] = useState<number>(Date.now());
 
   const [subjectSearch, setSubjectSearch] = useState<string>('');
 
@@ -477,14 +735,20 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     }
   };
 
-  // ✅ رفع الصورة
-  const handleImageUpload = (id: number) => {
+  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+  // ✅ رفع الصورة للإضافة - جلب fullUrl من الـ API
+  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+  const handleImageUpload = async (id: number) => {
+    console.log('✅ Image uploaded with ID:', id);
     setSelectedImageId(id);
-    const imageUrl = `${import.meta.env.VITE_API_URL}/storage/media/files/${id}`;
-    setSelectedImagePreview(imageUrl);
+    
+    const url = await fetchImageUrl(id);
+    console.log('✅ Full URL:', url);
+    setSelectedImagePreview(url);
+    setUploadKey(Date.now());
   };
 
-  // ✅ إضافة (Stage + Subject + Image) مع بعض
+  // ✅ إضافة Combination
   const addCombination = () => {
     setError(null);
     
@@ -501,28 +765,23 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     const stageId = parseInt(selectedStageId);
     const subjectId = parseInt(selectedSubjectId);
 
-    // ✅ تحقق إذا كانت المرحلة موجودة
     if (stages.some(s => s.stage_id === stageId)) {
       setError('This stage is already added');
       return;
     }
 
-    // ✅ تحقق إذا كانت المادة موجودة
     if (subjects.some(s => s.subject_id === subjectId)) {
       setError('This subject is already added');
       return;
     }
 
-    // ✅ إضافة المرحلة
     setStages(prev => [...prev, { 
       stage_id: stageId, 
       image: selectedImageId || 0 
     }]);
 
-    // ✅ إضافة المادة
     setSubjects(prev => [...prev, { subject_id: subjectId }]);
 
-    // ✅ تنظيف
     setSelectedStageId('');
     setSelectedSubjectId('');
     setSelectedImageId(null);
@@ -531,22 +790,28 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     setSubjectSearch('');
     setAllSubjects([]);
     setFilteredSubjects([]);
+    setUploadKey(Date.now());
   };
 
-  // ✅ حذف مرحلة
-  const removeStage = (stageId: number) => {
-    setStages(prev => prev.filter(s => s.stage_id !== stageId));
+  // ✅ حذف Combination
+  const removeCombination = (index: number) => {
+    setStages(prev => prev.filter((_, i) => i !== index));
+    setSubjects(prev => prev.filter((_, i) => i !== index));
   };
 
-  // ✅ حذف مادة
-  const removeSubject = (subjectId: number) => {
-    setSubjects(prev => prev.filter(s => s.subject_id !== subjectId));
-  };
+  // ✅ تحديث Combination
+  const updateCombination = (index: number, newStageId: number, newSubjectId: number) => {
+    setStages(prev => {
+      const newStages = [...prev];
+      newStages[index] = { ...newStages[index], stage_id: newStageId };
+      return newStages;
+    });
 
-  // ✅ حذف الـ combination كامل
-  const removeCombination = (stageId: number, subjectId: number) => {
-    removeStage(stageId);
-    removeSubject(subjectId);
+    setSubjects(prev => {
+      const newSubjects = [...prev];
+      newSubjects[index] = { subject_id: newSubjectId };
+      return newSubjects;
+    });
   };
 
   // ✅ حفظ البيانات
@@ -597,10 +862,6 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     setSelectedSubjectId('');
   };
 
-  const handleSubjectSelectChange = (value: string) => {
-    setSelectedSubjectId(value);
-  };
-
   const handleSubjectSearchChange = (search: string) => {
     setSubjectSearch(search);
   };
@@ -622,14 +883,14 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
             <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 dark:bg-purple-950/30 rounded-full">
               <FolderTree className="w-4 h-4 text-purple-500" />
               <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                {stages.length} stages · {subjects.length} subjects
+                {stages.length} combinations
               </span>
             </div>
           </div>
         </div>
 
         <div className="p-8 space-y-6">
-          {/* ✅ صف الإضافة (Stage + Subject + Image) */}
+          {/* ✅ صف الإضافة */}
           <div className="space-y-3">
             <Label className="text-sm font-semibold text-gray-900 dark:text-white">
               Add New Combination
@@ -663,7 +924,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
                 ) : (
                   <SearchableSelect
                     value={selectedSubjectId}
-                    onChange={handleSubjectSelectChange}
+                    onChange={setSelectedSubjectId}
                     options={filteredSubjects}
                     getDisplayName={(subject: any) => {
                       const name = lang === 'ar' && subject.name_ar ? subject.name_ar : subject.name;
@@ -680,12 +941,13 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
               {/* Image Upload */}
               <div className="flex items-center gap-2">
                 <FileUploader
+                  key={`add-upload-${uploadKey}`}
                   label=""
                   onUploadSuccess={handleImageUpload}
                   multiple={false}
                   accept="image/*"
                   maxFiles={1}
-                  uniqueId={`combination-image-${Date.now()}`}
+                  uniqueId={`add-image-${uploadKey}`}
                   className="flex-1"
                 />
                 {selectedImagePreview && (
@@ -694,12 +956,17 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
                       src={selectedImagePreview}
                       alt="Preview"
                       className="w-10 h-10 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                      onError={(e) => {
+                        console.error('❌ Preview image failed to load:', selectedImagePreview);
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedImageId(null);
                         setSelectedImagePreview(null);
+                        setUploadKey(Date.now());
                       }}
                       className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
                     >
@@ -729,39 +996,47 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
             </div>
           </div>
 
-          {/* ✅ القسم الثاني: العناصر المختارة */}
+          {/* ✅ القسم التاني: العناصر المختارة */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BookMarked className="w-5 h-5 text-purple-500" />
                 <Label className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Selected Items
+                  Selected Combinations
                 </Label>
                 <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                  {stages.length} combinations
+                  {stages.length} items
                 </span>
               </div>
+              {stages.length > 0 && (
+                <span className="text-xs text-gray-400">Hover to show actions</span>
+              )}
             </div>
 
             {/* قائمة العناصر المختارة */}
             {stages.length > 0 && subjects.length > 0 ? (
               <div className="space-y-2">
                 {stages.map((stage, index) => {
-                  // ✅ نجيب المادة对应的
                   const subject = subjects[index];
                   if (!subject) return null;
                   
                   return (
                     <SelectedItem
-                      key={stage.stage_id}
+                      key={`item-${index}`}
+                      index={index}
                       stageId={stage.stage_id}
                       subjectId={subject.subject_id}
-                      onRemove={() => removeCombination(stage.stage_id, subject.subject_id)}
+                      onRemove={removeCombination}
+                      onUpdate={updateCombination}
                       getStageDisplayName={getStageDisplayName}
                       getSubjectDisplayName={getSubjectDisplayName}
                       stagesMap={stagesMap}
+                      allStages={allStages}
+                      allSubjects={allSubjects}
+                      lang={lang}
                       onUpdateImage={handleUpdateStageImage}
                       updatingImage={updatingImage}
+                      imageId={stage.image || null}
                     />
                   );
                 })}
