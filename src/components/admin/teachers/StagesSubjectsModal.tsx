@@ -45,7 +45,7 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-  useSortable, // ✅ ده كان ناقص!
+  useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -57,81 +57,58 @@ interface Props {
   onSave: (stages: TeacherStagePayload[], subjects: TeacherSubjectPayload[]) => void;
 }
 
-// ✅ مكون المرحلة القابل للسحب - محدث مع دعم تحديث الصورة
-const StageItem = ({ 
-  item, 
-  index, 
+// ✅ مكون العنصر المختار (Stage + Subject + Image)
+const SelectedItem = ({ 
+  stageId, 
+  subjectId, 
   onRemove, 
   getStageDisplayName, 
-  lang,
+  getSubjectDisplayName,
+  stagesMap,
   onUpdateImage,
   updatingImage,
-  stagesMap,
 }: { 
-  item: TeacherStagePayload; 
-  index: number; 
-  onRemove: (index: number) => void; 
+  stageId: number;
+  subjectId: number;
+  onRemove: () => void;
   getStageDisplayName: (id: number) => string;
-  lang: string;
+  getSubjectDisplayName: (id: number) => string;
+  stagesMap: Map<number, any>;
   onUpdateImage: (stageId: number, imageId: number) => Promise<void>;
   updatingImage: boolean;
-  stagesMap: Map<number, any>;
 }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: index });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const handleImageUpload = async (id: number) => {
-    await onUpdateImage(item.stage_id, id);
-  };
-
-  const stage = stagesMap.get(item.stage_id);
-  const imageId = item.image || stage?.image?.id || null;
+  const stage = stagesMap.get(stageId);
+  const imageId = stage?.image?.id || null;
   const imageUrl = imageId ? `${import.meta.env.VITE_API_URL}/storage/media/files/${imageId}` : null;
 
+  const handleImageUpload = async (id: number) => {
+    await onUpdateImage(stageId, id);
+  };
+
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "flex items-center gap-4 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 transition-all hover:border-blue-400 dark:hover:border-blue-500 group",
-        isDragging && "shadow-lg ring-2 ring-blue-500 ring-offset-2"
-      )}
-    >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-      >
-        <GripVertical className="w-5 h-5" />
+    <div className="flex items-center gap-4 bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 transition-all hover:border-purple-400 dark:hover:border-purple-500 group">
+      {/* Stage */}
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+          <School className="w-4 h-4 text-blue-500" />
+        </div>
+        <span className="font-medium text-gray-900 dark:text-white truncate">
+          {getStageDisplayName(stageId)}
+        </span>
       </div>
 
-      <div className="flex-1 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center flex-shrink-0">
-          <School className="w-5 h-5 text-blue-500" />
+      {/* Subject */}
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+          <BookMarked className="w-4 h-4 text-purple-500" />
         </div>
-        <div className="flex-1">
-          <p className="font-medium text-gray-900 dark:text-white">
-            {getStageDisplayName(item.stage_id)}
-          </p>
-          {imageId && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              <ImageIcon className="w-3 h-3" />
-              <span>Image attached</span>
-            </p>
-          )}
-        </div>
+        <span className="font-medium text-gray-900 dark:text-white truncate">
+          {getSubjectDisplayName(subjectId)}
+        </span>
+      </div>
+
+      {/* Image */}
+      <div className="flex items-center gap-2">
         {imageUrl && (
           <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0">
             <img
@@ -144,16 +121,14 @@ const StageItem = ({
             />
           </div>
         )}
-      </div>
-
-      <div className="flex items-center gap-1">
+        
         <FileUploader
           label=""
           onUploadSuccess={handleImageUpload}
           multiple={false}
           accept="image/*"
           maxFiles={1}
-          uniqueId={`stage-image-update-${item.stage_id}-${Date.now()}`}
+          uniqueId={`stage-image-update-${stageId}-${Date.now()}`}
           className="w-auto"
           buttonClassName={cn(
             "p-2 rounded-lg text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all",
@@ -163,39 +138,15 @@ const StageItem = ({
           buttonText=""
           disabled={updatingImage}
         />
-        
+
         <button
           type="button"
-          onClick={() => onRemove(index)}
+          onClick={onRemove}
           className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all opacity-0 group-hover:opacity-100"
         >
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
-    </div>
-  );
-};
-
-// ✅ مكون المادة
-const SubjectBadge = ({ subject, onRemove, getSubjectDisplayName, getStageName }: any) => {
-  return (
-    <div className="group inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 transition-all">
-      <BookMarked className="w-4 h-4 text-purple-500" />
-      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-        {getSubjectDisplayName(subject.subject_id)}
-      </span>
-      {getStageName && (
-        <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-          {getStageName}
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="text-gray-400 hover:text-red-500 transition-colors"
-      >
-        <X className="w-3.5 h-3.5" />
-      </button>
     </div>
   );
 };
@@ -375,16 +326,15 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
   const [stages, setStages] = useState<TeacherStagePayload[]>(initialStages);
   const [subjects, setSubjects] = useState<TeacherSubjectPayload[]>(initialSubjects);
   
+  // ✅ State للإضافة (Stage + Subject + Image مع بعض)
   const [selectedStageId, setSelectedStageId] = useState<string>('');
-  const [selectedStageImage, setSelectedStageImage] = useState<number | null>(null);
-  const [selectedStageImagePreview, setSelectedStageImagePreview] = useState<string | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
-  const [stageError, setStageError] = useState<string | null>(null);
-  const [subjectError, setSubjectError] = useState<string | null>(null);
+  const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [updatingImage, setUpdatingImage] = useState(false);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
 
-  const [stageSearch, setStageSearch] = useState<string>('');
   const [subjectSearch, setSubjectSearch] = useState<string>('');
 
   const [stagesMap, setStagesMap] = useState<Map<number, any>>(new Map());
@@ -392,13 +342,6 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
   const [allStages, setAllStages] = useState<any[]>([]);
   const [allSubjects, setAllSubjects] = useState<any[]>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<any[]>([]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   // ✅ جلب المراحل
   useEffect(() => {
@@ -437,7 +380,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     try {
       const response = await api.post('/subject/index', {
         perPage: 1000,
-        filters: {
+        filter: {
           stage_id: stageId
         }
       });
@@ -473,10 +416,11 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     }
   }, [lang, stagesMap]);
 
-  // ✅ عند تغيير المرحلة المختارة
+  // ✅ عند تغيير المرحلة
   useEffect(() => {
     if (selectedStageId) {
       fetchSubjectsByStage(parseInt(selectedStageId));
+      setSelectedSubjectId('');
     } else {
       setAllSubjects([]);
       setFilteredSubjects([]);
@@ -499,25 +443,14 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     }
   }, [subjectSearch, allSubjects, lang]);
 
-  // ✅ تحديث صورة المرحلة - محدث
+  // ✅ تحديث صورة المرحلة
   const handleUpdateStageImage = async (stageId: number, imageId: number) => {
     setUpdatingImage(true);
     try {
-      // ✅ تحديث الصورة في الـ API
       await stageService.updateStage(stageId, {
         image: imageId as any
       });
 
-      // ✅ تحديث الـ state
-      setStages(prev => 
-        prev.map(s => 
-          s.stage_id === stageId 
-            ? { ...s, image: imageId }
-            : s
-        )
-      );
-
-      // ✅ تحديث الـ Map
       setStagesMap(prev => {
         const newMap = new Map(prev);
         const stage = newMap.get(stageId);
@@ -544,81 +477,76 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     }
   };
 
-  // ✅ إضافة مرحلة
-  const addStage = () => {
-    setStageError(null);
+  // ✅ رفع الصورة
+  const handleImageUpload = (id: number) => {
+    setSelectedImageId(id);
+    const imageUrl = `${import.meta.env.VITE_API_URL}/storage/media/files/${id}`;
+    setSelectedImagePreview(imageUrl);
+  };
+
+  // ✅ إضافة (Stage + Subject + Image) مع بعض
+  const addCombination = () => {
+    setError(null);
     
     if (!selectedStageId) {
-      setStageError('Please select a stage');
+      setError('Please select a stage');
       return;
     }
 
-    if (stages.some(s => s.stage_id === parseInt(selectedStageId))) {
-      setStageError('This stage is already added');
+    if (!selectedSubjectId) {
+      setError('Please select a subject');
       return;
     }
 
-    const newStage: TeacherStagePayload = {
-      stage_id: parseInt(selectedStageId),
-      image: selectedStageImage || 0,
-    };
+    const stageId = parseInt(selectedStageId);
+    const subjectId = parseInt(selectedSubjectId);
 
-    setStages(prev => [...prev, newStage]);
-    
+    // ✅ تحقق إذا كانت المرحلة موجودة
+    if (stages.some(s => s.stage_id === stageId)) {
+      setError('This stage is already added');
+      return;
+    }
+
+    // ✅ تحقق إذا كانت المادة موجودة
+    if (subjects.some(s => s.subject_id === subjectId)) {
+      setError('This subject is already added');
+      return;
+    }
+
+    // ✅ إضافة المرحلة
+    setStages(prev => [...prev, { 
+      stage_id: stageId, 
+      image: selectedImageId || 0 
+    }]);
+
+    // ✅ إضافة المادة
+    setSubjects(prev => [...prev, { subject_id: subjectId }]);
+
+    // ✅ تنظيف
     setSelectedStageId('');
-    setSelectedStageImage(null);
-    setSelectedStageImagePreview(null);
-    setStageError(null);
-    setStageSearch('');
+    setSelectedSubjectId('');
+    setSelectedImageId(null);
+    setSelectedImagePreview(null);
+    setError(null);
     setSubjectSearch('');
     setAllSubjects([]);
     setFilteredSubjects([]);
   };
 
   // ✅ حذف مرحلة
-  const removeStage = (index: number) => {
-    setStages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // ✅ Drag & Drop
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      setStages(prev => arrayMove(prev, active.id as number, over.id as number));
-    }
-  };
-
-  // ✅ رفع صورة المرحلة عند الإضافة
-  const handleStageImageUpload = (id: number) => {
-    setSelectedStageImage(id);
-    const imageUrl = `${import.meta.env.VITE_API_URL}/storage/media/files/${id}`;
-    setSelectedStageImagePreview(imageUrl);
-  };
-
-  // ✅ إضافة مادة
-  const addSubject = () => {
-    setSubjectError(null);
-    
-    if (!selectedSubjectId) {
-      setSubjectError('Please select a subject');
-      return;
-    }
-    
-    if (subjects.some(s => s.subject_id === parseInt(selectedSubjectId))) {
-      setSubjectError('This subject is already added');
-      return;
-    }
-
-    setSubjects(prev => [...prev, { subject_id: parseInt(selectedSubjectId) }]);
-    setSelectedSubjectId('');
-    setSubjectError(null);
-    setSubjectSearch('');
+  const removeStage = (stageId: number) => {
+    setStages(prev => prev.filter(s => s.stage_id !== stageId));
   };
 
   // ✅ حذف مادة
-  const removeSubject = (index: number) => {
-    setSubjects(prev => prev.filter((_, i) => i !== index));
+  const removeSubject = (subjectId: number) => {
+    setSubjects(prev => prev.filter(s => s.subject_id !== subjectId));
+  };
+
+  // ✅ حذف الـ combination كامل
+  const removeCombination = (stageId: number, subjectId: number) => {
+    removeStage(stageId);
+    removeSubject(subjectId);
   };
 
   // ✅ حفظ البيانات
@@ -664,14 +592,13 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     return subject?.name || `Subject ${subjectId}`;
   };
 
-  const getSubjectStageName = (subjectId: number) => {
-    const subject = subjectsMap.get(subjectId);
-    return subject?.name_stage || '';
-  };
-
   const handleStageSelectChange = (value: string) => {
     setSelectedStageId(value);
     setSelectedSubjectId('');
+  };
+
+  const handleSubjectSelectChange = (value: string) => {
+    setSelectedSubjectId(value);
   };
 
   const handleSubjectSearchChange = (search: string) => {
@@ -689,7 +616,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
                 Manage Stages & Subjects
               </DialogTitle>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                Add stages with their images and assign subjects
+                Add stages with their subjects and images
               </p>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 dark:bg-purple-950/30 rounded-full">
@@ -701,27 +628,16 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
           </div>
         </div>
 
-        <div className="p-8 space-y-8">
-          {/* المراحل الدراسية */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FolderTree className="w-5 h-5 text-blue-500" />
-                <Label className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Stages
-                </Label>
-                <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                  {stages.length}
-                </span>
-              </div>
-              <p className="text-xs text-gray-400">
-                {dir === 'rtl' ? 'اسحب لإعادة الترتيب' : 'Drag to reorder'}
-              </p>
-            </div>
-
-            {/* إضافة مرحلة */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-              <div className="md:col-span-1">
+        <div className="p-8 space-y-6">
+          {/* ✅ صف الإضافة (Stage + Subject + Image) */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold text-gray-900 dark:text-white">
+              Add New Combination
+            </Label>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-gray-50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+              {/* Stage Select */}
+              <div>
                 <SearchableSelect
                   value={selectedStageId}
                   onChange={handleStageSelectChange}
@@ -731,29 +647,59 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
                   searchPlaceholder={lang === 'ar' ? 'بحث عن مرحلة...' : 'Search stage...'}
                 />
               </div>
-              
+
+              {/* Subject Select */}
+              <div>
+                {!selectedStageId ? (
+                  <div className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span className="text-xs">Select stage first</span>
+                  </div>
+                ) : loadingSubjects ? (
+                  <div className="flex items-center justify-center py-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                    <span className="ml-2 text-sm text-gray-500">Loading...</span>
+                  </div>
+                ) : (
+                  <SearchableSelect
+                    value={selectedSubjectId}
+                    onChange={handleSubjectSelectChange}
+                    options={filteredSubjects}
+                    getDisplayName={(subject: any) => {
+                      const name = lang === 'ar' && subject.name_ar ? subject.name_ar : subject.name;
+                      return name;
+                    }}
+                    placeholder={filteredSubjects.length === 0 ? "No subjects" : "Select subject..."}
+                    searchPlaceholder={lang === 'ar' ? 'بحث عن مادة...' : 'Search subject...'}
+                    onSearchChange={handleSubjectSearchChange}
+                    disabled={filteredSubjects.length === 0}
+                  />
+                )}
+              </div>
+
+              {/* Image Upload */}
               <div className="flex items-center gap-2">
                 <FileUploader
                   label=""
-                  onUploadSuccess={handleStageImageUpload}
+                  onUploadSuccess={handleImageUpload}
                   multiple={false}
                   accept="image/*"
                   maxFiles={1}
-                  uniqueId={`stage-image-${Date.now()}`}
+                  uniqueId={`combination-image-${Date.now()}`}
                   className="flex-1"
                 />
-                {selectedStageImagePreview && (
+                {selectedImagePreview && (
                   <div className="relative flex-shrink-0">
                     <img
-                      src={selectedStageImagePreview}
-                      alt="Stage"
+                      src={selectedImagePreview}
+                      alt="Preview"
                       className="w-10 h-10 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedStageImage(null);
-                        setSelectedStageImagePreview(null);
+                        setSelectedImageId(null);
+                        setSelectedImagePreview(null);
                       }}
                       className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
                     >
@@ -761,155 +707,72 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
                     </button>
                   </div>
                 )}
-                <Button 
-                  type="button" 
-                  onClick={addStage}
-                  size="sm"
-                  className="flex-shrink-0"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
               </div>
-              
-              {stageError && (
-                <div className="md:col-span-3 text-xs text-red-500 flex items-center gap-1">
+
+              {/* Add Button */}
+              <Button 
+                type="button" 
+                onClick={addCombination}
+                className="h-10"
+                disabled={!selectedStageId || !selectedSubjectId}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+
+              {error && (
+                <div className="md:col-span-4 text-xs text-red-500 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  {stageError}
+                  {error}
                 </div>
               )}
             </div>
-
-            {/* قائمة المراحل مع Drag & Drop */}
-            {stages.length > 0 ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={stages.map((_, index) => index)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-2">
-                    {stages.map((item, index) => (
-                      <StageItem
-                        key={index}
-                        item={item}
-                        index={index}
-                        onRemove={removeStage}
-                        getStageDisplayName={getStageDisplayName}
-                        lang={lang}
-                        onUpdateImage={handleUpdateStageImage}
-                        updatingImage={updatingImage}
-                        stagesMap={stagesMap}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            ) : (
-              <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
-                <School className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">No stages added yet</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">Search and select a stage then click add</p>
-              </div>
-            )}
           </div>
 
-          {/* المواد الدراسية */}
-          <div className="space-y-4">
+          {/* ✅ القسم الثاني: العناصر المختارة */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BookMarked className="w-5 h-5 text-purple-500" />
                 <Label className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Subjects
+                  Selected Items
                 </Label>
                 <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                  {subjects.length}
+                  {stages.length} combinations
                 </span>
               </div>
-              {selectedStageId && (
-                <span className="text-xs text-blue-500 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full">
-                  {getStageDisplayName(parseInt(selectedStageId))}
-                </span>
-              )}
             </div>
 
-            {/* إضافة مادة */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-800/30 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-              <div>
-                {!selectedStageId ? (
-                  <div className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>Please select a stage first to see its subjects</span>
-                  </div>
-                ) : loadingSubjects ? (
-                  <div className="flex items-center justify-center py-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
-                    <span className="ml-2 text-sm text-gray-500">Loading subjects...</span>
-                  </div>
-                ) : (
-                  <SearchableSelect
-                    value={selectedSubjectId}
-                    onChange={setSelectedSubjectId}
-                    options={filteredSubjects}
-                    getDisplayName={(subject: any) => {
-                      const name = lang === 'ar' && subject.name_ar ? subject.name_ar : subject.name;
-                      return name;
-                    }}
-                    placeholder={filteredSubjects.length === 0 ? "No subjects for this stage" : "Select subject..."}
-                    searchPlaceholder={lang === 'ar' ? 'بحث عن مادة...' : 'Search subject...'}
-                    onSearchChange={handleSubjectSearchChange}
-                    disabled={filteredSubjects.length === 0}
-                  />
-                )}
-                {selectedStageId && !loadingSubjects && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {filteredSubjects.length} subject{filteredSubjects.length !== 1 ? 's' : ''} available
-                  </p>
-                )}
+            {/* قائمة العناصر المختارة */}
+            {stages.length > 0 && subjects.length > 0 ? (
+              <div className="space-y-2">
+                {stages.map((stage, index) => {
+                  // ✅ نجيب المادة对应的
+                  const subject = subjects[index];
+                  if (!subject) return null;
+                  
+                  return (
+                    <SelectedItem
+                      key={stage.stage_id}
+                      stageId={stage.stage_id}
+                      subjectId={subject.subject_id}
+                      onRemove={() => removeCombination(stage.stage_id, subject.subject_id)}
+                      getStageDisplayName={getStageDisplayName}
+                      getSubjectDisplayName={getSubjectDisplayName}
+                      stagesMap={stagesMap}
+                      onUpdateImage={handleUpdateStageImage}
+                      updatingImage={updatingImage}
+                    />
+                  );
+                })}
               </div>
-
-              <div className="flex items-center gap-2">
-                <Button 
-                  type="button" 
-                  onClick={addSubject}
-                  className="flex-1"
-                  disabled={!selectedStageId || filteredSubjects.length === 0 || loadingSubjects}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Subject
-                </Button>
+            ) : (
+              <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
+                <School className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">No combinations added yet</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">Select a stage, subject, and image then click add</p>
               </div>
-              
-              {subjectError && (
-                <div className="md:col-span-2 text-xs text-red-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {subjectError}
-                </div>
-              )}
-            </div>
-
-            {/* قائمة المواد */}
-            <div className="flex flex-wrap gap-2">
-              {subjects.length === 0 ? (
-                <div className="text-center py-6 w-full border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
-                  <BookOpen className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-1" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">No subjects added</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">Select a stage first then choose subjects</p>
-                </div>
-              ) : (
-                subjects.map((item, idx) => (
-                  <SubjectBadge
-                    key={idx}
-                    subject={item}
-                    onRemove={() => removeSubject(idx)}
-                    getSubjectDisplayName={getSubjectDisplayName}
-                    getStageName={getSubjectStageName(item.subject_id)}
-                  />
-                ))
-              )}
-            </div>
+            )}
           </div>
 
           {/* أزرار التحكم */}
@@ -926,6 +789,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
               type="button" 
               onClick={handleSave}
               className="px-8 bg-purple-600 hover:bg-purple-700"
+              disabled={stages.length === 0}
             >
               Save Changes
             </Button>
