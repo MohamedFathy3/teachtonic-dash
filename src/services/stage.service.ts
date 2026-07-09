@@ -1,68 +1,50 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/services/stage.service.ts
 
 import { BaseService, PaginationParams } from './base.service';
-import type { Stage, StageFilters, PaginatedResponse, StageFormData } from '@/types/stage.types';
+import type { 
+  Stage, 
+  StageFilters, 
+  PaginatedResponse, 
+  StageFormData 
+} from '@/types/stage.types';
 import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
-import { teacherService } from './teacher.service';
 
 class StageService extends BaseService<Stage> {
   constructor() {
     super('stage');
   }
 
-    async getAllStages(
-    filters?: StageFilters, 
+  /**
+   * ✅ جلب المراحل مع دعم الفلاتر المتقدمة
+   */
+  async getStages(
+    filters?: StageFilters,
     perPage: number = 10,
     page: number = 1,
     search?: string,
     showDeleted: boolean = false
   ): Promise<PaginatedResponse<Stage>> {
     try {
-      // ✅ دمج الـ search في الـ filters
-      const mergedFilters = { ...filters };
-      if (search && search.trim()) {
-        mergedFilters.search = search.trim();
-      }
-
       const params: PaginationParams = {
-        filters: mergedFilters,
-        orderBy: 'position',
-        orderByDirection: 'asc',
+        filters: filters || {},
+        orderBy: 'id',
+        orderByDirection: 'desc',
         perPage,
         page,
         paginate: true,
         delete: showDeleted,
       };
 
-      console.log('🚀 Sending request with params:', params);
-
-      const response = await this.getAll(params);
-      
-      console.log('📦 Full API Response:', response);
-      console.log('📦 Response data:', response.data);
-      console.log('📦 Response meta:', response.meta);
-      console.log('📦 Response status:', response.status);
-      
-      // ✅ تأكد من وجود data و meta
-      if (!response || !response.data) {
-        console.error('❌ Invalid response structure:', response);
-        return {
-          data: [],
-          meta: {
-            total: 0,
-            per_page: perPage,
-            current_page: page,
-            last_page: 1,
-          }
-        };
+      if (search && search.trim()) {
+        params.search = search.trim();
+        params.searchFields = ['name', 'name_ar'];
       }
 
+      const response = await this.getAll(params);
       return response;
     } catch (error: any) {
-      console.error('❌ API Error:', error);
-      console.error('❌ Error response:', error.response);
+      console.error('API Error:', error);
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to fetch stages",
@@ -72,14 +54,39 @@ class StageService extends BaseService<Stage> {
     }
   }
 
+  /**
+   * ✅ جلب المراحل المحذوفة فقط
+   */
   async getDeletedStages(
     perPage: number = 10,
     page: number = 1,
     search?: string
   ): Promise<PaginatedResponse<Stage>> {
-    return this.getAllStages({}, perPage, page, search, true);
+    return this.getStages(
+      { trashed: 'only' },
+      perPage,
+      page,
+      search,
+      true
+    );
   }
 
+  /**
+   * ✅ جلب مرحلة مع المعلم المميز
+   */
+  async getStageWithTeacherId(id: number): Promise<Stage> {
+    try {
+      const response = await api.get(`/stage/${id}/with-teacher`);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching stage with teacher:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * ✅ جلب مرحلة محددة
+   */
   async getStage(id: number): Promise<Stage> {
     try {
       const response = await api.get(`/stage/${id}`);
@@ -94,67 +101,19 @@ class StageService extends BaseService<Stage> {
     }
   }
 
-  // ✅ دالة جديدة: تجلب المرحلة مع ID المعلم
-  async getStageWithTeacherId(id: number): Promise<any> {
-    try {
-      const stage = await this.getStage(id);
-      
-      // ✅ إذا كان هناك معلم مميز، نجلب ID المعلم
-      if (stage.distinctiveMarkForTeacherName) {
-        try {
-          // جلب جميع المدرسين
-          const response = await teacherService.getAllTeachers(
-            { active: true },
-            100,
-            1,
-            '',
-            false
-          );
-          
-          // البحث عن المعلم بالاسم
-          const teacher = response.data.find(
-            (t: any) => t.name === stage.distinctiveMarkForTeacherName
-          );
-          
-          if (teacher) {
-            // ✅ إضافة ID المعلم إلى الـ stage
-            (stage as any).distinctive_mark_for_teacher_id = teacher.id;
-          }
-        } catch (error) {
-          console.error('Error fetching teacher:', error);
-        }
-      }
-      
-      return stage;
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to fetch stage with teacher",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  }
-
+  /**
+   * ✅ إنشاء مرحلة جديدة
+   */
   async createStage(data: StageFormData): Promise<Stage> {
     try {
-      const formData = new FormData();
-      formData.append('name', data.name);
-      formData.append('name_ar', data.name_ar);
-      formData.append('position', data.position.toString());
-      formData.append('active', data.active ? '1' : '0');
-      
-      if (data.distinctive_mark_for_teacher_id) {
-        formData.append('distinctive_mark_for_teacher_id', data.distinctive_mark_for_teacher_id.toString());
-      }
-      
-      if (data.image) {
-        formData.append('image', data.image);
-      }
+      const payload = {
+        name: data.name,
+        name_ar: data.name_ar,
+        active: data.active !== undefined ? data.active : true,
+        distinctive_mark_for_teacher_id: data.distinctive_mark_for_teacher_id || null,
+      };
 
-      const response = await api.post('/stage', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const response = await api.post('/stage', payload);
       
       toast({
         title: "Success",
@@ -172,32 +131,21 @@ class StageService extends BaseService<Stage> {
     }
   }
 
+  /**
+   * ✅ تحديث مرحلة
+   */
   async updateStage(id: number, data: Partial<StageFormData>): Promise<Stage> {
     try {
-      const formData = new FormData();
+      const payload: any = {};
       
-      if (data.name) formData.append('name', data.name);
-      if (data.name_ar) formData.append('name_ar', data.name_ar);
-      if (data.position !== undefined) formData.append('position', data.position.toString());
-      if (data.active !== undefined) formData.append('active', data.active ? '1' : '0');
-      
+      if (data.name !== undefined) payload.name = data.name;
+      if (data.name_ar !== undefined) payload.name_ar = data.name_ar;
+      if (data.active !== undefined) payload.active = data.active;
       if (data.distinctive_mark_for_teacher_id !== undefined) {
-        if (data.distinctive_mark_for_teacher_id) {
-          formData.append('distinctive_mark_for_teacher_id', data.distinctive_mark_for_teacher_id.toString());
-        } else {
-          formData.append('distinctive_mark_for_teacher_id', '');
-        }
+        payload.distinctive_mark_for_teacher_id = data.distinctive_mark_for_teacher_id;
       }
-      
-      if (data.image) {
-        formData.append('image', data.image);
-      }
-      
-      formData.append('_method', 'PATCH');
 
-      const response = await api.post(`/stage/${id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const response = await api.patch(`/stage/${id}`, payload);
       
       toast({
         title: "Success",
@@ -215,6 +163,9 @@ class StageService extends BaseService<Stage> {
     }
   }
 
+  /**
+   * ✅ حذف مرحلة (نقل إلى سلة المحذوفات)
+   */
   async deleteStage(id: number): Promise<void> {
     try {
       await this.delete(id);
@@ -232,6 +183,9 @@ class StageService extends BaseService<Stage> {
     }
   }
 
+  /**
+   * ✅ حذف نهائي لمرحلة
+   */
   async forceDeleteStage(id: number): Promise<void> {
     try {
       await this.forceDelete(id);
@@ -249,6 +203,9 @@ class StageService extends BaseService<Stage> {
     }
   }
 
+  /**
+   * ✅ استعادة مرحلة محذوفة
+   */
   async restoreStage(id: number): Promise<Stage> {
     try {
       const stage = await this.restore(id);
@@ -267,6 +224,9 @@ class StageService extends BaseService<Stage> {
     }
   }
 
+  /**
+   * ✅ تبديل حالة المرحلة (نشط/غير نشط)
+   */
   async toggleStageActive(id: number): Promise<{ message: string }> {
     try {
       const result = await this.toggleActive(id);
@@ -285,6 +245,7 @@ class StageService extends BaseService<Stage> {
     }
   }
 
+  // ✅ Bulk Operations
   async bulkDeleteStages(ids: number[]): Promise<void> {
     try {
       await this.bulkDelete(ids);
@@ -334,6 +295,52 @@ class StageService extends BaseService<Stage> {
       });
       throw error;
     }
+  }
+
+  /**
+   * ✅ جلب المراحل النشطة فقط
+   */
+  async getActiveStages(
+    perPage: number = 10,
+    page: number = 1,
+    search?: string
+  ): Promise<PaginatedResponse<Stage>> {
+    return this.getStages(
+      { active: true },
+      perPage,
+      page,
+      search,
+      false
+    );
+  }
+
+  /**
+   * ✅ جلب المراحل حسب المعلم المميز
+   */
+  async getStagesByTeacher(
+    teacherId: number,
+    perPage: number = 10,
+    page: number = 1
+  ): Promise<PaginatedResponse<Stage>> {
+    return this.getStages(
+      { distinctive_mark_for_teacher_id: teacherId },
+      perPage,
+      page
+    );
+  }
+
+  /**
+   * ✅ جلب المراحل بدون معلم مميز
+   */
+  async getStagesWithoutTeacher(
+    perPage: number = 10,
+    page: number = 1
+  ): Promise<PaginatedResponse<Stage>> {
+    return this.getStages(
+      { distinctive_mark_for_teacher_id: null },
+      perPage,
+      page
+    );
   }
 }
 

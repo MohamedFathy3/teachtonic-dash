@@ -109,9 +109,18 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
       try {
         const teacher = await teacherService.getTeacher(teacherId);
         const convertedData = teacherToFormData(teacher);
+        
+        // ✅ IMPORTANT: تأكد من أن كل مادة معاها stage_id
+        const subjectsWithStage = convertedData.subject.map((subject: any) => ({
+          ...subject,
+          // لو المادة معاها stage من الـ API
+          stage_id: subject.stage_id || subject.stage?.id || null
+        }));
+        
         setFormData({
           ...convertedData,
-          sub_domain: convertedData.sub_domain || 'default'
+          sub_domain: convertedData.sub_domain || 'default',
+          subject: subjectsWithStage // ✅ المواد مع stage_id
         });
         
         if (teacher.imageUrl) {
@@ -183,10 +192,17 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
 
   // ✅ تحديث البيانات من الـ Modal
   const handleStagesSubjectsUpdate = (stages: any[], subjects: any[]) => {
+    // ✅ نتأكد أن كل مادة معاها stage_id
+    const subjectsWithStage = subjects.map(subject => ({
+      ...subject,
+      // لو مفيش stage_id، حاول تجيبه من الـ stage object
+      stage_id: subject.stage_id || subject.stage?.id || null
+    }));
+    
     setFormData(prev => ({
       ...prev,
       stage: stages,
-      subject: subjects,
+      subject: subjectsWithStage,
     }));
   };
 

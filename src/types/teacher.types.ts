@@ -27,6 +27,7 @@ export interface TeacherSubjectFromAPI {
   name_ar: string | null;
   position: number;
   active: boolean;
+  stage_id?: number | null; // ✅ أضف stage_id
   stage: any | null;
   createdAt: string;
 }
@@ -50,7 +51,7 @@ export interface Teacher {
   phone: string;
   password?: string;
   active: boolean;
-  website: TeacherWebsite;  // ⚠️ ملاحظة: stages و subjects جوا website
+  website: TeacherWebsite;
   image?: number;
   createdAt: string;
   updatedAt?: string;
@@ -60,12 +61,14 @@ export interface Teacher {
 // 🔥 الـ Stage اللي هنبعته للـ API (للكرييت والتحديث)
 export interface TeacherStagePayload {
   stage_id: number;
-  image: number;  // media ID
+  image: number; // media ID
 }
 
 // 🔥 الـ Subject اللي هنبعته للـ API
 export interface TeacherSubjectPayload {
   subject_id: number;
+  stage_id?: number | null; // ✅ أضف stage_id اختياري
+  stage?: any; // ✅ أضف stage object اختياري للعرض
 }
 
 // 🔥 الـ Form Data (للإرسال)
@@ -112,7 +115,13 @@ export function teacherToFormData(teacher: Teacher): TeacherFormData {
       stage_id: stage.id, 
       image: stage.image?.id || 0 
     })),
-    subject: teacher.website.subjects.map(sub => ({ subject_id: sub.id })),
+    subject: teacher.website.subjects.map(sub => ({ 
+      subject_id: sub.id,
+      // ✅ IMPORTANT: خد stage_id من الـ API
+      stage_id: (sub as any).stage_id || (sub as any).stage?.id || null,
+      // ✅ احتفظ بالـ stage كامل للعرض
+      stage: (sub as any).stage || null
+    })),
     image: teacher.image,
   };
 }

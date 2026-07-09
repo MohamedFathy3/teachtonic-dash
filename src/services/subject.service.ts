@@ -13,8 +13,7 @@ class SubjectService extends BaseService<Subject> {
 
   async getAllSubjects(
     filters?: SubjectFilters,
-    perPage: number = 10,
-    page: number = 1,
+    perPage: number = 10000,
     search?: string,
     showDeleted: boolean = false
   ): Promise<PaginatedResponse<Subject>> {
@@ -23,8 +22,7 @@ class SubjectService extends BaseService<Subject> {
         filters: filters || {},
         orderBy: 'position',
         orderByDirection: 'asc',
-        perPage,
-        page,
+        perPage: perPage,
         paginate: true,
         delete: showDeleted,
       };
@@ -48,11 +46,10 @@ class SubjectService extends BaseService<Subject> {
   }
 
   async getDeletedSubjects(
-    perPage: number = 10,
-    page: number = 1,
+    perPage: number = 10000,
     search?: string
   ): Promise<PaginatedResponse<Subject>> {
-    return this.getAllSubjects({}, perPage, page, search, true);
+    return this.getAllSubjects({}, perPage, search, true);
   }
 
   async getSubject(id: number): Promise<Subject> {
@@ -100,7 +97,6 @@ class SubjectService extends BaseService<Subject> {
       throw error;
     }
   }
-
 
   async updateSubject(id: number, data: Partial<SubjectFormData>): Promise<Subject> {
     try {
@@ -203,7 +199,6 @@ class SubjectService extends BaseService<Subject> {
     }
   }
 
-  // Bulk operations
   async bulkDeleteSubjects(ids: number[]): Promise<void> {
     try {
       await this.bulkDelete(ids);

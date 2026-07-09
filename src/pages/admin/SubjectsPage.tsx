@@ -54,8 +54,6 @@ export function SubjectsPage() {
     subjects,
     loading,
     total,
-    currentPage,
-    lastPage,
     showDeleted,
     setShowDeleted,
     selectedSubjects,
@@ -66,7 +64,6 @@ export function SubjectsPage() {
     forceDeleteSubject,
     restoreSubject,
     toggleActive,
-    goToPage,
     bulkDelete,
     bulkForceDelete,
     bulkRestore
@@ -80,6 +77,10 @@ export function SubjectsPage() {
   const [forceDeletingSubject, setForceDeletingSubject] = useState<any>(null);
   const [bulkActionDialog, setBulkActionDialog] = useState<{ type: 'delete' | 'restore' | 'forceDelete' | null; open: boolean }>({ type: null, open: false });
   const [actionLoading, setActionLoading] = useState(false);
+
+  // ✅ Pagination State (Frontend only)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // ✅ فلتر المعلم المميز
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('all');
@@ -119,6 +120,7 @@ export function SubjectsPage() {
     filterByTeacher: dir === 'rtl' ? 'فلترة حسب المعلم' : 'Filter by Teacher',
     clearFilter: dir === 'rtl' ? 'إزالة الفلتر' : 'Clear Filter',
     selectTeacher: dir === 'rtl' ? 'اختر المعلم' : 'Select Teacher',
+    itemsPerPage: dir === 'rtl' ? 'عدد العناصر في الصفحة' : 'Items per page',
   };
 
   // ✅ جلب قائمة المدرسين للفلتر
@@ -162,10 +164,8 @@ export function SubjectsPage() {
     // ✅ فلترة حسب المعلم المميز في المرحلة
     if (selectedTeacherId !== 'all') {
       if (selectedTeacherId === 'null') {
-        // ✅ عرض المواد التي ليس لها معلم مميز في المرحلة
         result = result.filter(subject => !subject.stage?.distinctiveMarkForTeacherName);
       } else {
-        // ✅ عرض المواد التي لها معلم مميز معين في المرحلة
         const selectedTeacher = teachersList.find(t => t.id.toString() === selectedTeacherId);
         if (selectedTeacher) {
           result = result.filter(subject => 
@@ -177,6 +177,21 @@ export function SubjectsPage() {
     
     return result;
   }, [subjects, searchQuery, selectedTeacherId, teachersList]);
+
+  // ✅ Pagination - حساب البيانات المعروضة
+  const paginatedSubjects = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredSubjects.slice(startIndex, endIndex);
+  }, [filteredSubjects, currentPage, itemsPerPage]);
+
+  // ✅ حساب عدد الصفحات
+  const totalPages = Math.ceil(filteredSubjects.length / itemsPerPage);
+
+  // ✅ إعادة تعيين الصفحة عند تغيير الفلتر أو عدد العناصر
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedTeacherId, itemsPerPage]);
 
   // ✅ الحصول على اسم المعلم للعرض
   const getTeacherName = (teacher: any) => {
@@ -205,10 +220,10 @@ export function SubjectsPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedSubjects.size === filteredSubjects.length) {
+    if (selectedSubjects.size === paginatedSubjects.length) {
       setSelectedSubjects(new Set());
     } else {
-      setSelectedSubjects(new Set(filteredSubjects.map(s => s.id)));
+      setSelectedSubjects(new Set(paginatedSubjects.map(s => s.id)));
     }
   };
 
@@ -314,6 +329,13 @@ export function SubjectsPage() {
   const getInitials = (subject: any) => {
     const name = getSubjectName(subject);
     return name.charAt(0).toUpperCase() || '?';
+  };
+
+  // ✅ تغيير الصفحة
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
   if (loading) {
@@ -424,7 +446,7 @@ export function SubjectsPage() {
           {/* ✅ البحث والفلتر */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
-              <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400`} />
+              <Search className={`${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400`} />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -538,7 +560,7 @@ export function SubjectsPage() {
               <TableRow className="bg-gray-50 dark:bg-gray-900/50">
                 <TableHead className="w-10">
                   <Checkbox
-                    checked={filteredSubjects.length > 0 && selectedSubjects.size === filteredSubjects.length}
+                    checked={paginatedSubjects.length > 0 && selectedSubjects.size === paginatedSubjects.length}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
@@ -552,7 +574,7 @@ export function SubjectsPage() {
             </TableHeader>
             <TableBody>
               <AnimatePresence mode="wait">
-                {filteredSubjects.map((subject, index) => {
+                {paginatedSubjects.map((subject, index) => {
                   const teacherName = getDistinctiveTeacherName(subject);
                   return (
                     <motion.tr
@@ -669,15 +691,96 @@ export function SubjectsPage() {
           </div>
         )}
 
-        {total > 0 && (
-          <div className="flex items-center justify-between border-t p-4 flex-wrap gap-2">
-            <p className="text-sm text-gray-500">{text.showing} {filteredSubjects.length} {text.of} {total} {text.subjects}</p>
-            <div className="flex gap-1">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
+        {/* ✅ Footer مع Pagination */}
+        {filteredSubjects.length > 0 && (
+          <div className="flex items-center justify-between border-t p-4 flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-gray-500">
+                {text.showing} {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredSubjects.length)} {text.of} {filteredSubjects.length} {text.subjects}
+              </p>
+              
+              {/* ✅ Selector لعدد العناصر في الصفحة */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">{text.itemsPerPage}</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => setItemsPerPage(Number(value))}
+                >
+                  <SelectTrigger className="w-20 h-8 rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {/* ✅ أزرار التنقل بين الصفحات */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
                 <ChevronLeft className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
               </Button>
-              <span className="px-3 text-sm flex items-center">{currentPage} / {lastPage}</span>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === lastPage}>
+              
+              {/* ✅ أرقام الصفحات */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let pageNumber;
+                  if (totalPages <= 5) {
+                    pageNumber = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNumber = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNumber = totalPages - 4 + i;
+                  } else {
+                    pageNumber = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={currentPage === pageNumber ? 'default' : 'outline'}
+                      size="icon"
+                      className={`h-8 w-8 rounded-lg ${currentPage === pageNumber ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+                      onClick={() => goToPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+                
+                {totalPages > 5 && currentPage < totalPages - 2 && (
+                  <>
+                    <span className="text-gray-400">...</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg"
+                      onClick={() => goToPage(totalPages)}
+                    >
+                      {totalPages}
+                    </Button>
+                  </>
+                )}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
                 <ChevronRight className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
               </Button>
             </div>

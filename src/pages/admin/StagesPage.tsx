@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/admin/StagesPage.tsx
+
 import type { Stage, StageFilters, PaginatedResponse, StageFormData } from '@/types/stage.types';
 import { stageService } from '@/services/stage.service';
 import { teacherService } from '@/services/teacher.service';
@@ -18,7 +18,7 @@ import { useStages } from '@/hooks/useStages';
 import { StageStatusToggle } from '@/components/admin/stages/StageStatusToggle';
 import { StageForm } from '@/components/admin/stages/StageForm';
 import { StageDeleteDialog } from '@/components/admin/stages/StageDeleteDialog';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -56,6 +56,7 @@ export function StagesPage() {
     filters,
     searchQuery,
     setSearchQuery,
+    fetchStages,
   } = useStages();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -101,6 +102,8 @@ export function StagesPage() {
     filterByTeacher: dir === 'rtl' ? 'فلترة حسب المعلم' : 'Filter by Teacher',
     clearFilter: dir === 'rtl' ? 'إزالة الفلتر' : 'Clear Filter',
     selectTeacher: dir === 'rtl' ? 'اختر المعلم' : 'Select Teacher',
+    clearAllFilters: dir === 'rtl' ? 'إزالة جميع الفلاتر' : 'Clear All Filters',
+    activeFilters: dir === 'rtl' ? 'فلاتر نشطة' : 'Active Filters',
   };
 
   // ✅ جلب قائمة المعلمين للفلتر
@@ -110,7 +113,7 @@ export function StagesPage() {
       try {
         const response = await teacherService.getAllTeachers(
           { active: true },
-          100,
+          10000,
           1,
           '',
           false
@@ -125,34 +128,51 @@ export function StagesPage() {
     fetchTeachersForFilter();
   }, []);
 
-  // ✅ تطبيق فلتر المعلم على الـ API
+  // ✅ تطبيق فلتر المعلم على الـ API مع الحفاظ على الفلاتر الأخرى
   useEffect(() => {
+    const currentFilters = { ...filters };
+    
+    // إزالة فلتر المعلم القديم
+    delete currentFilters.distinctive_mark_for_teacher_id;
+    
     if (selectedTeacherId === 'all') {
-      // إزالة فلتر المعلم من الفلاتر
-      const { distinctive_mark_for_teacher_id, ...restFilters } = filters;
-      if (Object.keys(restFilters).length > 0) {
-        updateFilters(restFilters);
+      // إذا كان الكل، نزيل الفلتر
+      if (Object.keys(currentFilters).length > 0) {
+        updateFilters(currentFilters, false); // ✅ لا نعيد للصفحة 1
       } else {
         clearFilters();
       }
     } else if (selectedTeacherId === 'null') {
       // فلتر المعلم = null (بدون معلم مميز)
-      updateFilters({ distinctive_mark_for_teacher_id: null });
+      updateFilters({ 
+        ...currentFilters,
+        distinctive_mark_for_teacher_id: null 
+      }, false); // ✅ لا نعيد للصفحة 1
     } else {
       // فلتر بمعلم محدد
-      updateFilters({ distinctive_mark_for_teacher_id: parseInt(selectedTeacherId) });
+      updateFilters({ 
+        ...currentFilters,
+        distinctive_mark_for_teacher_id: parseInt(selectedTeacherId) 
+      }, false); // ✅ لا نعيد للصفحة 1
     }
   }, [selectedTeacherId]);
 
-  // ✅ معالجة البحث
+  // ✅ معالجة البحث مع الحفاظ على الفلاتر الأخرى
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
+    const currentFilters = { ...filters };
+    
+    // إزالة البحث القديم
+    delete currentFilters.search;
+    
     if (value.trim()) {
-      updateFilters({ search: value.trim() });
+      updateFilters({ 
+        ...currentFilters,
+        search: value.trim() 
+      }, true); // ✅ نعيد للصفحة 1 عند البحث
     } else {
-      const { search, ...restFilters } = filters;
-      if (Object.keys(restFilters).length > 0) {
-        updateFilters(restFilters);
+      if (Object.keys(currentFilters).length > 0) {
+        updateFilters(currentFilters, true);
       } else {
         clearFilters();
       }
@@ -172,6 +192,26 @@ export function StagesPage() {
     const teacher = teachersList.find(t => t.id.toString() === selectedTeacherId);
     return teacher ? getTeacherName(teacher) : text.selectTeacher;
   };
+
+  // ✅ حساب عدد الفلاتر النشطة
+  const getActiveFiltersCount = useCallback(() => {
+    let count = 0;
+    if (searchQuery) count++;
+    if (selectedTeacherId !== 'all') count++;
+    if (showDeleted) count++;
+    // إضافة أي فلاتر أخرى
+    const filterKeys = Object.keys(filters);
+    if (filterKeys.length > 0) {
+      // نخصم الفلاتر اللي حسبناها قبل كده
+      const extraFilters = filterKeys.filter(key => 
+        key !== 'search' && 
+        key !== 'distinctive_mark_for_teacher_id' &&
+        key !== 'trashed'
+      );
+      count += extraFilters.length;
+    }
+    return count;
+  }, [searchQuery, selectedTeacherId, showDeleted, filters]);
 
   const handleSelectAll = () => {
     if (selectedStages.size === stages.length) {
@@ -319,6 +359,11 @@ export function StagesPage() {
 
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {total} {text.stages}
+              {getActiveFiltersCount() > 0 && (
+                <span className="ml-2 text-purple-600">
+                  ({getActiveFiltersCount()} {text.activeFilters})
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -509,6 +554,25 @@ export function StagesPage() {
                 {searchQuery}
               </Badge>
             )}
+
+            {showDeleted && (
+              <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                <Archive className="h-3 w-3 mr-1" />
+                {dir === 'rtl' ? 'محذوف' : 'Deleted'}
+              </Badge>
+            )}
+
+            {getActiveFiltersCount() > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                className="text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+              >
+                <X className="h-3 w-3 mr-1" />
+                {text.clearAllFilters}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -643,6 +707,11 @@ export function StagesPage() {
           <div className="flex items-center justify-between border-t p-4">
             <p className="text-sm text-gray-500">
               {text.showing} {stages.length} {text.of} {total} {text.stages}
+              {getActiveFiltersCount() > 0 && (
+                <span className="ml-2 text-purple-600">
+                  ({getActiveFiltersCount()} {text.activeFilters})
+                </span>
+              )}
             </p>
             <div className="flex gap-1">
               <Button 
@@ -654,7 +723,9 @@ export function StagesPage() {
               >
                 <ChevronLeft className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
               </Button>
-              <span className="px-3 text-sm">{currentPage}</span>
+              <span className="px-3 text-sm flex items-center">
+                {currentPage} / {lastPage}
+              </span>
               <Button 
                 variant="outline" 
                 size="icon" 

@@ -8,7 +8,6 @@ export interface PaginationParams {
   orderBy?: string;
   orderByDirection?: 'asc' | 'desc';
   perPage?: number;
-  page?: number;
   paginate?: boolean;
   search?: string;
   searchFields?: string[];
@@ -27,14 +26,10 @@ export class BaseService<T> {
       filters: params?.filters || {},
       orderBy: params?.orderBy || 'position',
       orderByDirection: params?.orderByDirection || 'asc',
-      perPage: params?.perPage || 10,
+      perPage: params?.perPage || 10000,
       paginate: params?.paginate !== undefined ? params.paginate : true,
       delete: params?.delete || false,
     };
-
-    if (params?.page) {
-      requestBody.page = params.page;
-    }
 
     if (params?.search) {
       requestBody.search = params.search;
@@ -89,10 +84,12 @@ export class BaseService<T> {
     const response = await api.put(`/${this.endpoint}/${id}/active`);
     return response.data; 
   }
+
   async courseseActive(id: number): Promise<{ message: string }> {
     const response = await api.put(`/${this.endpoint}/${id}/star`);
     return response.data; 
   }
+
   async getDeleted(params?: PaginationParams): Promise<any> {
     return this.getAll({ ...params, delete: true });
   }

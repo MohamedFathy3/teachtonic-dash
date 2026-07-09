@@ -9,8 +9,6 @@ interface UseSubjectsReturn {
   subjects: Subject[];
   loading: boolean;
   total: number;
-  currentPage: number;
-  lastPage: number;
   perPage: number;
   filters: SubjectFilters;
   searchQuery: string;
@@ -28,7 +26,6 @@ interface UseSubjectsReturn {
   forceDeleteSubject: (id: number) => Promise<void>;
   restoreSubject: (id: number) => Promise<void>;
   toggleActive: (id: number) => Promise<void>;
-  goToPage: (page: number) => void;
   bulkDelete: (ids: number[]) => Promise<void>;
   bulkForceDelete: (ids: number[]) => Promise<void>;
   bulkRestore: (ids: number[]) => Promise<void>;
@@ -38,9 +35,7 @@ export const useSubjects = (): UseSubjectsReturn => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [lastPage, setLastPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(10000);
   const [filters, setFilters] = useState<SubjectFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showDeleted, setShowDeleted] = useState(false);
@@ -62,16 +57,13 @@ export const useSubjects = (): UseSubjectsReturn => {
     try {
       const response = await subjectService.getAllSubjects(
         filters, 
-        perPage, 
-        currentPage, 
+        perPage,
         searchQuery,
         showDeleted
       );
       if (isMounted.current) {
-        setSubjects(response.data);
-        setTotal(response.meta.total);
-        setCurrentPage(response.meta.current_page);
-        setLastPage(response.meta.last_page);
+        setSubjects(response.data || []);
+        setTotal(response.data?.length || 0);
         setSelectedSubjects(new Set());
       }
     } catch (error) {
@@ -81,21 +73,14 @@ export const useSubjects = (): UseSubjectsReturn => {
         setLoading(false);
       }
     }
-  }, [filters, perPage, currentPage, searchQuery, showDeleted]);
+  }, [filters, perPage, searchQuery, showDeleted]);
 
   useEffect(() => {
     fetchSubjects();
   }, [fetchSubjects]);
 
-  const goToPage = useCallback((page: number) => {
-    if (page >= 1 && page <= lastPage) {
-      setCurrentPage(page);
-    }
-  }, [lastPage]);
-
   const createSubject = useCallback(async (data: any) => {
     await subjectService.createSubject(data);
-    setCurrentPage(1);
     await fetchSubjects();
   }, [fetchSubjects]);
 
@@ -151,25 +136,20 @@ export const useSubjects = (): UseSubjectsReturn => {
 
   const handleSetFilters = useCallback((newFilters: SubjectFilters) => {
     setFilters(newFilters);
-    setCurrentPage(1);
   }, []);
 
   const handleSetPerPage = useCallback((newPerPage: number) => {
     setPerPage(newPerPage);
-    setCurrentPage(1);
   }, []);
 
   const handleSetSearchQuery = useCallback((query: string) => {
     setSearchQuery(query);
-    setCurrentPage(1);
   }, []);
 
   return {
     subjects,
     loading,
     total,
-    currentPage,
-    lastPage,
     perPage,
     filters,
     searchQuery,
@@ -187,7 +167,6 @@ export const useSubjects = (): UseSubjectsReturn => {
     forceDeleteSubject,
     restoreSubject,
     toggleActive,
-    goToPage,
     bulkDelete,
     bulkForceDelete,
     bulkRestore,

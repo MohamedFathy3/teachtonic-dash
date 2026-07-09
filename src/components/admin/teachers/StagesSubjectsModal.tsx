@@ -268,6 +268,11 @@ const StageGroup = ({
   const [loadingImage, setLoadingImage] = useState(false);
   const [subjectsMapLocal, setSubjectsMapLocal] = useState<Map<number, any>>(new Map());
 
+  // ✅ تحديث editSubjectIds لما تتغير teacherSubjectIds
+  useEffect(() => {
+    setEditSubjectIds(teacherSubjectIds.map(id => id.toString()));
+  }, [teacherSubjectIds]);
+
   // جلب صورة المرحلة
   useEffect(() => {
     if (stage.image) {
@@ -304,10 +309,10 @@ const StageGroup = ({
       });
       setSubjectsMapLocal(newSubjectsMap);
       
-      // ✅ نضع علامة "مختار" على المواد التي يملكها المعلم
+      // ✅ نضع علامة "مختار" على المواد التي يملكها المعلم للمرحلة دي
       const subjectsWithSelected = subjectsData.map((subject: any) => ({
         ...subject,
-        isSelected: editSubjectIds.includes(subject.id.toString())
+        isSelected: teacherSubjectIds.includes(subject.id) // ✅ استخدم teacherSubjectIds
       }));
       
       setFilteredSubjects(subjectsWithSelected);
@@ -321,7 +326,7 @@ const StageGroup = ({
     } finally {
       setLoadingSubjects(false);
     }
-  }, [editSubjectIds]);
+  }, [teacherSubjectIds]); // ✅ dependency على teacherSubjectIds
 
   // ✅ عند فتح التعديل أو تغيير المرحلة، نجيب المواد مع تمييز المختارة
   useEffect(() => {
@@ -727,26 +732,41 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
   const [allSubjects, setAllSubjects] = useState<any[]>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<any[]>([]);
 
-  // ✅ تهيئة الـ Map من البيانات الأولية
-  useEffect(() => {
-    const map = new Map<number, number[]>();
+useEffect(() => {
+  const map = new Map<number, number[]>();
+  
+  // ✅ 1. نجمع كل المواد حسب stage_id من initialSubjects
+  const subjectsByStage = new Map<number, number[]>();
+  
+  initialSubjects.forEach((subject) => {
+    // ✅ IMPORTANT: استخدم subject.stage_id
+    let stageId = subject.stage_id;
     
-    const totalStages = initialStages.length;
-    if (totalStages > 0 && initialSubjects.length > 0) {
-      const subjectsPerStage = Math.ceil(initialSubjects.length / totalStages);
-      
-      initialStages.forEach((stage, index) => {
-        const start = index * subjectsPerStage;
-        const end = Math.min(start + subjectsPerStage, initialSubjects.length);
-        const stageSubjectIds = initialSubjects
-          .slice(start, end)
-          .map(s => s.subject_id);
-        map.set(stage.stage_id, stageSubjectIds);
-      });
+    // ✅ لو مفيش stage_id، حاول تلاقيه من subject.stage
+    if (!stageId && (subject as any).stage) {
+      stageId = (subject as any).stage.id;
     }
     
-    setStageSubjectsMap(map);
-  }, [initialStages, initialSubjects]);
+    if (!stageId) {
+      console.warn(`⚠️ Subject ${subject.subject_id} has no stage_id, skipping...`);
+      return;
+    }
+    
+    if (!subjectsByStage.has(stageId)) {
+      subjectsByStage.set(stageId, []);
+    }
+    subjectsByStage.get(stageId)!.push(subject.subject_id);
+  });
+  
+  // ✅ 2. نملأ الـ Map النهائي من initialStages
+  initialStages.forEach((stage) => {
+    const subjectIds = subjectsByStage.get(stage.stage_id) || [];
+    map.set(stage.stage_id, subjectIds);
+  });
+  
+  console.log('✅ Initialized stageSubjectsMap:', Object.fromEntries(map));
+  setStageSubjectsMap(map);
+}, [initialStages, initialSubjects]); // ✅ أزل subjectsMap من dependency
 
   // جلب المراحل
   useEffect(() => {
@@ -1001,13 +1021,19 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
   };
 
   // ✅ جلب المواد التابعة لمرحلة باستخدام Map
-  const getSubjectsForStage = useCallback((index: number): TeacherSubjectPayload[] => {
-    const stage = stages[index];
-    if (!stage) return [];
-    
-    const subjectIds = stageSubjectsMap.get(stage.stage_id) || [];
-    return subjectIds.map(id => ({ subject_id: id }));
-  }, [stages, stageSubjectsMap]);
+ // ✅ جلب المواد التابعة لمرحلة باستخدام Map
+const getSubjectsForStage = useCallback((index: number): TeacherSubjectPayload[] => {
+  const stage = stages[index];
+  if (!stage) {
+    console.warn(`⚠️ Stage at index ${index} not found`);
+    return [];
+  }
+  
+  const subjectIds = stageSubjectsMap.get(stage.stage_id) || [];
+  console.log(`📚 Stage ${stage.stage_id} has ${subjectIds.length} subjects:`, subjectIds);
+  
+  return subjectIds.map(id => ({ subject_id: id }));
+}, [stages, stageSubjectsMap]);
 
   // ✅ تحديث Stage مع Subjects
   const updateStageGroup = useCallback((index: number, newStageId: number, newSubjectIds: number[], newImageId: number) => {
@@ -1050,7 +1076,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
       subjectIds.forEach(id => {
         subjectsList.push({ 
           subject_id: id,
-          stage_id: stage.stage_id // ✅ إضافة stage_id
+          stage_id: stage.stage_id // ✅ مهم جداً: إضافة stage_id
         });
       });
     });
@@ -1275,36 +1301,43 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
               )}
             </div>
 
-            {stages.length > 0 ? (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {stages.map((stage, index) => {
-                  const stageSubjects = getSubjectsForStage(index);
-                  if (stageSubjects.length === 0) return null;
-                  
-                  // ✅ المواد الحالية للمعلم لهذه المرحلة (IDs فقط)
-                  const teacherSubjectIds = stageSubjects.map(s => s.subject_id);
-                  
-                  return (
-                    <StageGroup
-                      key={`stage-group-${index}`}
-                      stage={stage}
-                      subjects={stageSubjects}
-                      teacherSubjectIds={teacherSubjectIds}
-                      index={index}
-                      onRemove={removeStageGroup}
-                      onEdit={updateStageGroup}
-                      getStageDisplayName={getStageDisplayName}
-                      getSubjectDisplayName={getSubjectDisplayName}
-                      stagesMap={stagesMap}
-                      allStages={allStages}
-                      allSubjects={allSubjects}
-                      lang={lang}
-                      onUpdateImage={handleUpdateStageImage}
-                      updatingImage={updatingImage}
-                    />
-                  );
-                })}
-              </div>
+           {stages.length > 0 ? (
+  <div className="space-y-2 max-h-64 overflow-y-auto">
+    {stages.map((stage, index) => {
+      const stageSubjects = getSubjectsForStage(index);
+      console.log(`🔄 Rendering stage ${index}:`, {
+        stageId: stage.stage_id,
+        subjectCount: stageSubjects.length,
+        subjects: stageSubjects
+      });
+      
+      // ❌ إزالة الشرط ده عشان يظهر حتى لو مفيش مواد
+      // if (stageSubjects.length === 0) return null;
+      
+      // ✅ المواد الحالية للمعلم لهذه المرحلة (IDs فقط)
+      const teacherSubjectIds = stageSubjects.map(s => s.subject_id);
+      
+      return (
+        <StageGroup
+          key={`stage-group-${index}`}
+          stage={stage}
+          subjects={stageSubjects}
+          teacherSubjectIds={teacherSubjectIds}
+          index={index}
+          onRemove={removeStageGroup}
+          onEdit={updateStageGroup}
+          getStageDisplayName={getStageDisplayName}
+          getSubjectDisplayName={getSubjectDisplayName}
+          stagesMap={stagesMap}
+          allStages={allStages}
+          allSubjects={allSubjects}
+          lang={lang}
+          onUpdateImage={handleUpdateStageImage}
+          updatingImage={updatingImage}
+        />
+      );
+    })}
+  </div>
             ) : (
               <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
                 <School className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
