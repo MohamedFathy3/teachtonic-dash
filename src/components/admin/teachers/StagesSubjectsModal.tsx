@@ -218,9 +218,7 @@ const SearchableSelect = ({
   );
 };
 
-// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
 // ✅ مكون Stage Group مع Edit Mode
-// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
 const StageGroup = ({ 
   stage, 
   subjects, 
@@ -235,12 +233,13 @@ const StageGroup = ({
   lang,
   onUpdateImage,
   updatingImage,
+  teacherSubjectIds,
 }: { 
   stage: TeacherStagePayload;
   subjects: TeacherSubjectPayload[];
   index: number;
   onRemove: (index: number) => void;
-  onEdit: (index: number) => void;
+  onEdit: (index: number, newStageId: number, newSubjectIds: number[], newImageId: number) => void;
   getStageDisplayName: (id: number) => string;
   getSubjectDisplayName: (id: number) => string;
   stagesMap: Map<number, any>;
@@ -249,12 +248,16 @@ const StageGroup = ({
   lang: string;
   onUpdateImage: (stageId: number, imageId: number) => Promise<void>;
   updatingImage: boolean;
+  teacherSubjectIds: number[];
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editStageId, setEditStageId] = useState<string>(stage.stage_id.toString());
+  
+  // ✅ استخدم المواد الحالية للمعلم كـ selected
   const [editSubjectIds, setEditSubjectIds] = useState<string[]>(
-    subjects.map(s => s.subject_id.toString())
+    teacherSubjectIds.map(id => id.toString())
   );
+  
   const [editImageId, setEditImageId] = useState<number | null>(stage.image || null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
@@ -263,6 +266,7 @@ const StageGroup = ({
   const [uploadKey, setUploadKey] = useState<number>(Date.now());
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loadingImage, setLoadingImage] = useState(false);
+  const [subjectsMapLocal, setSubjectsMapLocal] = useState<Map<number, any>>(new Map());
 
   // جلب صورة المرحلة
   useEffect(() => {
@@ -275,7 +279,7 @@ const StageGroup = ({
     }
   }, [stage.image]);
 
-  // جلب المواد للتعديل
+  // ✅ جلب المواد المتاحة للمرحلة مع تمييز المواد المختارة
   const fetchEditSubjects = useCallback(async (stageId: number) => {
     if (!stageId) {
       setFilteredSubjects([]);
@@ -292,14 +296,34 @@ const StageGroup = ({
       });
       
       const subjectsData = response.data?.data || [];
-      setFilteredSubjects(subjectsData);
+      
+      // ✅ بناء Map للمواد
+      const newSubjectsMap = new Map();
+      subjectsData.forEach((subject: any) => {
+        newSubjectsMap.set(subject.id, subject);
+      });
+      setSubjectsMapLocal(newSubjectsMap);
+      
+      // ✅ نضع علامة "مختار" على المواد التي يملكها المعلم
+      const subjectsWithSelected = subjectsData.map((subject: any) => ({
+        ...subject,
+        isSelected: editSubjectIds.includes(subject.id.toString())
+      }));
+      
+      setFilteredSubjects(subjectsWithSelected);
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load subjects",
+        variant: "destructive",
+      });
     } finally {
       setLoadingSubjects(false);
     }
-  }, []);
+  }, [editSubjectIds]);
 
+  // ✅ عند فتح التعديل أو تغيير المرحلة، نجيب المواد مع تمييز المختارة
   useEffect(() => {
     if (isEditing && editStageId) {
       fetchEditSubjects(parseInt(editStageId));
@@ -314,7 +338,7 @@ const StageGroup = ({
     setUploadKey(Date.now());
   };
 
-  // ✅ اختيار/إلغاء اختيار مادة في التعديل
+  // اختيار/إلغاء اختيار مادة في التعديل
   const toggleEditSubject = (subjectId: string) => {
     setEditSubjectIds(prev => {
       if (prev.includes(subjectId)) {
@@ -325,7 +349,7 @@ const StageGroup = ({
     });
   };
 
-  // ✅ حفظ التعديلات
+  // حفظ التعديلات
   const handleSaveEdit = () => {
     setError(null);
     
@@ -340,12 +364,13 @@ const StageGroup = ({
     }
 
     const newStageId = parseInt(editStageId);
-    const newSubjectIds = editSubjectIds.map(id => parseInt(id));
+    const uniqueSubjectIds = [...new Set(editSubjectIds.map(id => parseInt(id)))];
+    const newSubjectIds = uniqueSubjectIds;
 
-    // ✅ تحديث المرحلة
+    // تحديث المرحلة
     onEdit(index, newStageId, newSubjectIds, editImageId || 0);
 
-    // ✅ تحديث الصورة لو اتغيرت
+    // تحديث الصورة لو اتغيرت
     if (editImageId && editImageId !== stage.image) {
       onUpdateImage(newStageId, editImageId);
     }
@@ -355,7 +380,7 @@ const StageGroup = ({
     
     toast({
       title: "Success",
-      description: "Stage and subjects updated successfully",
+      description: `Stage and ${newSubjectIds.length} subject(s) updated successfully`,
     });
   };
 
@@ -375,11 +400,6 @@ const StageGroup = ({
     }
     
     return name;
-  };
-
-  const getSubjectDisplay = (subject: any) => {
-    if (lang === 'ar' && subject?.name_ar) return subject.name_ar;
-    return subject?.name || `Subject ${subject.id}`;
   };
 
   // ✅ عرض التعديل
@@ -410,7 +430,12 @@ const StageGroup = ({
             <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Stage</Label>
             <SearchableSelect
               value={editStageId}
-              onChange={setEditStageId}
+              onChange={(value) => {
+                setEditStageId(value);
+                if (value) {
+                  fetchEditSubjects(parseInt(value));
+                }
+              }}
               options={allStages}
               getDisplayName={getStageDisplayWithTeacher}
               placeholder="Select stage..."
@@ -418,46 +443,108 @@ const StageGroup = ({
             />
           </div>
 
-          {/* Subjects Multi Select */}
+          {/* Subjects Multi Select - مع زر Refresh */}
           <div>
-            <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Subjects</Label>
+            <div className="flex items-center justify-between mb-1">
+              <Label className="text-xs text-gray-500 dark:text-gray-400">Subjects</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (editStageId) {
+                    fetchEditSubjects(parseInt(editStageId));
+                  }
+                }}
+                className="h-6 px-2 text-blue-500 hover:text-blue-700"
+                disabled={loadingSubjects}
+              >
+                {loadingSubjects ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3" />
+                )}
+                <span className="text-xs ml-1">Refresh</span>
+              </Button>
+            </div>
+            
             {loadingSubjects ? (
               <div className="flex items-center justify-center py-2">
                 <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
               </div>
             ) : (
-              <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto p-1 border border-gray-200 dark:border-gray-700 rounded-lg">
-                {filteredSubjects.map((subject: any) => {
-                  const id = subject.id.toString();
-                  const name = lang === 'ar' && subject.name_ar ? subject.name_ar : subject.name;
-                  const isSelected = editSubjectIds.includes(id);
-                  
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => toggleEditSubject(id)}
-                      className={cn(
-                        "inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border transition-all",
-                        isSelected 
-                          ? "bg-purple-500 text-white border-purple-500" 
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-purple-400"
-                      )}
-                    >
-                      <BookMarked className="w-3 h-3" />
-                      {name}
-                      {isSelected && <Check className="w-3 h-3" />}
-                    </button>
-                  );
-                })}
-                {filteredSubjects.length === 0 && (
-                  <span className="text-xs text-gray-400 p-1">No subjects available</span>
+              <>
+                <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto p-1 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  {filteredSubjects.map((subject: any) => {
+                    const id = subject.id.toString();
+                    const name = lang === 'ar' && subject.name_ar ? subject.name_ar : subject.name;
+                    const isSelected = editSubjectIds.includes(id);
+                    
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => toggleEditSubject(id)}
+                        className={cn(
+                          "inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border transition-all",
+                          isSelected 
+                            ? "bg-purple-500 text-white border-purple-500 hover:bg-purple-600" 
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-purple-400"
+                        )}
+                      >
+                        <BookMarked className="w-3 h-3" />
+                        {name}
+                        {isSelected && <Check className="w-3 h-3" />}
+                      </button>
+                    );
+                  })}
+                  {filteredSubjects.length === 0 && (
+                    <span className="text-xs text-gray-400 p-1">No subjects available</span>
+                  )}
+                </div>
+                
+                {/* ✅ عرض المواد المختارة بشكل منفصل */}
+                {editSubjectIds.length > 0 && (
+                  <div className="mt-2 p-2 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400 block mb-1">
+                      Selected Subjects ({editSubjectIds.length}):
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {editSubjectIds.map(id => {
+                        const subject = subjectsMapLocal.get(parseInt(id));
+                        const name = lang === 'ar' && subject?.name_ar ? subject.name_ar : subject?.name || `Subject ${id}`;
+                        return (
+                          <span 
+                            key={id}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-500 text-white text-xs rounded-full"
+                          >
+                            <BookMarked className="w-3 h-3" />
+                            {name}
+                            <button
+                              type="button"
+                              onClick={() => toggleEditSubject(id)}
+                              className="hover:text-red-200"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
-              </div>
+              </>
             )}
-            <span className="text-xs text-gray-400 mt-1 block">
-              Selected: {editSubjectIds.length} subjects
-            </span>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-gray-400">
+                Selected: {editSubjectIds.length} subjects
+              </span>
+              {filteredSubjects.length > 0 && (
+                <span className="text-xs text-gray-400">
+                  Available: {filteredSubjects.length}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Image Upload */}
@@ -543,11 +630,10 @@ const StageGroup = ({
     );
   }
 
-  // ✅ عرض عادي
+  // عرض عادي
   return (
     <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 transition-all hover:border-purple-400 dark:hover:border-purple-500 group">
       <div className="flex items-center justify-between">
-        {/* Stage */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
             <School className="w-4 h-4 text-blue-500" />
@@ -560,7 +646,6 @@ const StageGroup = ({
           </span>
         </div>
 
-        {/* Image preview */}
         {loadingImage ? (
           <div className="w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center">
             <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
@@ -582,7 +667,6 @@ const StageGroup = ({
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -601,9 +685,6 @@ const StageGroup = ({
         </div>
       </div>
 
-      {/* ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ */}
-      {/* ✅ Subjects - بنستخدم getSubjectDisplayName اللي بتجيب الاسم */}
-      {/* ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ */}
       <div className="flex flex-wrap gap-1.5 mt-2 pl-11 max-h-32 overflow-y-auto">
         {subjects.map((subject, idx) => (
           <span 
@@ -620,12 +701,15 @@ const StageGroup = ({
 };
 
 export function StagesSubjectsModal({ open, onClose, initialStages, initialSubjects, onSave }: Props) {
-  const { t, dir, lang } = useApp();
+  const { lang } = useApp();
   
   const [stages, setStages] = useState<TeacherStagePayload[]>(initialStages);
   const [subjects, setSubjects] = useState<TeacherSubjectPayload[]>(initialSubjects);
   
-  // ✅ State للإضافة
+  // ✅ الـ Map لتخزين المواد لكل مرحلة
+  const [stageSubjectsMap, setStageSubjectsMap] = useState<Map<number, number[]>>(new Map());
+  
+  // State للإضافة
   const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
@@ -642,6 +726,27 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
   const [allStages, setAllStages] = useState<any[]>([]);
   const [allSubjects, setAllSubjects] = useState<any[]>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<any[]>([]);
+
+  // ✅ تهيئة الـ Map من البيانات الأولية
+  useEffect(() => {
+    const map = new Map<number, number[]>();
+    
+    const totalStages = initialStages.length;
+    if (totalStages > 0 && initialSubjects.length > 0) {
+      const subjectsPerStage = Math.ceil(initialSubjects.length / totalStages);
+      
+      initialStages.forEach((stage, index) => {
+        const start = index * subjectsPerStage;
+        const end = Math.min(start + subjectsPerStage, initialSubjects.length);
+        const stageSubjectIds = initialSubjects
+          .slice(start, end)
+          .map(s => s.subject_id);
+        map.set(stage.stage_id, stageSubjectIds);
+      });
+    }
+    
+    setStageSubjectsMap(map);
+  }, [initialStages, initialSubjects]);
 
   // جلب المراحل
   useEffect(() => {
@@ -698,9 +803,6 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
       setAllSubjects(subjectsWithStage);
       setFilteredSubjects(subjectsWithStage);
       
-      // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-      // ✅ تحديث subjectsMap بكل المواد
-      // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
       const subjectsMapData = new Map();
       subjectsWithStage.forEach((subject: any) => {
         subjectsMapData.set(subject.id, subject);
@@ -788,7 +890,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     setUploadKey(Date.now());
   };
 
-  // ✅ اختيار/إلغاء اختيار مادة للإضافة
+  // اختيار/إلغاء اختيار مادة للإضافة
   const toggleSubject = (subjectId: string) => {
     setSelectedSubjectIds(prev => {
       if (prev.includes(subjectId)) {
@@ -799,7 +901,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     });
   };
 
-  // ✅ عرض المواد المختارة للإضافة
+  // عرض المواد المختارة للإضافة
   const renderSelectedSubjects = () => {
     if (selectedSubjectIds.length === 0) {
       return <span className="text-xs text-gray-400">No subjects selected</span>;
@@ -831,7 +933,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     );
   };
 
-  // ✅ إضافة Stage مع Subjects
+  // إضافة Stage مع Subjects
   const addCombination = () => {
     setError(null);
     
@@ -852,13 +954,19 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
       return;
     }
 
+    // ✅ إضافة المرحلة
     setStages(prev => [...prev, { 
       stage_id: stageId, 
       image: selectedImageId || 0 
     }]);
 
-    const newSubjects = selectedSubjectIds.map(id => ({ subject_id: parseInt(id) }));
-    setSubjects(prev => [...prev, ...newSubjects]);
+    // ✅ إضافة المواد في الـ Map
+    const newSubjectIds = selectedSubjectIds.map(id => parseInt(id));
+    setStageSubjectsMap(prev => {
+      const newMap = new Map(prev);
+      newMap.set(stageId, newSubjectIds);
+      return newMap;
+    });
 
     setSelectedStageId('');
     setSelectedSubjectIds([]);
@@ -872,22 +980,42 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
 
     toast({
       title: "Success",
-      description: `Added stage with ${newSubjects.length} subject(s)`,
+      description: `Added stage with ${newSubjectIds.length} subject(s)`,
     });
   };
 
-  // ✅ حذف Stage مع Subjects
+  // حذف Stage مع Subjects
   const removeStageGroup = (index: number) => {
-    const subjectsPerStage = Math.ceil(subjects.length / stages.length);
-    const start = index * subjectsPerStage;
-    const end = Math.min(start + subjectsPerStage, subjects.length);
+    const stage = stages[index];
+    if (!stage) return;
     
+    // ✅ حذف المرحلة
     setStages(prev => prev.filter((_, i) => i !== index));
-    setSubjects(prev => prev.filter((_, i) => i < start || i >= end));
+    
+    // ✅ حذف المواد من الـ Map
+    setStageSubjectsMap(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(stage.stage_id);
+      return newMap;
+    });
   };
 
+  // ✅ جلب المواد التابعة لمرحلة باستخدام Map
+  const getSubjectsForStage = useCallback((index: number): TeacherSubjectPayload[] => {
+    const stage = stages[index];
+    if (!stage) return [];
+    
+    const subjectIds = stageSubjectsMap.get(stage.stage_id) || [];
+    return subjectIds.map(id => ({ subject_id: id }));
+  }, [stages, stageSubjectsMap]);
+
   // ✅ تحديث Stage مع Subjects
-  const updateStageGroup = (index: number, newStageId: number, newSubjectIds: number[], newImageId: number) => {
+  const updateStageGroup = useCallback((index: number, newStageId: number, newSubjectIds: number[], newImageId: number) => {
+    const oldStage = stages[index];
+    if (!oldStage) return;
+    
+    const oldStageId = oldStage.stage_id;
+    
     // ✅ تحديث المرحلة
     setStages(prev => {
       const newStages = [...prev];
@@ -899,51 +1027,36 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
       return newStages;
     });
 
-    // ✅ تحديث المواد
-    const subjectsPerStage = Math.ceil(subjects.length / stages.length);
-    const start = index * subjectsPerStage;
-    const end = Math.min(start + subjectsPerStage, subjects.length);
-    
-    // ✅ حذف المواد القديمة
-    const remainingSubjects = subjects.filter((_, i) => i < start || i >= end);
-    
-    // ✅ إضافة المواد الجديدة
-    const newSubjects = newSubjectIds.map(id => ({ subject_id: id }));
-    const updatedSubjects = [...remainingSubjects];
-    updatedSubjects.splice(start, 0, ...newSubjects);
-    
-    setSubjects(updatedSubjects);
-  };
+    // ✅ تحديث الـ Map
+    setStageSubjectsMap(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(oldStageId);
+      const uniqueSubjectIds = [...new Set(newSubjectIds)];
+      newMap.set(newStageId, uniqueSubjectIds);
+      return newMap;
+    });
+  }, [stages]);
 
-  // ✅ جلب المواد التابعة لمرحلة
-  const getSubjectsForStage = (index: number): TeacherSubjectPayload[] => {
-    const totalStages = stages.length;
-    if (totalStages === 0 || subjects.length === 0) return [];
-    
-    const subjectsPerStage = Math.ceil(subjects.length / totalStages);
-    const start = index * subjectsPerStage;
-    const end = Math.min(start + subjectsPerStage, subjects.length);
-    
-    return subjects.slice(start, end);
-  };
-
-  // حفظ البيانات
+  // ✅ حفظ البيانات - مع إضافة stage_id لكل مادة
   const handleSave = () => {
-    onSave(stages, subjects);
-    onClose();
-  };
-
-  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-  // ✅ دالة جلب اسم المادة - بتجيب من subjectsMap
-  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-  const getSubjectDisplayName = (subjectId: number) => {
-    const subject = subjectsMap.get(subjectId);
-    if (!subject) return `Subject #${subjectId}`;
+    const stagesList: TeacherStagePayload[] = stages.map(stage => ({
+      stage_id: stage.stage_id,
+      image: stage.image || 0
+    }));
     
-    if (lang === 'ar' && subject.name_ar) {
-      return subject.name_ar;
-    }
-    return subject.name || `Subject #${subjectId}`;
+    const subjectsList: any[] = [];
+    stages.forEach(stage => {
+      const subjectIds = stageSubjectsMap.get(stage.stage_id) || [];
+      subjectIds.forEach(id => {
+        subjectsList.push({ 
+          subject_id: id,
+          stage_id: stage.stage_id // ✅ إضافة stage_id
+        });
+      });
+    });
+    
+    onSave(stagesList, subjectsList);
+    onClose();
   };
 
   const getStageDisplayName = (stageId: number) => {
@@ -975,6 +1088,12 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
     }
     
     return name;
+  };
+
+  const getSubjectDisplayName = (subjectId: number) => {
+    const subject = subjectsMap.get(subjectId);
+    if (lang === 'ar' && subject?.name_ar) return subject.name_ar;
+    return subject?.name || `Subject ${subjectId}`;
   };
 
   const handleStageSelectChange = (value: string) => {
@@ -1139,7 +1258,7 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
             </div>
           </div>
 
-          {/* ✅ القسم التاني: العناصر المختارة مع Edit */}
+          {/* القسم التاني: العناصر المختارة مع Edit */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1162,11 +1281,15 @@ export function StagesSubjectsModal({ open, onClose, initialStages, initialSubje
                   const stageSubjects = getSubjectsForStage(index);
                   if (stageSubjects.length === 0) return null;
                   
+                  // ✅ المواد الحالية للمعلم لهذه المرحلة (IDs فقط)
+                  const teacherSubjectIds = stageSubjects.map(s => s.subject_id);
+                  
                   return (
                     <StageGroup
                       key={`stage-group-${index}`}
                       stage={stage}
                       subjects={stageSubjects}
+                      teacherSubjectIds={teacherSubjectIds}
                       index={index}
                       onRemove={removeStageGroup}
                       onEdit={updateStageGroup}

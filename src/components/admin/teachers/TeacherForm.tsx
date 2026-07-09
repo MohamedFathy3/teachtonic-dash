@@ -147,7 +147,18 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit(formData);
+    
+    // ✅ نتأكد أن المواد معاها stage_id قبل الإرسال
+    const submitData = {
+      ...formData,
+      subject: formData.subject.map((s: any) => ({
+        subject_id: s.subject_id,
+        stage_id: s.stage_id || null
+      }))
+    };
+    
+    await onSubmit(submitData);
+    
     if (!teacherId) {
       setFormData({
         name: '',
@@ -179,14 +190,11 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     }));
   };
 
-  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
   // ✅ دوال لجلب الأسماء من الـ Map
-  // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
   const getStageName = (stageId: number): string => {
     const stage = stagesMap.get(stageId);
     if (!stage) return `Stage #${stageId}`;
     
-    // ✅ جيب الاسم حسب اللغة
     if (lang === 'ar' && stage.name_ar) {
       return stage.name_ar;
     }
@@ -197,11 +205,21 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     const subject = subjectsMap.get(subjectId);
     if (!subject) return `Subject #${subjectId}`;
     
-    // ✅ جيب الاسم حسب اللغة
     if (lang === 'ar' && subject.name_ar) {
       return subject.name_ar;
     }
     return subject.name || `Subject #${subjectId}`;
+  };
+
+  // ✅ دالة جديدة لجلب اسم المرحلة للمادة
+  const getSubjectStageName = (subject: any): string => {
+    if (subject.stage_id) {
+      const stage = stagesMap.get(subject.stage_id);
+      if (stage) {
+        return lang === 'ar' ? stage.name_ar : stage.name;
+      }
+    }
+    return '';
   };
 
   if (fetchingTeacher) {
@@ -473,22 +491,30 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                       </div>
                     )}
                     
-                    {/* ✅ عرض المواد بالأسماء */}
+                    {/* ✅ عرض المواد بالأسماء مع اسم المرحلة */}
                     {formData.subject.length > 0 && (
                       <div>
                         <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
                           Subjects ({formData.subject.length})
                         </p>
                         <div className="flex flex-wrap gap-1.5">
-                          {formData.subject.map((subject, idx) => (
-                            <span 
-                              key={idx}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full"
-                            >
-                              <BookMarked className="w-3 h-3" />
-                              {getSubjectName(subject.subject_id)}
-                            </span>
-                          ))}
+                          {formData.subject.map((subject, idx) => {
+                            const stageName = getSubjectStageName(subject);
+                            return (
+                              <span 
+                                key={idx}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full"
+                              >
+                                <BookMarked className="w-3 h-3" />
+                                {getSubjectName(subject.subject_id)}
+                                {stageName && (
+                                  <span className="text-[10px] text-purple-400 dark:text-purple-500">
+                                    ({stageName})
+                                  </span>
+                                )}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
