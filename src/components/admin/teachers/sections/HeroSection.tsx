@@ -6,12 +6,12 @@ import { useApp } from '@/contexts/AppContext';
 import { BaseSection } from './BaseSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import FileUploader from '@/components/FileUploader';
 import { Edit, Trash2, Globe, Check, Eye, EyeOff } from 'lucide-react';
 import { useWebsiteSection } from '@/hooks/useWebsiteSection';
+import { RichTextEditor } from '@/components/ui/RichTextEditor'; // ✅ إضافة الاستيراد
 
 interface HeroSectionProps {
   teacherId: number;
@@ -111,7 +111,6 @@ export function HeroSection({ teacherId }: HeroSectionProps) {
 
                 {/* CONTENT */}
                 <div className="flex-1 min-w-0 space-y-1">
-
                   {/* TITLE + STATUS */}
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-base truncate">
@@ -131,14 +130,16 @@ export function HeroSection({ teacherId }: HeroSectionProps) {
                   </p>
 
                   {/* DESCRIPTION */}
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {item.description || 'No description'}
-                  </p>
+                  <div 
+                    className="text-xs text-muted-foreground line-clamp-2"
+                    dangerouslySetInnerHTML={{ 
+                      __html: item.description || 'No description' 
+                    }} 
+                  />
                 </div>
 
                 {/* ACTIONS */}
                 <div className="flex items-center gap-2 opacity-70 group-hover:opacity-100 transition">
-
                   <Button
                     variant="outline"
                     size="icon"
@@ -191,11 +192,25 @@ export function HeroSection({ teacherId }: HeroSectionProps) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Description (EN)</Label>
-                <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} required />
+                {/* ✅ استبدل Textarea بـ RichTextEditor */}
+                <RichTextEditor
+                  value={formData.description}
+                  onChange={(value) => setFormData({ ...formData, description: value })}
+                  placeholder="Write description in English..."
+                  minHeight="150px"
+                  label=""
+                />
               </div>
               <div>
                 <Label>Description (AR)</Label>
-                <Textarea value={formData.description_ar} onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })} rows={3} dir="rtl" />
+                {/* ✅ استبدل Textarea بـ RichTextEditor للغة العربية */}
+                <RichTextEditor
+                  value={formData.description_ar}
+                  onChange={(value) => setFormData({ ...formData, description_ar: value })}
+                  placeholder="اكتب الوصف بالعربية..."
+                  minHeight="150px"
+                  label=""
+                />
               </div>
             </div>
             <div>

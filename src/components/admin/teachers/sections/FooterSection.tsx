@@ -6,11 +6,11 @@ import { useApp } from '@/contexts/AppContext';
 import { BaseSection } from './BaseSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Edit, Trash2, Layout, Check, Eye, EyeOff, MessageCircle } from 'lucide-react';
 import { useWebsiteSection } from '@/hooks/useWebsiteSection';
+import { RichTextEditor } from '@/components/ui/RichTextEditor'; // ✅ إضافة الاستيراد
 
 interface FooterSectionProps {
   teacherId: number;
@@ -80,10 +80,17 @@ export function FooterSection({ teacherId }: FooterSectionProps) {
 
   const getText = (item: any) => {
     if (!item) return '';
-
     return lang === 'ar'
       ? item.name_ar || item.name || ''
       : item.name || '';
+  };
+
+  // ✅ دالة جديدة لجلب الوصف حسب اللغة
+  const getDescription = (item: any) => {
+    if (!item) return '';
+    return lang === 'ar'
+      ? item.description_ar || item.description || ''
+      : item.description || '';
   };
 
   const itemsList = Array.isArray(items) ? items.filter(Boolean) : [];
@@ -109,9 +116,17 @@ export function FooterSection({ teacherId }: FooterSectionProps) {
                     <EyeOff className="h-4 w-4 text-red-500" />
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                
+                {/* ✅ عرض الوصف الغني */}
+                <div 
+                  className="text-sm text-muted-foreground mt-1"
+                  dangerouslySetInnerHTML={{ 
+                    __html: getDescription(item) || 'No description' 
+                  }} 
+                />
+                
                 <div className="flex gap-3 mt-2">
-
+                  {/* يمكنك إضافة أيقونات الروابط هنا لو حبيت */}
                 </div>
               </div>
               <div className="flex gap-1">
@@ -143,36 +158,78 @@ export function FooterSection({ teacherId }: FooterSectionProps) {
                 <Input value={formData.name_ar} onChange={(e) => setFormData({ ...formData, name_ar: e.target.value })} dir="rtl" />
               </div>
             </div>
+            
+            {/* ✅ استبدال Textarea بـ RichTextEditor */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Description (EN)</Label>
-                <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} />
+                <RichTextEditor
+                  value={formData.description}
+                  onChange={(value) => setFormData({ ...formData, description: value })}
+                  placeholder="Write footer description in English..."
+                  minHeight="120px"
+                  label=""
+                />
               </div>
               <div>
                 <Label>Description (AR)</Label>
-                <Textarea value={formData.description_ar} onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })} rows={3} dir="rtl" />
+                <RichTextEditor
+                  value={formData.description_ar}
+                  onChange={(value) => setFormData({ ...formData, description_ar: value })}
+                  placeholder="اكتب وصف الفوتر بالعربية..."
+                  minHeight="120px"
+                  label=""
+                />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Facebook Link</Label>
-                <Input value={formData.facebook_link} onChange={(e) => setFormData({ ...formData, facebook_link: e.target.value })} placeholder="https://facebook.com/..." />
-              </div>
-              <div>
-                <Label>YouTube Link</Label>
-                <Input value={formData.youtube_link} onChange={(e) => setFormData({ ...formData, youtube_link: e.target.value })} placeholder="https://youtube.com/..." />
-              </div>
-              <div>
-                <Label>Instagram Link</Label>
-                <Input value={formData.instagram_link} onChange={(e) => setFormData({ ...formData, instagram_link: e.target.value })} placeholder="https://instagram.com/..." />
-              </div>
-              <div>
-                <Label>TikTok Link</Label>
-                <Input value={formData.tiktok_link} onChange={(e) => setFormData({ ...formData, tiktok_link: e.target.value })} placeholder="https://tiktok.com/..." />
-              </div>
-              <div>
-                <Label>WhatsApp Link</Label>
-                <Input value={formData.whatsapp_link} onChange={(e) => setFormData({ ...formData, whatsapp_link: e.target.value })} placeholder="https://wa.me/..." />
+
+            {/* Social Links - ✅ تحسين عرضها */}
+            <div className="border rounded-lg p-4 space-y-3 mt-2">
+              <h4 className="font-medium text-sm text-gray-500 flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                Social Media Links
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Facebook Link</Label>
+                  <Input 
+                    value={formData.facebook_link} 
+                    onChange={(e) => setFormData({ ...formData, facebook_link: e.target.value })} 
+                    placeholder="https://facebook.com/..." 
+                  />
+                </div>
+                <div>
+                  <Label>YouTube Link</Label>
+                  <Input 
+                    value={formData.youtube_link} 
+                    onChange={(e) => setFormData({ ...formData, youtube_link: e.target.value })} 
+                    placeholder="https://youtube.com/..." 
+                  />
+                </div>
+                <div>
+                  <Label>Instagram Link</Label>
+                  <Input 
+                    value={formData.instagram_link} 
+                    onChange={(e) => setFormData({ ...formData, instagram_link: e.target.value })} 
+                    placeholder="https://instagram.com/..." 
+                  />
+                </div>
+                <div>
+                  <Label>TikTok Link</Label>
+                  <Input 
+                    value={formData.tiktok_link} 
+                    onChange={(e) => setFormData({ ...formData, tiktok_link: e.target.value })} 
+                    placeholder="https://tiktok.com/..." 
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>WhatsApp Link</Label>
+                  <Input 
+                    value={formData.whatsapp_link} 
+                    onChange={(e) => setFormData({ ...formData, whatsapp_link: e.target.value })} 
+                    placeholder="https://wa.me/..." 
+                  />
+                </div>
               </div>
             </div>
 

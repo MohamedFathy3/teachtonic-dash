@@ -5,13 +5,13 @@ import { useApp } from '@/contexts/AppContext';
 import { BaseSection } from './BaseSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import FileUploader from '@/components/FileUploader';
 import { Edit, Info, Trash2, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
+import { RichTextEditor } from '@/components/ui/RichTextEditor'; // ✅ إضافة الاستيراد
 
 interface AboutSectionProps {
   teacherId: number;
@@ -148,7 +148,7 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
       <BaseSection
         title={`About Section (${abouts.length})`}
         icon={<Info className="h-5 w-5 text-primary" />}
-        onAdd={openCreate}  // ✅ دايمًا ممكن تضيف جديد
+        onAdd={openCreate}
       >
         <div className="space-y-3">
           {abouts.length === 0 ? (
@@ -189,9 +189,14 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
 
                   <div className="flex-1 space-y-1">
                     <h3 className="text-lg font-semibold">{getText(about)}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {getDescription(about)}
-                    </p>
+                    
+                    {/* ✅ عرض الوصف باستخدام dangerouslySetInnerHTML */}
+                    <div 
+                      className="text-sm text-muted-foreground line-clamp-2"
+                      dangerouslySetInnerHTML={{ 
+                        __html: getDescription(about) || 'No description' 
+                      }} 
+                    />
 
                     {/* Meta badges */}
                     <div className="flex flex-wrap gap-2 mt-1">
@@ -266,37 +271,73 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
               </div>
             </div>
 
-            {/* DESCRIPTION */}
+            {/* DESCRIPTION - ✅ استبدال Textarea بـ RichTextEditor */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Description (EN)</Label>
-                <Textarea rows={4} {...field('description')} />
+                <RichTextEditor
+                  value={formData.description}
+                  onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
+                  placeholder="Write description in English..."
+                  minHeight="150px"
+                  label=""
+                />
               </div>
               <div>
                 <Label>Description (AR)</Label>
-                <Textarea rows={4} dir="rtl" {...field('description_ar')} />
+                <RichTextEditor
+                  value={formData.description_ar}
+                  onChange={(value) => setFormData(prev => ({ ...prev, description_ar: value }))}
+                  placeholder="اكتب الوصف بالعربية..."
+                  minHeight="150px"
+                  label=""
+                />
               </div>
             </div>
 
-            {/* META FIELDS */}
+            {/* META FIELDS - ✅ اختيارياً نقدر نحولها لـ RichTextEditor كمان */}
             <div className="border rounded-lg p-4 space-y-3">
               <h4 className="font-medium text-sm text-gray-500">Meta / Social</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Facebook Meta</Label>
-                  <Textarea rows={2} {...field('facebook_meta')} placeholder="Facebook meta description" className="resize-none" />
+                  <RichTextEditor
+                    value={formData.facebook_meta}
+                    onChange={(value) => setFormData(prev => ({ ...prev, facebook_meta: value }))}
+                    placeholder="Facebook meta description..."
+                    minHeight="80px"
+                    label=""
+                  />
                 </div>
                 <div>
                   <Label>Google Meta</Label>
-                  <Textarea rows={2} {...field('google_meta')} placeholder="Google meta description" className="resize-none" />
+                  <RichTextEditor
+                    value={formData.google_meta}
+                    onChange={(value) => setFormData(prev => ({ ...prev, google_meta: value }))}
+                    placeholder="Google meta description..."
+                    minHeight="80px"
+                    label=""
+                  />
                 </div>
                 <div>
                   <Label>TikTok Meta</Label>
-                  <Textarea rows={2} {...field('tiktok_meta')} placeholder="TikTok meta description" className="resize-none" />
+                  <RichTextEditor
+                    value={formData.tiktok_meta}
+                    onChange={(value) => setFormData(prev => ({ ...prev, tiktok_meta: value }))}
+                    placeholder="TikTok meta description..."
+                    minHeight="80px"
+                    label=""
+                  />
                 </div>
                 <div>
                   <Label>YouTube Meta</Label>
-                  <Textarea rows={2} {...field('you_tube_meta')} placeholder="YouTube meta description" className="resize-none" />
+                  <RichTextEditor
+                    value={formData.you_tube_meta}
+                    onChange={(value) => setFormData(prev => ({ ...prev, you_tube_meta: value }))}
+                    placeholder="YouTube meta description..."
+                    minHeight="80px"
+                    label=""
+                  />
                 </div>
               </div>
             </div>

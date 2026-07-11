@@ -4,12 +4,12 @@ import { useApp } from '@/contexts/AppContext';
 import { BaseSection } from './BaseSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import FileUploader from '@/components/FileUploader';
 import { Edit, Trash2, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { useWebsiteSection } from '@/hooks/useWebsiteSection';
+import { RichTextEditor } from '@/components/ui/RichTextEditor'; // ✅ إضافة الاستيراد
 
 export function FeaturesSection({ teacherId }: { teacherId: number }) {
   const { lang } = useApp();
@@ -34,6 +34,14 @@ export function FeaturesSection({ teacherId }: { teacherId: number }) {
     return lang === 'ar'
       ? item.name_ar || item.name || ''
       : item.name || '';
+  };
+
+  // ✅ SAFE DESCRIPTION
+  const getDescription = (item: any) => {
+    if (!item) return '';
+    return lang === 'ar'
+      ? item.description_ar || item.description || ''
+      : item.description || '';
   };
 
   // ✅ SAFE IMAGE
@@ -142,10 +150,13 @@ export function FeaturesSection({ teacherId }: { teacherId: number }) {
                 {getText(item)}
               </h3>
 
-              {/* DESCRIPTION */}
-              <p className="text-sm text-muted-foreground line-clamp-3">
-                {item?.description || 'No description'}
-              </p>
+              {/* DESCRIPTION - ✅ استخدام dangerouslySetInnerHTML لعرض المحتوى الغني */}
+              <div 
+                className="text-sm text-muted-foreground line-clamp-3"
+                dangerouslySetInnerHTML={{ 
+                  __html: getDescription(item) || 'No description' 
+                }} 
+              />
 
               {/* IMAGE */}
               {getImage(item) && (
@@ -219,26 +230,27 @@ export function FeaturesSection({ teacherId }: { teacherId: number }) {
               </div>
             </div>
 
-            {/* DESCRIPTION */}
+            {/* DESCRIPTION - ✅ استبدال Textarea بـ RichTextEditor */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Description (EN)</Label>
-                <Textarea
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
+                  onChange={(value) => setFormData({ ...formData, description: value })}
+                  placeholder="Write feature description in English..."
+                  minHeight="120px"
+                  label=""
                 />
               </div>
 
               <div>
                 <Label>Description (AR)</Label>
-                <Textarea
-                  dir="rtl"
+                <RichTextEditor
                   value={formData.description_ar}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description_ar: e.target.value })
-                  }
+                  onChange={(value) => setFormData({ ...formData, description_ar: value })}
+                  placeholder="اكتب وصف الميزة بالعربية..."
+                  minHeight="120px"
+                  label=""
                 />
               </div>
             </div>

@@ -1133,7 +1133,7 @@ const getSubjectsForStage = useCallback((index: number): TeacherSubjectPayload[]
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto p-0 gap-0">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-6 rounded-t-2xl">
           <div className="flex items-center justify-between">

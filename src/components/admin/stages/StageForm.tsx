@@ -277,7 +277,7 @@ export function StageForm({ open, onClose, onSubmit, initialData, loading }: Sta
   const getTeacherDisplayWithEmail = (teacher: any) => {
     const name = getTeacherName(teacher);
     if (teacher.email) {
-      return `${name} (${teacher.email})`;
+      return `${name}`;
     }
     return name;
   };
