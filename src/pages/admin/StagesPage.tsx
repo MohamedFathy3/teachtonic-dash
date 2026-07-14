@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/admin/StagesPage.tsx
 
-import type { Stage, StageFilters, PaginatedResponse, StageFormData } from '@/types/stage.types';
+import type { Stage } from '@/types/stage.types';
 import { stageService } from '@/services/stage.service';
 import { teacherService } from '@/services/teacher.service';
 
-import { Download, Loader2, User, Filter, Users } from 'lucide-react';
+import { Download, Loader2, User, Users } from 'lucide-react';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { useApp } from '@/contexts/AppContext';
 import { Card } from '@/components/ui/card';
@@ -12,13 +13,25 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AvatarBadge } from '@/components/lms/AvatarBadge';
-import { Search, Plus, ChevronLeft, ChevronRight, Edit, Trash2, Layers, Trash, Archive, RotateCcw, X } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Edit,
+  Trash2,
+  Layers,
+  Trash,
+  Archive,
+  RotateCcw,
+  X
+} from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useStages } from '@/hooks/useStages';
 import { StageStatusToggle } from '@/components/admin/stages/StageStatusToggle';
 import { StageForm } from '@/components/admin/stages/StageForm';
 import { StageDeleteDialog } from '@/components/admin/stages/StageDeleteDialog';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -32,11 +45,9 @@ import {
 export function StagesPage() {
   const { dir, lang } = useApp();
   const {
-    stages,
+    stages = [],
     loading,
     total,
-    currentPage,
-    lastPage,
     showDeleted,
     setShowDeleted,
     selectedStages,
@@ -47,18 +58,14 @@ export function StagesPage() {
     forceDeleteStage,
     restoreStage,
     toggleActive,
-    goToPage,
     bulkDelete,
     bulkForceDelete,
     bulkRestore,
-    updateFilters,
-    clearFilters,
-    filters,
-    searchQuery,
-    setSearchQuery,
-    fetchStages,
+    setPerPage,
   } = useStages();
 
+  // ✅ State للبحث والفلترة
+  const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<any>(null);
   const [deletingStage, setDeletingStage] = useState<any>(null);
@@ -66,7 +73,11 @@ export function StagesPage() {
   const [forceDeletingStage, setForceDeletingStage] = useState<any>(null);
   const [bulkActionDialog, setBulkActionDialog] = useState<{ type: 'delete' | 'restore' | 'forceDelete' | null; open: boolean }>({ type: null, open: false });
   const [actionLoading, setActionLoading] = useState(false);
-  
+
+  // ✅ Pagination State (Frontend)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   // ✅ فلتر المعلم المميز
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('all');
   const [teachersList, setTeachersList] = useState<any[]>([]);
@@ -102,18 +113,17 @@ export function StagesPage() {
     filterByTeacher: dir === 'rtl' ? 'فلترة حسب المعلم' : 'Filter by Teacher',
     clearFilter: dir === 'rtl' ? 'إزالة الفلتر' : 'Clear Filter',
     selectTeacher: dir === 'rtl' ? 'اختر المعلم' : 'Select Teacher',
-    clearAllFilters: dir === 'rtl' ? 'إزالة جميع الفلاتر' : 'Clear All Filters',
-    activeFilters: dir === 'rtl' ? 'فلاتر نشطة' : 'Active Filters',
+    itemsPerPage: dir === 'rtl' ? 'عدد العناصر في الصفحة' : 'Items per page',
   };
 
-  // ✅ جلب قائمة المعلمين للفلتر
+  // ✅ جلب قائمة المدرسين للفلتر
   useEffect(() => {
     const fetchTeachersForFilter = async () => {
       setTeachersLoading(true);
       try {
         const response = await teacherService.getAllTeachers(
           { active: true },
-          10000,
+          100,
           1,
           '',
           false
@@ -128,56 +138,51 @@ export function StagesPage() {
     fetchTeachersForFilter();
   }, []);
 
-  // ✅ تطبيق فلتر المعلم على الـ API مع الحفاظ على الفلاتر الأخرى
-  useEffect(() => {
-    const currentFilters = { ...filters };
+  // ✅ فلترة المراحل
+  const filteredStages = useMemo(() => {
+    let result = stages;
     
-    // إزالة فلتر المعلم القديم
-    delete currentFilters.distinctive_mark_for_teacher_id;
-    
-    if (selectedTeacherId === 'all') {
-      // إذا كان الكل، نزيل الفلتر
-      if (Object.keys(currentFilters).length > 0) {
-        updateFilters(currentFilters, false); // ✅ لا نعيد للصفحة 1
-      } else {
-        clearFilters();
-      }
-    } else if (selectedTeacherId === 'null') {
-      // فلتر المعلم = null (بدون معلم مميز)
-      updateFilters({ 
-        ...currentFilters,
-        distinctive_mark_for_teacher_id: null 
-      }, false); // ✅ لا نعيد للصفحة 1
-    } else {
-      // فلتر بمعلم محدد
-      updateFilters({ 
-        ...currentFilters,
-        distinctive_mark_for_teacher_id: parseInt(selectedTeacherId) 
-      }, false); // ✅ لا نعيد للصفحة 1
+    // ✅ فلترة حسب البحث
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (stage) =>
+          (stage.name && stage.name.toLowerCase().includes(query)) ||
+          (stage.name_ar && stage.name_ar.toLowerCase().includes(query))
+      );
     }
-  }, [selectedTeacherId]);
+    
+    // ✅ فلترة حسب المعلم المميز
+    if (selectedTeacherId !== 'all') {
+      if (selectedTeacherId === 'null') {
+        result = result.filter(stage => !stage.distinctiveMarkForTeacherName);
+      } else {
+        const selectedTeacher = teachersList.find(t => t.id.toString() === selectedTeacherId);
+        if (selectedTeacher) {
+          result = result.filter(stage => 
+            stage.distinctiveMarkForTeacherName === selectedTeacher.name
+          );
+        }
+      }
+    }
+    
+    return result;
+  }, [stages, searchQuery, selectedTeacherId, teachersList]);
 
-  // ✅ معالجة البحث مع الحفاظ على الفلاتر الأخرى
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    const currentFilters = { ...filters };
-    
-    // إزالة البحث القديم
-    delete currentFilters.search;
-    
-    if (value.trim()) {
-      updateFilters({ 
-        ...currentFilters,
-        search: value.trim() 
-      }, true); // ✅ نعيد للصفحة 1 عند البحث
-    } else {
-      if (Object.keys(currentFilters).length > 0) {
-        updateFilters(currentFilters, true);
-      } else {
-        clearFilters();
-      }
-    }
-  };
+  // ✅ Pagination - حساب البيانات المعروضة
+  const paginatedStages = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredStages.slice(startIndex, endIndex);
+  }, [filteredStages, currentPage, itemsPerPage]);
+
+  // ✅ حساب عدد الصفحات
+  const totalPages = Math.ceil(filteredStages.length / itemsPerPage);
+
+  // ✅ إعادة تعيين الصفحة عند تغيير الفلتر أو عدد العناصر
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedTeacherId, itemsPerPage]);
 
   // ✅ الحصول على اسم المعلم للعرض
   const getTeacherName = (teacher: any) => {
@@ -193,31 +198,11 @@ export function StagesPage() {
     return teacher ? getTeacherName(teacher) : text.selectTeacher;
   };
 
-  // ✅ حساب عدد الفلاتر النشطة
-  const getActiveFiltersCount = useCallback(() => {
-    let count = 0;
-    if (searchQuery) count++;
-    if (selectedTeacherId !== 'all') count++;
-    if (showDeleted) count++;
-    // إضافة أي فلاتر أخرى
-    const filterKeys = Object.keys(filters);
-    if (filterKeys.length > 0) {
-      // نخصم الفلاتر اللي حسبناها قبل كده
-      const extraFilters = filterKeys.filter(key => 
-        key !== 'search' && 
-        key !== 'distinctive_mark_for_teacher_id' &&
-        key !== 'trashed'
-      );
-      count += extraFilters.length;
-    }
-    return count;
-  }, [searchQuery, selectedTeacherId, showDeleted, filters]);
-
   const handleSelectAll = () => {
-    if (selectedStages.size === stages.length) {
+    if (selectedStages.size === paginatedStages.length) {
       setSelectedStages(new Set());
     } else {
-      setSelectedStages(new Set(stages.map(s => s.id)));
+      setSelectedStages(new Set(paginatedStages.map(s => s.id)));
     }
   };
 
@@ -325,11 +310,23 @@ export function StagesPage() {
     }
   };
 
-  // ✅ مسح جميع الفلاتر
-  const handleClearFilters = () => {
-    setSelectedTeacherId('all');
+  // ✅ مسح الفلتر
+  const clearFilters = () => {
     setSearchQuery('');
-    clearFilters();
+    setSelectedTeacherId('all');
+  };
+
+  // ✅ تغيير الصفحة
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // ✅ تغيير عدد العناصر في الصفحة
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setPerPage(Number(value)); // ✅ تحديث perPage في الـ hook
   };
 
   if (loading) {
@@ -359,16 +356,27 @@ export function StagesPage() {
 
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {total} {text.stages}
-              {getActiveFiltersCount() > 0 && (
-                <span className="ml-2 text-purple-600">
-                  ({getActiveFiltersCount()} {text.activeFilters})
-                </span>
-              )}
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowDeleted(!showDeleted);
+              setCurrentPage(1);
+            }}
+            className={`gap-2 h-10 rounded-xl transition-all duration-300 shadow-sm ${
+              showDeleted 
+                ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-600 hover:text-white dark:bg-red-900/20 dark:text-red-400' 
+                : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-600 hover:text-white dark:bg-gray-900/20 dark:text-gray-400'
+            }`}
+          >
+            {showDeleted ? <Archive className="h-4 w-4" /> : <Trash className="h-4 w-4" />}
+            {showDeleted ? text.showActive : text.showDeleted}
+          </Button>
+
           <ExportExcelButton
             data={stages} 
             fileName={showDeleted ? "deleted-stages" : "stages-list"}
@@ -444,19 +452,19 @@ export function StagesPage() {
       {/* Main Card */}
       <Card className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
         <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-          {/* ✅ البحث والفلتر */}
+          {/* البحث والفلتر */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <Search className={`absolute ${dir === 'rtl' ? 'right-3' : 'left-3'} top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400`} />
               <Input
                 value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={text.searchPlaceholder}
                 className={`${dir === 'rtl' ? 'pr-9' : 'pl-9'} rounded-lg`}
               />
             </div>
             
-            {/* ✅ Dropdown فلتر المعلم المميز */}
+            {/* Dropdown فلتر المعلم المميز */}
             <div className="flex items-center gap-2 min-w-[200px]">
               <Users className="h-4 w-4 text-purple-500" />
               <Select
@@ -484,7 +492,6 @@ export function StagesPage() {
                     </div>
                   </SelectItem>
                   
-                  {/* ✅ فصل بين الخيارات */}
                   <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
                   
                   {teachersLoading ? (
@@ -520,12 +527,12 @@ export function StagesPage() {
                 </SelectContent>
               </Select>
               
-              {/* ✅ زر مسح الفلتر */}
+              {/* زر مسح الفلتر */}
               {(searchQuery || selectedTeacherId !== 'all') && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleClearFilters}
+                  onClick={clearFilters}
                   className="h-8 w-8 rounded-lg text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                   title={text.clearFilter}
                 >
@@ -535,10 +542,10 @@ export function StagesPage() {
             </div>
           </div>
           
-          {/* ✅ عرض معلومات الفلتر */}
+          {/* عرض معلومات الفلتر */}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-gray-500">
-              {stages.length} {text.stages}
+              {filteredStages.length} {text.stages}
             </span>
             
             {selectedTeacherId !== 'all' && (
@@ -554,25 +561,6 @@ export function StagesPage() {
                 {searchQuery}
               </Badge>
             )}
-
-            {showDeleted && (
-              <Badge variant="secondary" className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                <Archive className="h-3 w-3 mr-1" />
-                {dir === 'rtl' ? 'محذوف' : 'Deleted'}
-              </Badge>
-            )}
-
-            {getActiveFiltersCount() > 1 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearFilters}
-                className="text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-              >
-                <X className="h-3 w-3 mr-1" />
-                {text.clearAllFilters}
-              </Button>
-            )}
           </div>
         </div>
 
@@ -582,7 +570,7 @@ export function StagesPage() {
               <TableRow className="bg-gray-50 dark:bg-gray-900/50">
                 <TableHead className="w-10">
                   <Checkbox
-                    checked={stages.length > 0 && selectedStages.size === stages.length}
+                    checked={paginatedStages.length > 0 && selectedStages.size === paginatedStages.length}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
@@ -595,7 +583,7 @@ export function StagesPage() {
             </TableHeader>
             <TableBody>
               <AnimatePresence mode="wait">
-                {stages.map((stage, index) => (
+                {paginatedStages.map((stage, index) => (
                   <motion.tr
                     key={stage.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -683,7 +671,7 @@ export function StagesPage() {
           </Table>
         </div>
 
-        {stages.length === 0 && (
+        {filteredStages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
               <Search className="h-6 w-6 text-gray-400" />
@@ -694,7 +682,7 @@ export function StagesPage() {
             {(searchQuery || selectedTeacherId !== 'all') && (
               <Button
                 variant="link"
-                onClick={handleClearFilters}
+                onClick={clearFilters}
                 className="mt-2 text-purple-600"
               >
                 {dir === 'rtl' ? 'إزالة جميع الفلاتر' : 'Clear all filters'}
@@ -703,35 +691,95 @@ export function StagesPage() {
           </div>
         )}
 
-        {total > 0 && (
-          <div className="flex items-center justify-between border-t p-4">
-            <p className="text-sm text-gray-500">
-              {text.showing} {stages.length} {text.of} {total} {text.stages}
-              {getActiveFiltersCount() > 0 && (
-                <span className="ml-2 text-purple-600">
-                  ({getActiveFiltersCount()} {text.activeFilters})
-                </span>
-              )}
-            </p>
-            <div className="flex gap-1">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8" 
-                onClick={() => goToPage(currentPage - 1)} 
+        {/* ✅ Footer مع Pagination */}
+        {filteredStages.length > 0 && (
+          <div className="flex items-center justify-between border-t p-4 flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-gray-500">
+                {text.showing} {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredStages.length)} {text.of} {filteredStages.length} {text.stages}
+              </p>
+              
+              {/* ✅ Selector لعدد العناصر في الصفحة */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">{text.itemsPerPage}</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={handleItemsPerPageChange}
+                >
+                  <SelectTrigger className="w-20 h-8 rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {/* ✅ أزرار التنقل بين الصفحات */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
               </Button>
-              <span className="px-3 text-sm flex items-center">
-                {currentPage} / {lastPage}
-              </span>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8" 
-                onClick={() => goToPage(currentPage + 1)} 
-                disabled={currentPage === lastPage}
+              
+              {/* ✅ أرقام الصفحات */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let pageNumber;
+                  if (totalPages <= 5) {
+                    pageNumber = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNumber = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNumber = totalPages - 4 + i;
+                  } else {
+                    pageNumber = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={currentPage === pageNumber ? 'default' : 'outline'}
+                      size="icon"
+                      className={`h-8 w-8 rounded-lg ${currentPage === pageNumber ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+                      onClick={() => goToPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+                
+                {totalPages > 5 && currentPage < totalPages - 2 && (
+                  <>
+                    <span className="text-gray-400">...</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg"
+                      onClick={() => goToPage(totalPages)}
+                    >
+                      {totalPages}
+                    </Button>
+                  </>
+                )}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
               >
                 <ChevronRight className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
               </Button>
