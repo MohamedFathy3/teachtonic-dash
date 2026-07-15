@@ -26,6 +26,7 @@ const emptyForm = {
   google_meta: '',
   tiktok_meta: '',
   you_tube_meta: '',
+  sub_title:'',
   image: undefined as number | undefined,
 };
 
@@ -73,6 +74,7 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
         name: formData.name,
         name_ar: formData.name_ar,
         description: formData.description,
+        sub_title: formData.sub_title,
         description_ar: formData.description_ar,
         facebook_meta: formData.facebook_meta,
         google_meta: formData.google_meta,
@@ -116,6 +118,8 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
       google_meta: about.google_meta || '',
       tiktok_meta: about.tiktok_meta || '',
       you_tube_meta: about.you_tube_meta || '',
+      sub_title: about.sub_title || '',
+      
       image: about.image?.id || undefined,
     });
     setDialogOpen(true);
@@ -334,6 +338,15 @@ export function AboutSection({ teacherId }: AboutSectionProps) {
                   <RichTextEditor
                     value={formData.you_tube_meta}
                     onChange={(value) => setFormData(prev => ({ ...prev, you_tube_meta: value }))}
+                    placeholder="YouTube meta description..."
+                    minHeight="80px"
+                    label=""
+                  />
+                </div><div>
+                  <Label>title on image </Label>
+                  <RichTextEditor
+                    value={formData.sub_title}
+                    onChange={(value) => setFormData(prev => ({ ...prev, sub_title: value }))}
                     placeholder="YouTube meta description..."
                     minHeight="80px"
                     label=""

@@ -10,6 +10,7 @@ export interface CourseDetail {
   description: string;
   description_ar: string;
   content_link: string;
+  link_drive: string;
   lession_date: string;
   lession_time: string;
   available_watch_count:number,

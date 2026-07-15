@@ -9,7 +9,8 @@ export interface CourseDetail {
   id: number;
   course_id: number;
   titles: string[];    // ← كان title
-  titles_ar: string[];   // ← كان title_ar
+  titles_ar: string[]; 
+  link_drive:string;  // ← كان title_ar
   description: string;
   description_ar: string;
   content_link: string;

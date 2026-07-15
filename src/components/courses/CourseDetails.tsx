@@ -205,6 +205,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     image_id: null as number | null,
     pdf_id: null as number | null,
     available_watch_count:null as number | null,
+    link_drive:'',
 
   });
 
@@ -383,6 +384,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       titles_ar: cleanTitlesAr,
       link_video: cleanLinkVideo,
       description: lessonForm.description,
+      link_drive: lessonForm.link_drive,
       description_ar: lessonForm.description_ar,
       content_link: lessonForm.content_link,
       lession_date: lessonForm.lession_date,
@@ -390,6 +392,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       price: lessonForm.price,
       pdf_id: lessonForm.pdf_id,
       available_watch_count:lessonForm.available_watch_count,
+
     };
 
     if (selectedImageId) {
@@ -442,6 +445,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       price: 0,
       image_id: null,
       pdf_id: null,
+      link_drive:'',
       available_watch_count:null,
     });
     setSelectedImageId(null);
@@ -470,6 +474,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       titles: titlesArr,
       titles_ar: titlesArArr,
       link_video: linkVideoArr,
+      link_drive: lesson.link_drive ?? '',
       description: lesson.description ?? '',
       description_ar: lesson.description_ar ?? '',
       content_link: lesson.content_link ?? '',
@@ -1359,6 +1364,15 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               <Input
                 value={lessonForm.content_link}
                 onChange={(e) => setLessonForm({ ...lessonForm, content_link: e.target.value })}
+                placeholder="http://example.com"
+                className="rounded-xl"
+              />
+            </div>
+             <div>
+              <label className="block text-sm font-medium mb-1">{t('linkdrive') || 'رابط المحتوى'}</label>
+              <Input
+                value={lessonForm.link_drive}
+                onChange={(e) => setLessonForm({ ...lessonForm, link_drive: e.target.value })}
                 placeholder="http://example.com"
                 className="rounded-xl"
               />
