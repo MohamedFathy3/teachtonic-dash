@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { AvatarBadge } from '@/components/lms/AvatarBadge';
 import { 
   Search, 
   Plus, 
@@ -22,7 +21,7 @@ import {
   Mail,
   Phone,
   Globe,
-  Eye // 🔥 أيقونة الـ Show
+  Eye
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
@@ -35,13 +34,13 @@ import { useTeachers } from '@/hooks/useTeachers';
 import { TeacherStatusToggle } from '@/components/admin/teachers/TeacherStatusToggle';
 import { TeacherForm } from '@/components/admin/teachers/TeacherForm';
 import { TeacherDeleteDialog } from '@/components/admin/teachers/TeacherDeleteDialog';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom'; // 🔥 للتنقل لصفحة الـ Show
+import { useNavigate } from 'react-router-dom';
 
 export function TeachersPage() {
   const { dir, lang, t } = useApp();
-  const navigate = useNavigate(); // 🔥
+  const navigate = useNavigate();
   
   const { 
     teachers, 
@@ -62,12 +61,13 @@ export function TeachersPage() {
     goToPage,
     bulkDelete,
     bulkForceDelete,
-    bulkRestore
+    bulkRestore,
+    refetch
   } = useTeachers();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
-  const [editingTeacherId, setEditingTeacherId] = useState<number | null>(null); // 🔥 خزن الـ ID بس
+  const [editingTeacherId, setEditingTeacherId] = useState<number | null>(null);
   const [deletingTeacher, setDeletingTeacher] = useState<any>(null);
   const [restoringTeacher, setRestoringTeacher] = useState<any>(null);
   const [forceDeletingTeacher, setForceDeletingTeacher] = useState<any>(null);
@@ -104,6 +104,7 @@ export function TeachersPage() {
     selectAll: dir === 'rtl' ? 'تحديد الكل' : 'Select All',
   };
 
+  // Filter teachers based on search
   const filteredTeachers = useMemo(() => {
     if (!searchQuery) return teachers;
     const query = searchQuery.toLowerCase();
@@ -115,6 +116,7 @@ export function TeachersPage() {
     );
   }, [teachers, searchQuery]);
 
+  // Handle select all
   const handleSelectAll = () => {
     if (selectedTeachers.size === filteredTeachers.length) {
       setSelectedTeachers(new Set());
@@ -123,6 +125,7 @@ export function TeachersPage() {
     }
   };
 
+  // Handle select single teacher
   const handleSelectTeacher = (id: number, checked: boolean) => {
     setSelectedTeachers(prev => {
       const newSet = new Set(prev);
@@ -135,6 +138,7 @@ export function TeachersPage() {
     });
   };
 
+  // Handle bulk action
   const handleBulkAction = async () => {
     const ids = Array.from(selectedTeachers);
     setActionLoading(true);
@@ -147,79 +151,92 @@ export function TeachersPage() {
         await bulkForceDelete(ids);
       }
       setBulkActionDialog({ type: null, open: false });
+      setSelectedTeachers(new Set());
     } finally {
       setActionLoading(false);
     }
   };
 
-  // 🔥 التعديل هنا: بنستخدم createTeacher عادي، والـ Form هو اللي بيجيب الداتا
+  // Handle create teacher
   const handleCreate = async (data: any) => {
     setActionLoading(true);
     try {
       await createTeacher(data);
       setFormOpen(false);
       setEditingTeacherId(null);
+      refetch();
     } finally {
       setActionLoading(false);
     }
   };
 
-  // 🔥 التعديل هنا: بنستخدم updateTeacher والـ ID بتاعه
+  // Handle update teacher
   const handleUpdate = async (data: any) => {
     if (!editingTeacherId) return;
     setActionLoading(true);
     try {
       await updateTeacher(editingTeacherId, data);
       setEditingTeacherId(null);
+      setFormOpen(false);
+      refetch();
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Open edit modal - بنفتحه بالـ ID بس
+  // Open edit modal
   const handleEditClick = (teacherId: number) => {
     setEditingTeacherId(teacherId);
     setFormOpen(true);
   };
 
+  // Handle show teacher profile
+  const handleShowClick = (teacherId: number) => {
+    navigate('/admin/teachers/profile', { 
+      state: { selectedInstructor: teacherId } 
+    });
+  };
 
-
-// وحط الـ function دي بدل اللي موجودة
-const handleShowClick = (teacherId: number) => {
-  navigate('/admin/teachers/profile', { 
-    state: { selectedInstructor: teacherId } 
-  });};
-
+  // Handle delete
   const handleDelete = async () => {
     setActionLoading(true);
     try {
       await deleteTeacher(deletingTeacher.id);
       setDeletingTeacher(null);
+      setSelectedTeachers(new Set());
+      refetch();
     } finally {
       setActionLoading(false);
     }
   };
 
+  // Handle restore
   const handleRestore = async () => {
     setActionLoading(true);
     try {
       await restoreTeacher(restoringTeacher.id);
       setRestoringTeacher(null);
+      setSelectedTeachers(new Set());
+      refetch();
     } finally {
       setActionLoading(false);
     }
   };
 
+  // Handle force delete
   const handleForceDelete = async () => {
     setActionLoading(true);
     try {
       await forceDeleteTeacher(forceDeletingTeacher.id);
       setForceDeletingTeacher(null);
+      setSelectedTeachers(new Set());
+      refetch();
     } finally {
       setActionLoading(false);
     }
   };
 
+  // Get teacher name based on language
   const getTeacherName = (teacher: any) => {
     if (!teacher) return '';
     if (lang === 'ar' && teacher.name_ar) return teacher.name_ar;
@@ -230,6 +247,24 @@ const handleShowClick = (teacherId: number) => {
   const getInitials = (teacher: any) => {
     const name = getTeacherName(teacher);
     return name.charAt(0).toUpperCase() || '?';
+  };
+
+  // Generate page numbers
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(lastPage, start + maxVisible - 1);
+    
+    if (end - start < maxVisible - 1) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
   };
 
   if (loading) {
@@ -245,7 +280,7 @@ const handleShowClick = (teacherId: number) => {
 
   return (
     <div className="space-y-6">
-      {/* Header - نفس الكود */}
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center justify-center">
@@ -262,7 +297,10 @@ const handleShowClick = (teacherId: number) => {
         </div>
         <div className="flex gap-2">
           {/* <Button
-            onClick={() => setShowDeleted(!showDeleted)}
+            onClick={() => {
+              setShowDeleted(!showDeleted);
+              setSelectedTeachers(new Set());
+            }}
             variant={showDeleted ? "default" : "outline"}
             className={`gap-2 rounded-lg ${
               showDeleted 
@@ -289,7 +327,7 @@ const handleShowClick = (teacherId: number) => {
         </div>
       </div>
 
-      {/* Bulk Actions Bar - نفس الكود */}
+      {/* Bulk Actions Bar */}
       {selectedTeachers.size > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -388,22 +426,22 @@ const handleShowClick = (teacherId: number) => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                       <img 
-  src={teacher.imageUrl || '/default-avatar.png'} 
-  alt='teacher' 
-  className='object-cover w-10 h-10 rounded-full'
- 
-/> 
+                        <img 
+                          src={teacher.imageUrl || '/default-avatar.png'} 
+                          alt={getTeacherName(teacher)}
+                          className="object-cover w-10 h-10 rounded-full"
+                         
+                        />
                         <div>
                           <div className={showDeleted ? 'text-gray-500 line-through' : 'font-medium'}>
                             {getTeacherName(teacher)}
                           </div>
                           <div className="text-xs text-gray-400 mt-1">
-                            {teacher.stages?.length > 0 && (
-                              <span className="mr-2">📚 {teacher.stages.length} stages</span>
+                            {teacher.website?.stages?.length > 0 && (
+                              <span className="mr-2">📚 {teacher.website.stages.length} stages</span>
                             )}
-                            {teacher.subjects?.length > 0 && (
-                              <span>📖 {teacher.subjects.length} subjects</span>
+                            {teacher.website?.subjects?.length > 0 && (
+                              <span>📖 {teacher.website.subjects.length} subjects</span>
                             )}
                           </div>
                         </div>
@@ -429,7 +467,11 @@ const handleShowClick = (teacherId: number) => {
                     </TableCell>
                     {!showDeleted && (
                       <TableCell>
-                        <TeacherStatusToggle teacherId={teacher.id} active={teacher.active} onToggle={toggleActive} />
+                        <TeacherStatusToggle 
+                          teacherId={teacher.id} 
+                          active={teacher.active} 
+                          onToggle={toggleActive} 
+                        />
                       </TableCell>
                     )}
                     <TableCell className="text-center text-gray-500 text-sm hidden lg:table-cell">
@@ -442,7 +484,7 @@ const handleShowClick = (teacherId: number) => {
                             variant="ghost" 
                             size="icon" 
                             onClick={() => setRestoringTeacher(teacher)} 
-                            className="text-green-600"
+                            className="text-green-600 hover:bg-green-50"
                             title={text.restore}
                           >
                             <RotateCcw className="h-4 w-4" />
@@ -451,7 +493,7 @@ const handleShowClick = (teacherId: number) => {
                             variant="ghost" 
                             size="icon" 
                             onClick={() => setForceDeletingTeacher(teacher)} 
-                            className="text-red-600"
+                            className="text-red-600 hover:bg-red-50"
                             title={text.forceDelete}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -459,12 +501,11 @@ const handleShowClick = (teacherId: number) => {
                         </div>
                       ) : (
                         <div className="flex justify-center gap-1">
-                          {/* 🔥 زر Show الجديد */}
                           <Button 
                             variant="ghost" 
                             size="icon" 
                             onClick={() => handleShowClick(teacher.id)} 
-                            className="text-blue-600"
+                            className="text-blue-600 hover:bg-blue-50"
                             title={text.show}
                           >
                             <Eye className="h-4 w-4" />
@@ -473,7 +514,7 @@ const handleShowClick = (teacherId: number) => {
                             variant="ghost" 
                             size="icon" 
                             onClick={() => handleEditClick(teacher.id)} 
-                            className="text-amber-600"
+                            className="text-amber-600 hover:bg-amber-50"
                             title={text.edit}
                           >
                             <Edit className="h-4 w-4" />
@@ -482,7 +523,7 @@ const handleShowClick = (teacherId: number) => {
                             variant="ghost" 
                             size="icon" 
                             onClick={() => setDeletingTeacher(teacher)} 
-                            className="text-red-600"
+                            className="text-red-600 hover:bg-red-50"
                             title={text.delete}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -508,12 +549,14 @@ const handleShowClick = (teacherId: number) => {
           </div>
         )}
 
+        {/* 🔥 Pagination Section - Improved */}
         {total > 0 && (
           <div className="flex items-center justify-between border-t p-4 flex-wrap gap-2">
             <p className="text-sm text-gray-500">
               {text.showing} {filteredTeachers.length} {text.of} {total} {text.teachers}
             </p>
-            <div className="flex gap-1">
+            <div className="flex items-center gap-1">
+              {/* Previous Button */}
               <Button 
                 variant="outline" 
                 size="icon" 
@@ -523,9 +566,21 @@ const handleShowClick = (teacherId: number) => {
               >
                 <ChevronLeft className={`h-4 w-4 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
               </Button>
-              <span className="px-3 text-sm flex items-center">
-                {currentPage} / {lastPage}
-              </span>
+              
+              {/* Page Numbers */}
+              {getPageNumbers().map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  className={`h-8 w-8 ${currentPage === page ? 'bg-blue-600 text-white' : ''}`}
+                  onClick={() => goToPage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              
+              {/* Next Button */}
               <Button 
                 variant="outline" 
                 size="icon" 
@@ -540,7 +595,7 @@ const handleShowClick = (teacherId: number) => {
         )}
       </Card>
 
-      {/* Dialogs - تعديل هنا */}
+      {/* Dialogs */}
       <TeacherForm 
         open={formOpen} 
         onClose={() => {

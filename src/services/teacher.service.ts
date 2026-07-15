@@ -1,31 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/services/teacher.service.ts
 
-import { BaseService, PaginationParams } from './base.service';
-import type { 
-  Teacher, 
-  TeacherFilters, 
-  PaginatedResponse, 
-  TeacherFormData,
-} from '@/types/teacher.types';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { BaseService, PaginationParams, PaginatedResponse } from './base.service';
+import type { Teacher, TeacherFilters, TeacherFormData } from '@/types/teacher.types';
 import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 
-/**
- * 🔹 Single Responsibility Principle (SRP)
- * هذا الكلاس مسؤول فقط عن عمليات Teacher
- */
 class TeacherService extends BaseService<Teacher> {
   constructor() {
-    super('teacher'); // ⚠️ تأكد: 'teacher' وليس 'teachers'
+    super('teacher');
   }
 
   /**
-   * 🔹 Open/Closed Principle (OCP)
-   * مفتوح للتوسعة عن طريق الـ params، مغلق للتعديل
+   * 🔹 Get all teachers with pagination and filters using POST
    */
   async getAllTeachers(
-    filters?: TeacherFilters, 
+    filters?: TeacherFilters,
     perPage: number = 10,
     page: number = 1,
     search?: string,
@@ -47,6 +37,7 @@ class TeacherService extends BaseService<Teacher> {
         params.searchFields = ['name', 'email', 'phone', 'sub_domain'];
       }
 
+      // 🔥 هنبعت POST للـ API
       const response = await this.getAll(params);
       return response;
     } catch (error: any) {
@@ -60,55 +51,49 @@ class TeacherService extends BaseService<Teacher> {
     }
   }
 
-  async getDeletedTeachers(
-    perPage: number = 10,
-    page: number = 1,
-    search?: string
-  ): Promise<PaginatedResponse<Teacher>> {
-    return this.getAllTeachers({}, perPage, page, search, true);
+  /**
+   * 🔹 Get single teacher by ID
+   */
+  async getTeacher(id: number): Promise<Teacher> {
+    try {
+      const response = await api.get(`/teacher/${id}`);
+      return response.data.data;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to fetch teacher",
+        variant: "destructive",
+      });
+      throw error;
+    }
   }
-
-
-async getTeacher(id: number): Promise<Teacher> {
-  try {
-    const response = await api.get(`/teacher/${id}`);
-    // الـ API بيرجع data.data
-    return response.data.data;
-  } catch (error: any) {
-    toast({
-      title: "Error",
-      description: error.response?.data?.message || "Failed to fetch teacher",
-      variant: "destructive",
-    });
-    throw error;
-  }
-}
 
   /**
-   * 🔹 Liskov Substitution Principle (LSP)
-   * الـ TeacherFormData يحل محل Partial<Teacher> بدون مشاكل
+   * 🔹 Create new teacher
    */
   async createTeacher(data: TeacherFormData): Promise<Teacher> {
     try {
-      // 🔥 Teacher API متوقع JSON مش FormData (لأن مفيش ملفات)
-      const payload = {
+      const payload: any = {
         name: data.name,
         email: data.email,
         sub_domain: data.sub_domain,
         phone: data.phone,
         password: data.password,
-        stage: data.stage, // [{ stage_id, image }]
-        subject: data.subject, // [{ subject_id }]
-        ...(data.image && { image: data.image }) // media ID
+        stage: data.stage || [],
+        subject: data.subject || [],
       };
 
+      if (data.image) {
+        payload.image = data.image;
+      }
+
       const response = await api.post('/teacher', payload);
-      
+
       toast({
         title: "Success",
         description: "Teacher created successfully",
       });
-      
+
       return response.data.data;
     } catch (error: any) {
       toast({
@@ -120,10 +105,13 @@ async getTeacher(id: number): Promise<Teacher> {
     }
   }
 
+  /**
+   * 🔹 Update existing teacher
+   */
   async updateTeacher(id: number, data: Partial<TeacherFormData>): Promise<Teacher> {
     try {
       const payload: any = {};
-      
+
       if (data.name !== undefined) payload.name = data.name;
       if (data.email !== undefined) payload.email = data.email;
       if (data.sub_domain !== undefined) payload.sub_domain = data.sub_domain;
@@ -134,12 +122,12 @@ async getTeacher(id: number): Promise<Teacher> {
       if (data.image !== undefined) payload.image = data.image;
 
       const response = await api.patch(`/teacher/${id}`, payload);
-      
+
       toast({
         title: "Success",
         description: "Teacher updated successfully",
       });
-      
+
       return response.data.data;
     } catch (error: any) {
       toast({
@@ -151,6 +139,9 @@ async getTeacher(id: number): Promise<Teacher> {
     }
   }
 
+  /**
+   * 🔹 Soft delete teacher (move to trash)
+   */
   async deleteTeacher(id: number): Promise<void> {
     try {
       await this.delete(id);
@@ -168,6 +159,9 @@ async getTeacher(id: number): Promise<Teacher> {
     }
   }
 
+  /**
+   * 🔹 Force delete teacher (permanent)
+   */
   async forceDeleteTeacher(id: number): Promise<void> {
     try {
       await this.forceDelete(id);
@@ -185,6 +179,9 @@ async getTeacher(id: number): Promise<Teacher> {
     }
   }
 
+  /**
+   * 🔹 Restore teacher from trash
+   */
   async restoreTeacher(id: number): Promise<Teacher> {
     try {
       const teacher = await this.restore(id);
@@ -203,6 +200,9 @@ async getTeacher(id: number): Promise<Teacher> {
     }
   }
 
+  /**
+   * 🔹 Toggle teacher active status
+   */
   async toggleTeacherActive(id: number): Promise<{ message: string }> {
     try {
       const result = await this.toggleActive(id);
@@ -221,7 +221,9 @@ async getTeacher(id: number): Promise<Teacher> {
     }
   }
 
-  // Bulk Operations
+  /**
+   * 🔹 Bulk delete teachers
+   */
   async bulkDeleteTeachers(ids: number[]): Promise<void> {
     try {
       await this.bulkDelete(ids);
@@ -239,6 +241,9 @@ async getTeacher(id: number): Promise<Teacher> {
     }
   }
 
+  /**
+   * 🔹 Bulk force delete teachers
+   */
   async bulkForceDeleteTeachers(ids: number[]): Promise<void> {
     try {
       await this.bulkForceDelete(ids);
@@ -256,6 +261,9 @@ async getTeacher(id: number): Promise<Teacher> {
     }
   }
 
+  /**
+   * 🔹 Bulk restore teachers
+   */
   async bulkRestoreTeachers(ids: number[]): Promise<void> {
     try {
       await this.bulkRestore(ids);
