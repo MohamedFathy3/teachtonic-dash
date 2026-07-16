@@ -13,12 +13,26 @@ export const useLessonData = (lessonId: number) => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchLesson = async () => {
-    if (!lessonId) return;
+    if (!lessonId) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
+    
     try {
+      // ✅ الآن getById موجودة في الخدمة
       const response = await courseDetailService.getById(lessonId);
-      setLesson(response);
+      
+      if (response) {
+        setLesson(response);
+      } else {
+        setLesson(null);
+        const message = lang === 'ar' ? 'الدرس غير موجود' : 'Lesson not found';
+        setError(message);
+        toast.error(message);
+      }
     } catch (error) {
       console.error('Error fetching lesson:', error);
       const message = lang === 'ar' ? 'حدث خطأ في تحميل الدرس' : 'Error loading lesson';
@@ -33,5 +47,10 @@ export const useLessonData = (lessonId: number) => {
     fetchLesson();
   }, [lessonId]);
 
-  return { lesson, loading, error, refetch: fetchLesson };
+  return { 
+    lesson, 
+    loading, 
+    error, 
+    refetch: fetchLesson 
+  };
 };

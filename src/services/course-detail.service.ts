@@ -1,16 +1,16 @@
 // src/services/course-detail.service.ts
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { toast  } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { BaseService } from './base.service';
 import api from '@/lib/api';
 
 export interface CourseDetail {
   id: number;
   course_id: number;
-  titles: string[];    // ← كان title
-  titles_ar: string[]; 
-  link_drive:string;  // ← كان title_ar
+  titles: string[];
+  titles_ar: string[];
+  link_drive: string;
   description: string;
   description_ar: string;
   content_link: string;
@@ -23,8 +23,8 @@ export interface CourseDetail {
   createdAt: string;
   imageUrl?: string;
   image?: { id: number; fullUrl: string; } | null;
-  pdfUrl?: string;            // ✨ جديد
-  pdf?: { id: number; fullUrl: string; } | null; 
+  pdfUrl?: string;
+  pdf?: { id: number; fullUrl: string; } | null;
 }
 
 class CourseDetailService extends BaseService<CourseDetail> {
@@ -50,19 +50,37 @@ class CourseDetailService extends BaseService<CourseDetail> {
 
     return response.data;
   }
-async markStudentAttendance(courseDetailId: number, studentId: number): Promise<any> {
-  try {
-    const response = await api.post('/course-detail-attendance', {
-      course_detail_id: courseDetailId,
-      student_id: studentId
-    });
-    toast.success('تم تسجيل حضور الطالب بنجاح');
-    return response.data;
-  } catch (error: any) {
-    toast.error(error.response?.data?.message || 'فشل في تسجيل الحضور');
-    throw error;
+
+  // ✅ إضافة دالة جلب درس محدد بواسطة ID
+  async getById(id: number): Promise<CourseDetail | null> {
+    try {
+      const response = await this.getAll({
+        id: id,
+        perPage: 1,
+        page: 1
+      });
+      
+      return response.data?.[0] || null;
+    } catch (error) {
+      console.error('Error fetching lesson by ID:', error);
+      throw error;
+    }
   }
-}
+
+  async markStudentAttendance(courseDetailId: number, studentId: number): Promise<any> {
+    try {
+      const response = await api.post('/course-detail-attendance', {
+        course_detail_id: courseDetailId,
+        student_id: studentId
+      });
+      toast.success('تم تسجيل حضور الطالب بنجاح');
+      return response.data;
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'فشل في تسجيل الحضور');
+      throw error;
+    }
+  }
+
   async create(data: any): Promise<CourseDetail> {
     const response = await api.post(`/${this.endpoint}`, data);
     return response.data.data;
@@ -70,7 +88,6 @@ async markStudentAttendance(courseDetailId: number, studentId: number): Promise<
 
   async update(id: number, data: any): Promise<CourseDetail> {
     const response = await api.patch(`/${this.endpoint}/${id}`, data);
-
     return response.data;
   }
 
