@@ -187,7 +187,7 @@ export class BaseService<T> {
    */
   async toggleActive(id: number): Promise<{ message: string }> {
     try {
-      const response = await api.patch(`/${this.endpoint}/toggle-active/${id}`);
+      const response = await api.put(`/${this.endpoint}/${id}/active`);
       return response.data;
     } catch (error) {
       console.error(`Error toggling ${this.endpoint}/${id}:`, error);
