@@ -237,7 +237,7 @@ const fetchCourses = useCallback(async (page = 1) => {
 const handleToggleStar = async (course: Course) => {
   try {
     const newStarValue = course.star === 1 ? 0 : 1;
-    await courseService.CourseActive(course.id, newStarValue);
+    await courseService.updateCourseStar(course.id, newStarValue);
     await refreshCourses();
     toast.success(
       newStarValue === 1 

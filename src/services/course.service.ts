@@ -65,7 +65,7 @@ async getAllCourses(
       delete: showDeleted,
     };
 
-    console.log('📤 Request Body:', requestBody); // ✅ للتأكد
+    console.log('📤 Request Body:', requestBody);
 
     const response = await api.post(`/${this.endpoint}/index`, requestBody);
 
@@ -276,6 +276,27 @@ async getAllCourses(
       throw error;
     }
   }
+  async updateCourseStar(id: number, value: number): Promise<{ message: string }> {
+  try {
+    const response = await api.put(`/course/${id}/star`, {
+      star: value
+    });
+    
+    toast({
+      title: "Success",
+      description: response.data?.message || "Course star updated successfully",
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Failed to update course star",
+      variant: "destructive",
+    });
+    throw error;
+  }
+}
  async CourseActive(id: number, newStarValue: number): Promise<{ message: string }> {
     try {
       const result = await this.courseseActive(id);
