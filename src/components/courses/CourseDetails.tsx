@@ -203,7 +203,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     lession_time: '20:00',
     price: 0,
     image_id: null as number | null,
-    pdf_id: null as number | null,
+    pdf: null as number | null,
     available_watch_count:null as number | null,
     link_drive:'',
 
@@ -390,7 +390,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       lession_date: lessonForm.lession_date,
       lession_time: lessonForm.lession_time,
       price: lessonForm.price,
-      pdf_id: lessonForm.pdf_id,
+      pdf: lessonForm.pdf,
       available_watch_count:lessonForm.available_watch_count,
 
     };
@@ -444,7 +444,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       lession_time: '20:00',
       price: 0,
       image_id: null,
-      pdf_id: null,
+      pdf: null,
       link_drive:'',
       available_watch_count:null,
     });
@@ -482,7 +482,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       lession_time: lesson.lession_time || '20:00',
       price: parseFloat(lesson.price as any) || 0,
       image_id: lesson.image?.id ?? null,
-      pdf_id: lesson.pdf?.id ?? null,
+      pdf: lesson.pdf?.id ?? null,
       available_watch_count: lesson.available_watch_count ?? null,
     });
 
@@ -1394,7 +1394,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               label={t('lessonPdf')}
               onUploadSuccess={(pdfId: number) => {
                 setSelectedPdfId(pdfId);
-                setLessonForm(prev => ({ ...prev, pdf_id: pdfId }));
+                setLessonForm(prev => ({ ...prev, pdf: pdfId }));
               }}
               multiple={false}
               accept="application/pdf"
@@ -1405,7 +1405,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               onRemoveImage={() => {
                 setSelectedPdfId(null);
                 setSelectedPdfUrl(null);
-                setLessonForm(prev => ({ ...prev, pdf_id: null }));
+                setLessonForm(prev => ({ ...prev, pdf: null }));
               }}
             />
 available_watch_count
