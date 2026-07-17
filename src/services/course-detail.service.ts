@@ -33,8 +33,21 @@ class CourseDetailService extends BaseService<CourseDetail> {
   }
 
   async getAll(params?: any): Promise<any> {
+    // ✅ بناء الـ filters بشكل ديناميكي
+    const filters: Record<string, any> = {};
+    
+    // ✅ إضافة course_id إذا وجد
+    if (params?.course_id) {
+      filters.course_id = params.course_id;
+    }
+    
+    // ✅ إضافة id (معرف الدرس) إذا وجد
+    if (params?.id) {
+      filters.id = params.id;
+    }
+
     const requestBody = {
-      filters: params?.course_id ? { course_id: params.course_id } : {},
+      filters: filters,
       orderBy: 'lession_date',
       orderByDirection: 'desc',
       perPage: params?.perPage || 10,
@@ -51,17 +64,36 @@ class CourseDetailService extends BaseService<CourseDetail> {
     return response.data;
   }
 
-  // ✅ إضافة دالة جلب درس محدد بواسطة ID
+  // ✅ دالة جلب درس محدد بواسطة ID
   async getById(id: number): Promise<CourseDetail | null> {
     try {
+      // جلب كل الدروس وتصفيتها يدوياً
       const response = await this.getAll({
-        id: id,
-        perPage: 1,
+        perPage: 100, // جلب عدد كافي
         page: 1
       });
       
-      return response.data?.[0] || null;
+      // تصفية النتيجة يدوياً للبحث عن الـ id
+      const lesson = response.data?.find((item: CourseDetail) => item.id === id) || null;
+      
+      return lesson;
     } catch (error) {
+      console.error('Error fetching lesson by ID:', error);
+      throw error;
+    }
+  }
+ async getLessonById(id: number): Promise<CourseDetail | null> {
+    try {
+      // محاولة جلب الدرس مباشرة من API
+      const response = await api.get(`/${this.endpoint}/${id}`);
+      return response.data?.data || null;
+    } catch (error: any) {
+      // لو الـ API مش بيدعم GET /course-detail/{id}
+      if (error.response?.status === 404) {
+        console.warn('GET /course-detail/{id} not supported, falling back to filter');
+        // الرجوع للطريقة الأولى
+        return this.getById(id);
+      }
       console.error('Error fetching lesson by ID:', error);
       throw error;
     }

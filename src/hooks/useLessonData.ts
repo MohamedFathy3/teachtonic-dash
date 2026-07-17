@@ -22,8 +22,8 @@ export const useLessonData = (lessonId: number) => {
     setError(null);
     
     try {
-      // ✅ الآن getById موجودة في الخدمة
-      const response = await courseDetailService.getById(lessonId);
+      // ✅ استخدام getLessonById
+      const response = await courseDetailService.getLessonById(lessonId);
       
       if (response) {
         setLesson(response);
