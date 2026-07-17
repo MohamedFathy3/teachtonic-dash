@@ -5,7 +5,19 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Loader2, AlertCircle, ChevronLeft, Info, Video, FileQuestion, ClipboardList, Users, CheckCircle2, Eye } from 'lucide-react';
+import { 
+  Loader2, 
+  AlertCircle, 
+  ChevronLeft, 
+  Info, 
+  Video, 
+  FileQuestion, 
+  ClipboardList, 
+  Users, 
+  CheckCircle2, 
+  Eye,
+  FileText 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
 import { examService } from '@/services/exam.service';
@@ -30,6 +42,7 @@ import { LessonImageModal } from '@/components/lesson-details/LessonImageModal';
 import { LessonExamModal } from '@/components/lesson-details/LessonExamModal';
 import { LessonAssignmentModal } from '@/components/lesson-details/LessonAssignmentModal';
 import { LessonAttendanceModal } from '@/components/lesson-details/LessonAttendanceModal';
+import { LessonPDFViewer, LessonPDFThumbnail } from '@/components/lesson-details/LessonPDFViewer';
 
 // Services
 import { ExportService } from '@/services/export.service';
@@ -39,6 +52,7 @@ import { courseDetailService } from '@/services/course-detail.service';
 import type { ExamDetail, Assignment } from '@/types/lesson.types';
 import { fadeIn } from '@/utils/lesson/constants';
 import { formatDate, formatDateTime } from '@/utils/lesson/formatters';
+import { Card } from '@/components/ui/card';
 
 export const LessonDetailsPage: React.FC = () => {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -66,6 +80,7 @@ export const LessonDetailsPage: React.FC = () => {
   const [examLoading, setExamLoading] = useState(false);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showPDF, setShowPDF] = useState(false);
   
   // ✅ Attendance Modal State
   const [studentIdInput, setStudentIdInput] = useState('');
@@ -81,6 +96,7 @@ export const LessonDetailsPage: React.FC = () => {
     exams: lesson?.exams?.length || 0,
     assignments: lesson?.assignments?.length || 0,
     videos: lesson?.link_video?.filter(v => v?.trim()).length || 0,
+    hasPDF: !!lesson?.pdf,
   };
 
   // ✅ Handlers
@@ -247,7 +263,7 @@ export const LessonDetailsPage: React.FC = () => {
 
         {/* ==================== Tabs ==================== */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6 bg-muted/50 p-1 rounded-xl">
+          <TabsList className="grid w-full grid-cols-7 bg-muted/50 p-1 rounded-xl">
             <TabsTrigger value="overview" className="rounded-lg gap-2">
               <Info className="h-4 w-4" />
               <span className="hidden sm:inline">{lang === 'ar' ? 'نظرة عامة' : 'Overview'}</span>
@@ -276,6 +292,11 @@ export const LessonDetailsPage: React.FC = () => {
               <CheckCircle2 className="h-4 w-4" />
               <span className="hidden sm:inline">{lang === 'ar' ? 'الحضور' : 'Attendance'}</span>
               {attendanceStats.total > 0 && <span className="h-5 w-5 p-0 text-[10px] bg-primary/10 rounded-full flex items-center justify-center">{attendanceStats.total}</span>}
+            </TabsTrigger>
+            <TabsTrigger value="pdf" className="rounded-lg gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">{lang === 'ar' ? 'PDF' : 'PDF'}</span>
+              {stats.hasPDF && <span className="h-5 w-5 p-0 text-[10px] bg-primary/10 rounded-full flex items-center justify-center">1</span>}
             </TabsTrigger>
           </TabsList>
 
@@ -344,6 +365,38 @@ export const LessonDetailsPage: React.FC = () => {
               onExport={handleExportAttendance}
               lang={lang}
             />
+          </TabsContent>
+
+          {/* ==================== PDF Tab ==================== */}
+          <TabsContent value="pdf">
+            {lesson.pdf?.fullUrl ? (
+              <div className="space-y-4">
+                {/* PDF Thumbnail */}
+                <LessonPDFThumbnail
+                  pdfUrl={lesson.pdf.fullUrl}
+                  pdfName={lesson.pdf.name || (lang === 'ar' ? 'ملف PDF' : 'PDF File')}
+                  onClick={() => setShowPDF(true)}
+                />
+
+                {/* PDF Viewer Modal */}
+                {showPDF && (
+                  <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    <LessonPDFViewer
+                      pdfUrl={lesson.pdf.fullUrl}
+                      pdfName={lesson.pdf.name || (lang === 'ar' ? 'ملف PDF' : 'PDF File')}
+                      onClose={() => setShowPDF(false)}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Card className="p-8 text-center">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">
+                  {lang === 'ar' ? 'لا يوجد ملف PDF لهذا الدرس' : 'No PDF file for this lesson'}
+                </p>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
 
