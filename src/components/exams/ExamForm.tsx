@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/exams/ExamForm.tsx
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/contexts/AppContext';
 import { examService } from '@/services/exam.service';
@@ -18,7 +18,7 @@ import { toast } from "@/hooks/use-toast";
 
 interface ExamFormProps {
   examId?: number | null;
-  onSuccess: () => void;
+  onSuccess: (examId?: number) => void;
   onCancel: () => void;
 }
 
@@ -67,74 +67,67 @@ export const ExamForm: React.FC<ExamFormProps> = ({ examId, onSuccess, onCancel 
     }
   }, [examId]);
 
-const loadExamData = async () => {
-  setLoading(true);
-  try {
-    const exam = await examService.getExam(examId!);
-    console.log("📝 Exam data loaded:", exam);
-    
-    // ✅ استخراج الـ IDs بشكل صحيح مع التحقق من النوع
-    let stageId = null;
-    let courseId = null;
-    let lessonId = null;
+  const loadExamData = async () => {
+    setLoading(true);
+    try {
+      const exam = await examService.getExam(examId!);
+      console.log("📝 Exam data loaded:", exam);
+      
+      let stageId = null;
+      let courseId = null;
+      let lessonId = null;
 
-    // ✅ Stage ID
-    if (exam.stage_id) {
-      if (typeof exam.stage_id === 'object' && exam.stage_id !== null) {
-        stageId = exam.stage_id.id;
-      } else {
-        stageId = exam.stage_id;
+      if (exam.stage_id) {
+        if (typeof exam.stage_id === 'object' && exam.stage_id !== null) {
+          stageId = exam.stage_id.id;
+        } else {
+          stageId = exam.stage_id;
+        }
       }
-    }
 
-    // ✅ Course ID (من course_detail_id)
-    if (exam.course_detail_id) {
-      if (typeof exam.course_detail_id === 'object' && exam.course_detail_id !== null) {
-        lessonId = exam.course_detail_id.id;
-        // ✅ جلب الـ course_id من جوه الكائن
-        courseId = exam.course_detail_id.course_id || null;
-      } else {
-        lessonId = exam.course_detail_id;
+      if (exam.course_detail_id) {
+        if (typeof exam.course_detail_id === 'object' && exam.course_detail_id !== null) {
+          lessonId = exam.course_detail_id.id;
+          courseId = exam.course_detail_id.course_id || null;
+        } else {
+          lessonId = exam.course_detail_id;
+        }
       }
-    }
 
-    // ✅ لو في course_id منفصل
-    if (exam.course_id) {
-      if (typeof exam.course_id === 'object' && exam.course_id !== null) {
-        courseId = exam.course_id.id;
-      } else {
-        courseId = exam.course_id;
+      if (exam.course_id) {
+        if (typeof exam.course_id === 'object' && exam.course_id !== null) {
+          courseId = exam.course_id.id;
+        } else {
+          courseId = exam.course_id;
+        }
       }
+
+      console.log("🔍 Extracted IDs:", { stageId, courseId, lessonId });
+
+      setFormData({
+        title: exam.title || '',
+        title_ar: exam.title_ar || '',
+        description: exam.description || '',
+        description_ar: exam.description_ar || '',
+        total_marks: exam.total_marks || 0,
+        total_must_pass_marks: exam.total_must_pass_marks || 0,
+        duration_minutes: exam.duration_minutes || 0,
+        stage_id: stageId,
+        course_id: courseId,
+        course_detail_id: lessonId,
+        type_exam: exam.type_exam || '',
+        time_start: exam.time_start || null,
+        time_end: exam.time_end || null,
+      });
+      setImageId(exam.image?.id || null);
+    } catch (error) {
+      console.error('Error loading exam:', error);
+      toast.error(lang === 'ar' ? 'حدث خطأ في تحميل بيانات الامتحان' : 'Error loading exam data');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    console.log("🔍 Extracted IDs:", { stageId, courseId, lessonId });
-
-    setFormData({
-      title: exam.title || '',
-      title_ar: exam.title_ar || '',
-      description: exam.description || '',
-      description_ar: exam.description_ar || '',
-      total_marks: exam.total_marks || 0,
-      total_must_pass_marks: exam.total_must_pass_marks || 0,
-      duration_minutes: exam.duration_minutes || 0,
-      stage_id: stageId,
-      course_id: courseId,
-      course_detail_id: lessonId,
-      type_exam: exam.type_exam || '',
-      time_start: exam.time_start || null,
-      time_end: exam.time_end || null,
-    });
-    setImageId(exam.image?.id || null);
-  } catch (error) {
-    console.error('Error loading exam:', error);
-    toast.error(lang === 'ar' ? 'حدث خطأ في تحميل بيانات الامتحان' : 'Error loading exam data');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // ✅ Get course filters with useCallback
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const getCourseExtraFilters = useCallback(() => {
     const filters: Record<string, any> = {};
     if (user?.id) {
@@ -146,8 +139,6 @@ const loadExamData = async () => {
     return filters;
   }, [user?.id, formData.stage_id]);
 
-  // ✅ Get lesson filters with useCallback
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const getLessonExtraFilters = useCallback(() => {
     const filters: Record<string, any> = {};
     if (user?.id) {
@@ -162,66 +153,103 @@ const loadExamData = async () => {
     return filters;
   }, [user?.id, formData.stage_id, formData.course_id]);
 
-
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  // ✅ التحقق من صحة البيانات
-  if (!formData.title) {
-    toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الامتحان' : 'Please enter exam title');
-    return;
-  }
-  if (!formData.stage_id) {
-    toast.error(lang === 'ar' ? 'يرجى اختيار المرحلة' : 'Please select stage');
-    return;
-  }
-  if (!formData.course_id) {
-    toast.error(lang === 'ar' ? 'يرجى اختيار الكورس' : 'Please select course');
-    return;
-  }
-  if (!formData.course_detail_id) {
-    toast.error(lang === 'ar' ? 'يرجى اختيار الدرس' : 'Please select lesson');
-    return;
-  }
-
-  // ✅ التحقق من درجة النجاح
-  if (formData.total_must_pass_marks > formData.total_marks) {
-    toast.error(
-      lang === 'ar' 
-        ? 'درجة النجاح لا يمكن أن تتجاوز المجموع الكلي' 
-        : 'Pass marks cannot exceed total marks'
-    );
-    return;
-  }
-
-  // ✅ تحضير البيانات للإرسال
-  const examData = {
-    ...formData,
-    teacher_id: user?.id || 1,
-    image: imageId || undefined,
-    type: 'exam', // ✅ إضافة النوع
-    type_exam: formData.type_exam || 'online', // ✅ قيمة افتراضية
-  };
-
-  console.log('📤 Sending exam data:', examData); // ✅ للتأكد
-
-  setLoading(true);
-  try {
-    if (examId) {
-      await examService.updateExam(examId, examData);
-      toast.success(lang === 'ar' ? 'تم تحديث الامتحان بنجاح' : 'Exam updated successfully');
-    } else {
-      await examService.createExam(examData);
-      toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.title) {
+      toast.error(lang === 'ar' ? 'يرجى إدخال عنوان الامتحان' : 'Please enter exam title');
+      return;
     }
-    onSuccess();
-  } catch (error) {
-    console.error('Error saving exam:', error);
-    toast.error(lang === 'ar' ? 'حدث خطأ في حفظ الامتحان' : 'Error saving exam');
-  } finally {
-    setLoading(false);
-  }
-};
+    if (!formData.stage_id) {
+      toast.error(lang === 'ar' ? 'يرجى اختيار المرحلة' : 'Please select stage');
+      return;
+    }
+    if (!formData.course_id) {
+      toast.error(lang === 'ar' ? 'يرجى اختيار الكورس' : 'Please select course');
+      return;
+    }
+    if (!formData.course_detail_id) {
+      toast.error(lang === 'ar' ? 'يرجى اختيار الدرس' : 'Please select lesson');
+      return;
+    }
+
+    if (formData.total_must_pass_marks > formData.total_marks) {
+      toast.error(
+        lang === 'ar' 
+          ? 'درجة النجاح لا يمكن أن تتجاوز المجموع الكلي' 
+          : 'Pass marks cannot exceed total marks'
+      );
+      return;
+    }
+
+    const examData = {
+      ...formData,
+      teacher_id: user?.id || 1,
+      image: imageId || undefined,
+      type: 'exam',
+      type_exam: formData.type_exam || 'online',
+    };
+
+    console.log('📤 Sending exam data:', examData);
+
+    setLoading(true);
+    try {
+      let newExamId: number | null = null;
+      
+      if (examId) {
+        // ✅ تحديث امتحان موجود
+        await examService.updateExam(examId, examData);
+        toast.success(lang === 'ar' ? 'تم تحديث الامتحان بنجاح' : 'Exam updated successfully');
+        newExamId = examId;
+      } else {
+        // ✅ إنشاء امتحان جديد
+        const response = await examService.createExam(examData);
+        console.log('📥 Full create response:', response);
+        
+        // ✅ استخراج الـ ID من الـ Response
+        if (response?.data?.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+          newExamId = response.data.data[0].id;
+        } else if (Array.isArray(response?.data) && response.data.length > 0) {
+          newExamId = response.data[0].id;
+        } else if (response?.data?.id) {
+          newExamId = response.data.id;
+        } else if (response?.id) {
+          newExamId = response.id;
+        }
+        
+        console.log('✅ Extracted Exam ID:', newExamId);
+        toast.success(lang === 'ar' ? 'تم إنشاء الامتحان بنجاح' : 'Exam created successfully');
+      }
+      
+      // ✅ تمرير الـ ID إلى onSuccess
+      if (newExamId) {
+        onSuccess(newExamId);
+      } else {
+        onSuccess(undefined);
+      }
+      
+    } catch (error: any) {
+      console.error('Error saving exam:', error);
+      
+      // ✅ عرض رسالة خطأ مناسبة
+      if (error.response?.status === 422) {
+        const errors = error.response.data?.errors;
+        if (errors) {
+          const errorMessages = Object.values(errors).flat().join('\n');
+          toast.error(errorMessages || (lang === 'ar' ? 'خطأ في البيانات' : 'Validation error'));
+        } else {
+          toast.error(error.response?.data?.message || (lang === 'ar' ? 'حدث خطأ في حفظ الامتحان' : 'Error saving exam'));
+        }
+      } else {
+        toast.error(error.response?.data?.message || (lang === 'ar' ? 'حدث خطأ في حفظ الامتحان' : 'Error saving exam'));
+      }
+      
+      // ✅ في حالة الخطأ، نروح على الـ index
+      onSuccess(undefined);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleImageUpload = (id: number) => {
     setImageId(id);
@@ -324,7 +352,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               />
             </div>
 
-            {/* Stats Row - مع درجة النجاح */}
+            {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="space-y-2">
                 <Label>{t('totalMarks')}</Label>
@@ -337,7 +365,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                     setFormData({ 
                       ...formData, 
                       total_marks: val,
-                      // ✅ لو درجة النجاح أكبر من المجموع، نعدلها
                       total_must_pass_marks: Math.min(formData.total_must_pass_marks, val)
                     });
                   }}
@@ -346,7 +373,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                 />
               </div>
               
-              {/* ✅ حقل درجة النجاح */}
               <div className="space-y-2">
                 <Label>
                   {lang === 'ar' ? 'درجة النجاح' : 'Pass Marks'}
@@ -431,7 +457,6 @@ const handleSubmit = async (e: React.FormEvent) => {
 
             {/* Stage, Course, Lesson */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Stage */}
               <div className="space-y-2">
                 <Label>{t('stage')}</Label>
                 <select
@@ -441,8 +466,8 @@ const handleSubmit = async (e: React.FormEvent) => {
                     setFormData({ 
                       ...formData, 
                       stage_id: newStageId,
-                      course_id: null, // ✅ إعادة تعيين الكورس
-                      course_detail_id: null // ✅ إعادة تعيين الدرس
+                      course_id: null,
+                      course_detail_id: null
                     });
                   }}
                   className="w-full px-3 py-2 rounded-xl border bg-background"
@@ -455,7 +480,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </select>
               </div>
 
-              {/* Course */}
               <div className="space-y-2">
                 <Label>{t('course')}</Label>
                 <AsyncSelect
@@ -468,7 +492,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                     setFormData({ 
                       ...formData, 
                       course_id: id,
-                      course_detail_id: null // ✅ إعادة تعيين الدرس
+                      course_detail_id: null
                     });
                   }}
                   extraFilters={getCourseExtraFilters()}
@@ -483,13 +507,12 @@ const handleSubmit = async (e: React.FormEvent) => {
                 )}
               </div>
 
-              {/* Lesson */}
               <div className="space-y-2">
                 <Label>{t('lesson')}</Label>
                 <AsyncSelect
                   key={`lesson-${formData.stage_id}-${formData.course_id}-${user?.id}`}
                   configKey="courseLessons"
-                   autoFetch={true}
+                  autoFetch={true}
                   value={formData.course_detail_id}
                   onChange={(id) => {
                     console.log("📖 Lesson selected:", id);

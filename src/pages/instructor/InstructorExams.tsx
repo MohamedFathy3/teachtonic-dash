@@ -180,11 +180,27 @@ export const InstructorExams: React.FC = () => {
     }
   };
 
-  const handleBack = () => {
+  // ✅ تعديل handleBack - يروح على الـ View مباشرة
+  const handleBack = (newExamId?: number) => {
+    console.log('🔙 Back with exam ID:', newExamId);
+    
+    // ✅ لو فيه ID جديد (تم إنشاء أو تعديل امتحان)
+    if (newExamId && typeof newExamId === 'number' && newExamId > 0) {
+      // ✅ نروح مباشرة على صفحة الـ View للامتحان
+      navigate(`/instructor/exam/${newExamId}`);
+      return;
+    }
+    
+    // ✅ لو ما فيه ID (إلغاء أو خروج)
     setActiveTab('exams');
     setSelectedExam(null);
     setSelectedExamId(null);
     navigate('/instructor/exams');
+    
+    // ✅ تحديث القائمة
+    setTimeout(() => {
+      fetchExams(1);
+    }, 300);
   };
 
   // إعادة تعيين فلاتر الساعات المركزية
@@ -199,7 +215,7 @@ export const InstructorExams: React.FC = () => {
       <ExamForm
         examId={selectedExamId}
         onSuccess={handleBack}
-        onCancel={handleBack}
+        onCancel={() => handleBack()}
       />
     );
   }

@@ -88,35 +88,6 @@ export const LessonHeader: React.FC<LessonHeaderProps> = ({
             <TooltipContent>{lang === 'ar' ? 'نسخ رابط الصفحة' : 'Copy page link'}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="default" size="sm" onClick={onPrint} className="gap-1">
-                <Printer className="h-4 w-4" />
-                {lang === 'ar' ? 'طباعة' : 'Print'}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{lang === 'ar' ? 'طباعة الصفحة' : 'Print page'}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={onMarkAttendance} 
-                className="gap-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-              >
-                <User className="h-4 w-4" />
-                {lang === 'ar' ? 'تسجيل حضور' : 'Mark Attendance'}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{lang === 'ar' ? 'تسجيل حضور طالب في الدرس' : 'Mark student attendance'}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
       </div>
     </div>
   );

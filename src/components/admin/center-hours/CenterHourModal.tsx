@@ -6,10 +6,10 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { useCenterHours } from '@/hooks/useCenterHours';
 import { useApp } from '@/contexts/AppContext';
-import { useTeacherMeta } from '@/hooks/useTeacherMeta'; // 🔥 استخدم الـ hook بتاعك
+import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 import { X, Calendar, Clock, BookOpen, FileText, Save, GraduationCap, BookMarked, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { toast  } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 
 interface CenterHourModalProps {
   isOpen: boolean;
@@ -31,7 +31,6 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
   const createMutation = useCreate();
   const updateMutation = useUpdate();
 
-  // 🔥 استخدام hook teacher meta بتاعك
   const { stages, subjects } = useTeacherMeta(user?.id);
 
   const weekDays = [
@@ -57,10 +56,8 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
     subject_id: null as number | null,
   });
 
-  // فلترة المواد حسب المرحلة المختارة
   const [filteredSubjects, setFilteredSubjects] = useState<any[]>([]);
 
-  // تحديث المواد عندما تتغير المرحلة أو الـ subjects
   useEffect(() => {
     if (formData.stage_id) {
       const filtered = subjects.filter(
@@ -133,7 +130,6 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
       subject_id: formData.subject_id,
     };
 
-
     if (editingItem) {
       await updateMutation.mutateAsync({ id: editingItem.id, data: payload });
     } else {
@@ -160,6 +156,20 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
 
   const isLoading = createMutation.isPending || updateMutation.isPending;
 
+  // ✅ تحديد الألوان حسب الوضع (dark/light)
+  const bgColor = isDarkMode ? 'bg-gray-900' : 'bg-white';
+  const textColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const textMutedColor = isDarkMode ? 'text-gray-400' : 'text-gray-600';
+  const borderColor = isDarkMode ? 'border-gray-700' : 'border-gray-200';
+  const inputBg = isDarkMode ? 'bg-gray-800' : 'bg-white';
+  const inputTextColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const labelColor = isDarkMode ? 'text-gray-300' : 'text-gray-700';
+  const placeholderColor = isDarkMode ? 'placeholder-gray-500' : 'placeholder-gray-400';
+  const selectBg = isDarkMode ? 'bg-gray-800' : 'bg-white';
+  const selectTextColor = isDarkMode ? 'text-white' : 'text-gray-900';
+  const hoverBg = isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50';
+  const dividerColor = isDarkMode ? 'border-gray-700' : 'border-gray-200';
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -172,7 +182,7 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -186,7 +196,10 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all">
+              <Dialog.Panel 
+                className={`w-full max-w-md transform overflow-hidden rounded-2xl ${bgColor} shadow-2xl transition-all border ${borderColor}`}
+              >
+                {/* Header */}
                 <div className="relative bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white">
                   <button
                     onClick={onClose}
@@ -214,26 +227,26 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
 
                   {/* Center */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className={`block text-sm font-medium ${labelColor} mb-2`}>
                       {lang === 'ar' ? 'السنتر' : 'Center'} *
                     </label>
                     <div className="relative">
-                      <BookOpen className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                      <BookOpen className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={18} />
                       <input
                         type="text"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                        className={`w-full pl-3 pr-10 py-2 border ${borderColor} rounded-lg ${inputBg} ${inputTextColor} ${placeholderColor} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all`}
                         placeholder={lang === 'ar' ? 'مثال: سنتر ألف مسكن' : 'e.g., Center Alfe Maskan'}
                         required
                       />
                     </div>
                   </div>
 
-                  {/* 🔥 Stage - مرحلة (من useTeacherMeta) */}
+                  {/* Stage */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <GraduationCap className="inline h-4 w-4 mr-1" />
+                    <label className={`block text-sm font-medium ${labelColor} mb-2`}>
+                      <GraduationCap className={`inline h-4 w-4 mr-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                       {lang === 'ar' ? 'المرحلة' : 'Stage'}
                     </label>
                     <select
@@ -243,10 +256,10 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                         setFormData({ 
                           ...formData, 
                           stage_id: stageId, 
-                          subject_id: null  // إعادة تعيين المادة عند تغيير المرحلة
+                          subject_id: null
                         });
                       }}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                      className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${selectBg} ${selectTextColor} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all`}
                     >
                       <option value="">
                         {lang === 'ar' ? 'اختر المرحلة' : 'Select stage'}
@@ -264,16 +277,16 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                     )}
                   </div>
 
-                  {/* 🔥 Subject - مادة (من useTeacherMeta مع فلتر حسب المرحلة) */}
+                  {/* Subject */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <BookMarked className="inline h-4 w-4 mr-1" />
+                    <label className={`block text-sm font-medium ${labelColor} mb-2`}>
+                      <BookMarked className={`inline h-4 w-4 mr-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                       {lang === 'ar' ? 'المادة' : 'Subject'}
                     </label>
                     <select
                       value={formData.subject_id || ''}
                       onChange={(e) => setFormData({ ...formData, subject_id: e.target.value ? Number(e.target.value) : null })}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                      className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${selectBg} ${selectTextColor} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${!formData.stage_id ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={!formData.stage_id}
                     >
                       <option value="">
@@ -297,13 +310,13 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
 
                   {/* Day */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className={`block text-sm font-medium ${labelColor} mb-2`}>
                       {lang === 'ar' ? 'اليوم' : 'Day'} *
                     </label>
                     <select
                       value={formData.date}
                       onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                      className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${selectBg} ${selectTextColor} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all`}
                       required
                     >
                       <option value="">
@@ -320,32 +333,32 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
                   {/* Start Time + End Time */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className={`block text-sm font-medium ${labelColor} mb-2`}>
                         {lang === 'ar' ? 'وقت البداية' : 'Start Time'} *
                       </label>
                       <div className="relative">
-                        <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <Clock className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
                         <input
                           type="time"
                           value={formData.hours_start}
                           onChange={(e) => setFormData({ ...formData, hours_start: e.target.value })}
-                          className="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                          className={`w-full pl-3 pr-10 py-2 border ${borderColor} rounded-lg ${inputBg} ${inputTextColor} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all`}
                           required
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className={`block text-sm font-medium ${labelColor} mb-2`}>
                         {lang === 'ar' ? 'وقت النهاية' : 'End Time'} *
                       </label>
                       <div className="relative">
-                        <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <Clock className={`absolute right-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
                         <input
                           type="time"
                           value={formData.hours_end}
                           onChange={(e) => setFormData({ ...formData, hours_end: e.target.value })}
-                          className="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                          className={`w-full pl-3 pr-10 py-2 border ${borderColor} rounded-lg ${inputBg} ${inputTextColor} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all`}
                           required
                         />
                       </div>
@@ -354,55 +367,55 @@ export const CenterHourModal: React.FC<CenterHourModalProps> = ({
 
                   {/* Phone */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className={`block text-sm font-medium ${labelColor} mb-2`}>
                       {lang === 'ar' ? 'رقم الهاتف' : 'Phone'}
                     </label>
                     <input
                       type="text"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                      className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${inputBg} ${inputTextColor} ${placeholderColor} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all`}
                       placeholder={lang === 'ar' ? 'أدخل رقم الهاتف' : 'Enter phone number'}
                     />
                   </div>
 
                   {/* Address */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className={`block text-sm font-medium ${labelColor} mb-2`}>
                       {lang === 'ar' ? 'العنوان' : 'Address'}
                     </label>
                     <input
                       type="text"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                      className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${inputBg} ${inputTextColor} ${placeholderColor} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all`}
                       placeholder={lang === 'ar' ? 'أدخل العنوان' : 'Enter address'}
                     />
                   </div>
 
                   {/* Notes */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className={`block text-sm font-medium ${labelColor} mb-2`}>
                       {lang === 'ar' ? 'ملاحظات' : 'Notes'}
                     </label>
                     <div className="relative">
-                      <FileText className="absolute right-3 top-3 text-gray-400" size={16} />
+                      <FileText className={`absolute right-3 top-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
                       <textarea
                         value={formData.note}
                         onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                         rows={3}
-                        className="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                        className={`w-full pl-3 pr-10 py-2 border ${borderColor} rounded-lg ${inputBg} ${inputTextColor} ${placeholderColor} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none`}
                         placeholder={lang === 'ar' ? 'أي ملاحظات إضافية...' : 'Any additional notes...'}
                       />
                     </div>
                   </div>
 
                   {/* Buttons */}
-                  <div className="flex gap-3 pt-4">
+                  <div className="flex gap-3 pt-4 border-t ${dividerColor}">
                     <button
                       type="button"
                       onClick={onClose}
-                      className="flex-1 px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                      className={`flex-1 px-4 py-2 border ${borderColor} rounded-lg ${textColor} ${hoverBg} transition-colors`}
                     >
                       {lang === 'ar' ? 'إلغاء' : 'Cancel'}
                     </button>

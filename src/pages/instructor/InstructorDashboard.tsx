@@ -363,7 +363,6 @@ export function InstructorDashboard() {
       const response = await api.get(`/teachers/${teacherId}/report`);
       setReport(response.data?.data);
     } catch (error: any) {
-      console.error("Error fetching report:", error);
       toast.error(t("error") + ": " + (error.message || t("tryAgain")));
     } finally {
       setLoading(false);
@@ -475,7 +474,7 @@ export function InstructorDashboard() {
     .sort((a, b) => b.value - a.value);
   
   const hasGovernorateData = governorateData.length > 0;
-  const totalGovernorateStudents = governorateData.reduce((sum, g) => sum + g.value, 0);
+  const totalGovernorateStudents = governorateData?.reduce((sum, g) => sum + g.value, 0);
   
 
 

@@ -10,6 +10,7 @@ export const useExams = (teacherId: number, perPage: number = 12) => {
   const { lang } = useApp();
   const [exams, setExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     currentPage: 1,

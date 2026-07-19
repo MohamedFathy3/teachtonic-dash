@@ -138,39 +138,6 @@ export const LessonDetailsPage: React.FC = () => {
     setIsAssignmentModalOpen(true);
   };
 
-  const handleMarkAttendance = async () => {
-    if (!studentIdInput.trim()) {
-      toast.error(lang === 'ar' ? 'الرجاء إدخال ID الطالب' : 'Please enter student ID');
-      return;
-    }
-
-    setAttendanceMarkLoading(true);
-    try {
-      const foundStudent = lesson?.students?.find(s => s.id === parseInt(studentIdInput));
-      
-      await courseDetailService.markStudentAttendance(Number(lessonId), parseInt(studentIdInput));
-      
-      setAttendanceSuccess({
-        studentName: foundStudent?.name || `ID: ${studentIdInput}`,
-        status: lang === 'ar' ? 'تم تسجيل الحضور بنجاح' : 'Attendance recorded successfully'
-      });
-      
-      setStudentIdInput('');
-      
-      setTimeout(() => {
-        refetch();
-        refetchAttendance();
-        setAttendanceSuccess(null);
-        setShowAttendanceModal(false);
-      }, 2000);
-      
-    } catch (error) {
-      console.error('Error marking attendance:', error);
-      toast.error(lang === 'ar' ? 'حدث خطأ في تسجيل الحضور' : 'Error marking attendance');
-    } finally {
-      setAttendanceMarkLoading(false);
-    }
-  };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -424,23 +391,7 @@ export const LessonDetailsPage: React.FC = () => {
           lang={lang}
         />
 
-        {/* ==================== Attendance Modal ==================== */}
-        <LessonAttendanceModal
-          open={showAttendanceModal}
-          onClose={() => {
-            setShowAttendanceModal(false);
-            setStudentIdInput('');
-            setAttendanceSuccess(null);
-          }}
-          onConfirm={handleMarkAttendance}
-          studentId={studentIdInput}
-          setStudentId={setStudentIdInput}
-          loading={attendanceMarkLoading}
-          success={attendanceSuccess}
-          lessonTitle={title}
-          students={lesson.students || []}
-          lang={lang}
-        />
+   
       </motion.div>
     </TooltipProvider>
   );
