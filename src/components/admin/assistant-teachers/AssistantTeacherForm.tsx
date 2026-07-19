@@ -175,6 +175,7 @@ export function AssistantTeacherForm({ open, onClose, onSubmit, assistantId, loa
               perPageOptions={[10, 25, 50, 100]}
               defaultPerPage={25}
               showPagination
+              autoFetch={true}
               debounceDelay={500}        
               cacheData={true}          
               enableInfiniteScroll={false}

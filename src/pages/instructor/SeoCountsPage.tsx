@@ -21,7 +21,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { SeoCounts, AboutResponse } from '@/types/seo.types';
-import { FaFacebook, FaGoogle, FaTiktok, FaYoutube } from 'react-icons/fa';
+import { FaFacebook, FaGoogle, FaInstagram, FaTiktok, FaYoutube } from 'react-icons/fa';
 
 // ✅ Component لعرض Count واحد
 const CountCard = ({
@@ -393,10 +393,10 @@ const fetchData = useCallback(async () => {
         />
 
         <CountCard
-          label="Google Count"
-          labelAr="عدد متابعين جوجل"
+          label="Instagram  Count"
+          labelAr="عدد متابعين انستجرام"
           value={counts.google_count}
-          icon={FaGoogle}
+          icon={FaInstagram} 
           color="red"
           isRTL={isRTL}
           onSave={(value) => handleUpdateCount('google_count', value)}

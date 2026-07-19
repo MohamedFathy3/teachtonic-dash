@@ -64,19 +64,21 @@ class AssistantTeacherService extends BaseService<AssistantTeacher> {
     return this.getAllAssistantTeachers({}, perPage, page, search, true);
   }
 
-  async getAssistantTeacher(id: number): Promise<AssistantTeacher> {
-    try {
-      const assistant = await this.getById(id);
-      return assistant;
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to fetch assistant teacher",
-        variant: "destructive",
-      });
-      throw error;
-    }
+
+async getAssistantTeacher(id: number): Promise<AssistantTeacher> {
+  try {
+    // ✅ استخدام api مباشرة بدلاً من this.getById
+    const response = await api.get(`/assistant-teacher/${id}`);
+    return response.data.data || response.data;
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Failed to fetch assistant teacher",
+      variant: "destructive",
+    });
+    throw error;
   }
+}
 
   async createAssistantTeacher(data: AssistantTeacherFormData): Promise<AssistantTeacher> {
     try {
