@@ -72,6 +72,7 @@ const InfoCard: React.FC<{ icon: React.ElementType; label: string; value: React.
 );
 
 // ✅ مكوّن لإدارة قائمة ديناميكية (Array Field)
+// ✅ مكوّن لإدارة قائمة ديناميكية (Array Field) مع Required
 const ArrayFieldManager: React.FC<{
   label: string;
   values: string[];
@@ -79,16 +80,36 @@ const ArrayFieldManager: React.FC<{
   placeholder: string;
   dir?: 'rtl' | 'ltr';
   icon?: React.ElementType;
-}> = ({ label, values, onChange, placeholder, dir = 'ltr', icon: Icon }) => {
+  required?: boolean;        // ✅ إضافة prop required
+  error?: string;            // ✅ رسالة خطأ
+  minItems?: number;         // ✅ الحد الأدنى للعناصر
+}> = ({ 
+  label, 
+  values, 
+  onChange, 
+  placeholder, 
+  dir = 'ltr', 
+  icon: Icon,
+  required = false,
+  error,
+  minItems = 1
+}) => {
   const handleAdd = () => onChange([...values, '']);
   const handleRemove = (idx: number) => onChange(values.filter((_, i) => i !== idx));
   const handleChange = (idx: number, val: string) =>
     onChange(values.map((v, i) => (i === idx ? val : v)));
 
+  // ✅ التحقق من وجود قيمة فارغة
+  const hasEmptyValue = values.some(v => v.trim() === '');
+  const showError = required && (hasEmptyValue || values.length === 0);
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="block text-sm font-medium">{label}</label>
+        <label className="block text-sm font-medium">
+          {label}
+          {required && <span className="text-red-500 mr-1">*</span>}
+        </label>
         <Button
           type="button"
           size="sm"
@@ -111,14 +132,17 @@ const ArrayFieldManager: React.FC<{
             className="flex items-center gap-2"
           >
             {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
-            <Input
-              value={val}
-              onChange={(e) => handleChange(idx, e.target.value)}
-              placeholder={`${placeholder} ${idx + 1}`}
-              className="rounded-xl flex-1"
-              dir={dir}
-            />
-            {values.length > 1 && (
+            <div className="flex-1">
+              <Input
+                value={val}
+                onChange={(e) => handleChange(idx, e.target.value)}
+                placeholder={`${placeholder} ${idx + 1}`}
+                className={`rounded-xl ${required && val.trim() === '' ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                dir={dir}
+                required={required}
+              />
+            </div>
+            {values.length > minItems && (
               <Button
                 type="button"
                 size="icon"
@@ -132,6 +156,18 @@ const ArrayFieldManager: React.FC<{
           </motion.div>
         ))}
       </AnimatePresence>
+      
+      {/* ✅ عرض رسالة الخطأ */}
+      {showError && (
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-xs text-red-500 mt-1"
+        >
+          {error || 'هذا الحقل مطلوب'}
+        </motion.p>
+      )}
+      
       {values.length === 0 && (
         <Button
           type="button"
@@ -1313,6 +1349,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             <ArrayFieldManager
               label={`${t('title')} (EN)`}
               values={lessonForm.titles}
+              required={true} 
               onChange={(vals) => setLessonForm(prev => ({ ...prev, titles: vals }))}
               placeholder="Lesson title in English"
               dir="ltr"
@@ -1324,6 +1361,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               onChange={(vals) => setLessonForm(prev => ({ ...prev, titles_ar: vals }))}
               placeholder="عنوان الدرس بالعربية"
               dir="rtl"
+              
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
