@@ -7,7 +7,7 @@ import { translations, Lang, TranslationKey } from '@/i18n/translations';
 import api from '@/lib/api';
 
 type Theme = "light" | "dark";
-type UserRole = "admin" | "teacher" | "student";
+type UserRole = "admin" | "teacher" | "student" | "assistant_teacher";
 
 // تعريف نوع بيانات المعلم (Instructor)
 interface InstructorData {
@@ -38,6 +38,7 @@ interface AppContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isInstructor: boolean;
+  isAssistantTeacher: boolean; // ✅ أضيفت هذه الخاصية
   isStudent: boolean;
   login: (email: string, password: string) => Promise<{ role: string }>;
   logout: () => void;
@@ -79,10 +80,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [lang, setLangState] = useState<Lang>(() => (localStorage.getItem("lms-lang") as Lang) || "en");
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("lms-theme") as Theme) || "light");
   
-  // 🟢 معالجة الدور بشكل صحيح - تحويل "teacher" إلى "instructor" للتوافق
+  // معالجة الدور بشكل صحيح
   const role = uiRole || user?.role || null;
   const isAdmin = role === 'admin';
-  const isInstructor = role === 'teacher' || role === 'instructor'; // ✅ دعم كلا القيمتين
+  const isInstructor = role === 'teacher' || role === 'instructor' || role === 'assistant_teacher';
+  const isAssistantTeacher = role === 'assistant_teacher';
   const isStudent = role === 'student';
   
   const dir = lang === "ar" ? "rtl" : "ltr";
@@ -90,23 +92,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // دالة لجلب بيانات المعلم من الـ API
   const fetchInstructorData = async () => {
     if (!isAuthenticated || !token) {
-     ('⏭️ Skipping instructor fetch: Not authenticated');
+      console.log('⏭️ Skipping instructor fetch: Not authenticated');
       return;
     }
 
-    // جلب فقط إذا كان المستخدم معلم (teacher أو instructor)
-    if (role !== 'teacher' && role !== 'instructor') {
-     ('⏭️ Skipping instructor fetch: User is not an instructor');
+    // جلب إذا كان المستخدم معلم أو معلم مساعد
+    if (role !== 'teacher' && role !== 'instructor' && role !== 'assistant_teacher') {
+      console.log('⏭️ Skipping instructor fetch: User is not an instructor or assistant teacher');
       return;
     }
 
     setIsLoadingInstructor(true);
     try {
-     ('🔄 Fetching instructor data...');
+      console.log('🔄 Fetching instructor data...');
       
       const response = await api.get('/admin/check-auth');
       
-     ('✅ Instructor data fetched:', response.data);
+      console.log('✅ Instructor data fetched:', response.data);
       
       if (response.data?.result === 'Success' && response.data?.data) {
         const data = response.data.data;
@@ -115,13 +117,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           id: data.id,
           name: data.name,
           type: data.type,
-          role: data.role || 'teacher',
+          role: data.role || 'assistant_teacher',
           imageUrl: data.imageUrl || data.image?.fullUrl,
           image: data.image,
           email: data.email,
         });
         
-       ('✅ Instructor data set successfully:', instructorData);
+        console.log('✅ Instructor data set successfully:', instructorData);
       } else {
         console.warn('⚠️ Unexpected instructor data structure:', response.data);
       }
@@ -134,7 +136,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // جلب بيانات المعلم عند تغيير التوكن أو الدور
   useEffect(() => {
-    if (isAuthenticated && token && (role === 'teacher' || role === 'instructor')) {
+    if (isAuthenticated && token && (role === 'teacher' || role === 'instructor' || role === 'assistant_teacher')) {
       fetchInstructorData();
     } else {
       setInstructorData(null);
@@ -143,7 +145,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // جلب البيانات مرة أخرى عند تغيير الـ UI role
   useEffect(() => {
-    if (uiRole === 'teacher' || uiRole === 'instructor') {
+    if (uiRole === 'teacher' || uiRole === 'instructor' || uiRole === 'assistant_teacher') {
       fetchInstructorData();
     }
   }, [uiRole]);
@@ -185,11 +187,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
- ('🔄 AppContext value updated:', { 
+  console.log('🔄 AppContext value updated:', { 
     isAuthenticated, 
     role,
     uiRole,
     authRole: user?.role,
+    isAssistantTeacher,
     hasUser: !!user,
     userName: user?.name,
     instructorName: instructorData?.name,
@@ -206,7 +209,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     isLoading: isLoading || isLoadingInstructor,
     isAuthenticated,
     isAdmin,
-    isInstructor, // ✅ الآن سيكون true لكل من 'teacher' و 'instructor'
+    isInstructor,
+    isAssistantTeacher,
     isStudent,
     login,
     logout,
