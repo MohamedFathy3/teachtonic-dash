@@ -378,7 +378,7 @@ export const StudentAttendanceModal: React.FC<StudentAttendanceModalProps> = ({
               className="space-y-3"
             >
               <Label>{isRTL ? 'حالة الحضور' : 'Attendance Status'}</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <Button
                   variant={attended ? 'default' : 'outline'}
                   className={attended ? 'bg-green-500 hover:bg-green-600' : ''}
@@ -387,14 +387,14 @@ export const StudentAttendanceModal: React.FC<StudentAttendanceModalProps> = ({
                   <UserCheck className="h-4 w-4 mr-2" />
                   {isRTL ? 'حاضر' : 'Present'}
                 </Button>
-                <Button
+                {/* <Button
                   variant={!attended ? 'default' : 'outline'}
                   className={!attended ? 'bg-red-500 hover:bg-red-600' : ''}
                   onClick={() => setAttended(false)}
                 >
                   <UserX className="h-4 w-4 mr-2" />
                   {isRTL ? 'غائب' : 'Absent'}
-                </Button>
+                </Button> */}
               </div>
             </motion.div>
           )}

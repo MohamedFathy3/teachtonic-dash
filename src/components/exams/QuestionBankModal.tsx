@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/exams/QuestionBankModal.tsx
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -59,7 +58,7 @@ interface BankQuestion {
   mark: string;
   correct_answer: string | null;
   image: any;
-  options: any[];
+  options: any[] | null; // ✅ Allow null
   createdAt: string;
 }
 
@@ -83,8 +82,8 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
   const [bankLoading, setBankLoading] = useState(false);
   const [selectedBankQuestions, setSelectedBankQuestions] = useState<Set<number>>(new Set());
   const [bankFilters, setBankFilters] = useState({
-    subject: '',
-    stage: '',
+    subject_id: '',
+    stage_id: '',
     question_type: '',
     question: '',
   });
@@ -126,8 +125,8 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
         filters.question = bankFilters.question.trim();
       }
       
-      if (bankFilters.subject) filters.subject = bankFilters.subject;
-      if (bankFilters.stage) filters.stage = bankFilters.stage;
+      if (bankFilters.subject_id) filters.subject_id = bankFilters.subject_id;
+      if (bankFilters.stage_id) filters.stage_id = bankFilters.stage_id;
       if (bankFilters.question_type) filters.question_type = bankFilters.question_type;
       filters.teacher_id = teacherId;
 
@@ -147,13 +146,18 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
       
       console.log('📥 Bank questions response:', data);
       
-      if (data.status) {
-        setBankQuestions(data.data);
+      // ✅ FIX: Check if data and meta exist before accessing
+      if (data && data.status) {
+        // ✅ Ensure data.data is an array
+        const questions = Array.isArray(data.data) ? data.data : [];
+        setBankQuestions(questions);
+        
+        // ✅ Safely set pagination with fallback values
         setBankPagination({
-          current_page: data.meta.current_page,
-          last_page: data.meta.last_page,
-          per_page: data.meta.per_page,
-          total: data.meta.total,
+          current_page: data.meta?.current_page || 1,
+          last_page: data.meta?.last_page || 1,
+          per_page: data.meta?.per_page || 10,
+          total: data.meta?.total || 0,
         });
         
         // ✅ إعادة السكرول للأعلى عند تغيير الصفحة
@@ -161,10 +165,25 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
           scrollContainerRef.current.scrollTop = 0;
         }
       } else {
-        toast.error(data.message || 'Failed to fetch questions');
+        // ✅ Handle case where status is false or data is missing
+        setBankQuestions([]);
+        setBankPagination({
+          current_page: 1,
+          last_page: 1,
+          per_page: 10,
+          total: 0,
+        });
+        toast.error(data?.message || 'Failed to fetch questions');
       }
     } catch (error: any) {
       console.error('❌ Error fetching bank questions:', error);
+      setBankQuestions([]);
+      setBankPagination({
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: 0,
+      });
       toast.error(error.response?.data?.message || 'Error loading question bank');
     } finally {
       setBankLoading(false);
@@ -249,7 +268,7 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
 
   // ✅ إعادة تعيين الفلاتر
   const resetFilters = () => {
-    setBankFilters({ subject: '', stage: '', question_type: '', question: '' });
+    setBankFilters({ subject_id: '', stage_id: '', question_type: '', question: '' });
     fetchBankQuestions(1);
   };
 
@@ -295,8 +314,8 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
             {/* Filters - ثابت في المنتصف */}
             <div className="p-4 border-b bg-muted/20 flex-shrink-0">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <div className="relative">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder={lang === 'ar' ? 'بحث في الأسئلة...' : 'Search questions...'}
@@ -305,12 +324,12 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
                     onKeyDown={handleSearchKeyDown}
                     className="pl-9 rounded-xl"
                   />
-                </div>
+                </div> */}
                 <Select
-                  value={bankFilters.subject || "all_subjects"}
+                  value={bankFilters.subject_id || "all_subjects"}
                   onValueChange={(value) => setBankFilters({ 
                     ...bankFilters, 
-                    subject: value === "all_subjects" ? "" : value 
+                    subject_id: value === "all_subjects" ? "" : value 
                   })}
                 >
                   <SelectTrigger className="rounded-xl">
@@ -327,10 +346,10 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
                   </SelectContent>
                 </Select>
                 <Select
-                  value={bankFilters.stage || "all_stages"}
+                  value={bankFilters.stage_id || "all_stages"}
                   onValueChange={(value) => setBankFilters({ 
                     ...bankFilters, 
-                    stage: value === "all_stages" ? "" : value 
+                    stage_id: value === "all_stages" ? "" : value 
                   })}
                 >
                   <SelectTrigger className="rounded-xl">
@@ -588,7 +607,8 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
                   </p>
                 </div>
               )}
-              {selectedQuestion.options && selectedQuestion.options.length > 0 && (
+              {/* ✅ FIX: Check if options exist and is an array before mapping */}
+              {selectedQuestion.options && Array.isArray(selectedQuestion.options) && selectedQuestion.options.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-semibold">{lang === 'ar' ? 'الخيارات' : 'Options'}</p>
                   {selectedQuestion.options.map((opt: any, idx: number) => (
