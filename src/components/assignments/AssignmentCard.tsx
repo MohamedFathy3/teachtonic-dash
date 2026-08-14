@@ -36,7 +36,7 @@ export const AssignmentCard: React.FC<AssignmentCardProps> = ({
   onToggleRandomQuestions,
   onToggleRandomAnswers,
   onToggleShowResult,
-  onToggleMustSolve,
+  // onToggleMustSolve,
   onToggleActive,
 }) => {
   const { t, lang, isRTL } = useApp();
@@ -62,7 +62,7 @@ export const AssignmentCard: React.FC<AssignmentCardProps> = ({
           )}
           
           {/* Must Solve Badge - Top Right */}
-          {onToggleMustSolve && (
+          {/* {onToggleMustSolve && (
             <div className="absolute top-2 right-2">
               <div 
                 className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm rounded-full px-2 py-1 shadow-md border border-border/50"
@@ -80,7 +80,7 @@ export const AssignmentCard: React.FC<AssignmentCardProps> = ({
                 />
               </div>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Content */}

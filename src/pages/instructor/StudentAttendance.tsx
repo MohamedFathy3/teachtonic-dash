@@ -107,12 +107,14 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
   const [scannerMode, setScannerMode] = useState<'qr' | 'barcode'>('qr');
   const [autoMode, setAutoMode] = useState<boolean>(true);
   const [recordedCount, setRecordedCount] = useState<number>(0);
+  const [isScanningPaused, setIsScanningPaused] = useState(false);
   
   const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const scannedIdsRef = useRef<Set<string>>(new Set());
+  const scannedIdsRef = useRef<Set<number>>(new Set());
   const vibrationRef = useRef<boolean>(true);
   const isProcessingRef = useRef<boolean>(false);
+  const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 🎯 Vibrate function
   const vibratePhone = useCallback((pattern: number | number[] = 200) => {
@@ -154,46 +156,64 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     vibratePhone([300, 100, 300]);
   }, [vibratePhone]);
 
-  const recordStudentInstantly = useCallback(async (studentId: number, studentName: string) => {
+  // ✅ دالة تسجيل الطالب - المعدلة
+  const recordStudentInstantly = useCallback(async (student: Student) => {
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
 
     try {
-      await api.post('/course-detail-attendance', {
+      console.log('📝 Recording student with ID:', student.id, 'Name:', student.name);
+      console.log('📝 Lesson ID:', lessonId);
+      
+      // ✅ هنا نبعت الـ ID مش الباركود
+      const payload: any = {
         course_detail_id: lessonId,
-        student_id: studentId,
-        note: note.trim() || undefined,
-      });
+        student_id: student.id, // ✅ الـ ID الحقيقي من قاعدة البيانات
+      };
+
+      if (note.trim()) {
+        payload.note = note.trim();
+      }
+
+      console.log('📤 Sending payload:', payload);
+
+      const response = await api.post('/all/course-detail-attendance', payload);
+
+      console.log('✅ Attendance recorded:', response.data);
 
       setRecordedCount(prev => prev + 1);
       playSuccessFeedback();
       
       toast.success(
         isRTL 
-          ? `✅ تم تسجيل: ${studentName}` 
-          : `✅ Recorded: ${studentName}`,
+          ? `✅ تم تسجيل: ${student.name}` 
+          : `✅ Recorded: ${student.name}`,
         {
           icon: '✅',
           duration: 1500,
         }
       );
 
-      setScannedStudents(prev => [...prev, { 
-        id: studentId, 
-        name: studentName,
-        barcode: String(studentId)
-      } as Student]);
+      setScannedStudents(prev => [...prev, student]);
 
       if (scannedStudents.length === 0) {
         setShowNoteInput(true);
       }
 
+      // ✅ وقف المسح مؤقتاً بعد التسجيل (منع التكرار)
+      setIsScanningPaused(true);
+      setTimeout(() => {
+        setIsScanningPaused(false);
+      }, 2000);
+
     } catch (error: any) {
-      console.error('Error recording student:', error);
+      console.error('❌ Error recording student:', error);
+      console.error('❌ Error response:', error.response?.data);
+      
       toast.error(
         error.response?.data?.message || (isRTL ? '❌ فشل التسجيل' : '❌ Recording failed'),
         {
-          duration: 2000,
+          duration: 3000,
         }
       );
       playErrorFeedback();
@@ -202,186 +222,293 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     }
   }, [lessonId, note, isRTL, playSuccessFeedback, playErrorFeedback, scannedStudents.length]);
 
-  // Start scanner
-  const startScanner = useCallback(async () => {
+  // ✅ دالة معالجة الباركود المقروء - المعدلة بالكامل
+  const handleDecodedText = useCallback(async (decodedText: string) => {
+    // ✅ منع المعالجة أثناء التوقف
+    if (isScanningPaused) {
+      console.log('⏸️ Scanning paused, ignoring...');
+      return;
+    }
+
+    let barcodeValue = decodedText.trim();
+    
+    console.log('🔍 Raw decoded:', barcodeValue);
+    
+    // ✅ استخراج الرقم من النص
     try {
-      if (!(window as any).Html5Qrcode) {
-        await new Promise<void>((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
-          script.onload = () => resolve();
-          script.onerror = () => reject(new Error('Failed to load QR library'));
-          document.head.appendChild(script);
-        });
+      const parsed = JSON.parse(barcodeValue);
+      barcodeValue = String(parsed.id || parsed.student_id || parsed.studentId || parsed.barcode || barcodeValue);
+    } catch {
+      // Not JSON
+    }
+
+    // ✅ استخراج الرقم من الـ URL
+    const urlMatch = barcodeValue.match(/(?:id=|\/students?\/|barcode=)(\d+)/i);
+    if (urlMatch) barcodeValue = urlMatch[1];
+
+    // ✅ التأكد من أن الباركود رقم
+    if (!/^\d+$/.test(barcodeValue)) {
+      // ✅ منع الـ toasts الكتير
+      if (!isProcessingRef.current) {
+        toast.error(isRTL ? '❌ باركود غير صالح' : '❌ Invalid Barcode');
+        playErrorFeedback();
+      }
+      return;
+    }
+
+    console.log('🔍 Extracted barcode:', barcodeValue);
+
+    // ✅ منع التكرار السريع
+    if (isProcessingRef.current) {
+      console.log('⏳ Already processing, skipping...');
+      return;
+    }
+
+    setLoading(true);
+    setLastScanned(barcodeValue);
+
+    try {
+      // ✅ 1. البحث عن الطالب بالباركود
+      console.log('🔍 Searching for student with barcode:', barcodeValue);
+      
+      const response = await api.post('/student/index', {
+        filters: {
+          barcode: barcodeValue,
+          teacher_id: teacherId,
+        },
+        orderBy: 'id',
+        orderByDirection: 'desc',
+        perPage: 1,
+        page: 1,
+        paginate: true,
+        delete: false,
+      });
+
+      console.log('📥 Student search response:', response.data);
+
+      // ✅ استخراج الطالب - تأكد من المسار الصحيح
+      let student = null;
+      
+      // ✅ طريقة 1: response.data.data[0]
+      if (response.data?.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+        student = response.data.data[0];
+      }
+      // ✅ طريقة 2: response.data[0]
+      else if (Array.isArray(response.data) && response.data.length > 0) {
+        student = response.data[0];
+      }
+      // ✅ طريقة 3: response.data نفسه كائن
+      else if (response.data && typeof response.data === 'object' && response.data.id) {
+        student = response.data;
       }
 
-      const Html5Qrcode = (window as any).Html5Qrcode;
-      const scannerId = 'camera-scanner-' + Date.now();
-
-      if (containerRef.current) {
-        containerRef.current.id = scannerId;
+      if (!student) {
+        console.error('❌ Student not found for barcode:', barcodeValue);
+        toast.error(isRTL ? '❌ الطالب غير موجود' : '❌ Student not found');
+        playErrorFeedback();
+        setLoading(false);
+        return;
       }
 
-      const originalConsoleError = console.error;
-      console.error = (...args) => {
-        const message = args.join(' ');
-        if (
-          message.includes('NoMultiFormatReaders') ||
-          message.includes('QR code parse error') ||
-          message.includes('NotFoundException') ||
-          message.includes('D: No MultiFormat Readers')
-        ) {
+      console.log('✅ Student found:', student);
+      console.log('📌 Student ID (REAL):', student.id);
+      console.log('📌 Student Barcode:', student.barcode);
+      console.log('📌 Student Name:', student.name);
+
+      // ✅ 2. التحقق من عدم تسجيله مسبقاً
+      if (scannedIdsRef.current.has(student.id)) {
+        toast.info(isRTL ? '⚠️ تم تسجيل هذا الطالب بالفعل' : '⚠️ Student already recorded');
+        vibratePhone(100);
+        setLoading(false);
+        return;
+      }
+
+      // ✅ 3. إضافته للقائمة (حتى لو autoMode)
+      scannedIdsRef.current.add(student.id);
+
+      if (autoMode) {
+        // ✅ الوضع التلقائي: يسجل فوراً بالـ ID
+        await recordStudentInstantly(student);
+      } else {
+        // ✅ الوضع اليدوي: يضيف للقائمة
+        playSuccessFeedback();
+        setScannedStudents(prev => [...prev, student]);
+        toast.success(
+          isRTL 
+            ? `✅ تم مسح: ${student.name}` 
+            : `✅ Scanned: ${student.name}`,
+          {
+            icon: '📳',
+            duration: 2000,
+          }
+        );
+        if (scannedStudents.length === 0) {
+          setShowNoteInput(true);
+        }
+      }
+
+    } catch (error: any) {
+      console.error('❌ Error processing barcode:', error);
+      console.error('❌ Error details:', error.response?.data);
+      
+      // ✅ منع الـ toasts الكتير
+      if (!isProcessingRef.current) {
+        toast.error(
+          error.response?.data?.message || (isRTL ? '❌ حدث خطأ' : '❌ An error occurred'),
+          {
+            duration: 3000,
+          }
+        );
+        playErrorFeedback();
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [teacherId, isRTL, autoMode, playSuccessFeedback, playErrorFeedback, vibratePhone, recordStudentInstantly, scannedStudents.length, isScanningPaused]);
+
+  // ✅ بدء الماسح الضوئي - محسن
+ // ✅ بدء الماسح الضوئي - نسخة نهائية
+const startScanner = useCallback(async () => {
+  try {
+    // ✅ منع تشغيل أكثر من Scanner
+    if (scannerRef.current) {
+      console.log('⚠️ Scanner already running');
+      return;
+    }
+
+    // ✅ إخفاء warnings المزعجة من الـ library
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    
+    console.warn = (...args) => {
+      const msg = args.join(' ');
+      const ignoredPatterns = [
+        'NoMultiFormatReaders',
+        'QR code parse error',
+        'NotFoundException',
+        'D: No MultiFormat Readers',
+        'Unable to detect',
+        'parse error',
+        'No MultiFormat Readers'
+      ];
+      if (ignoredPatterns.some(p => msg.includes(p))) {
+        return;
+      }
+      originalWarn.apply(console, args);
+    };
+
+    console.error = (...args) => {
+      const msg = args.join(' ');
+      const ignoredPatterns = [
+        'NoMultiFormatReaders',
+        'QR code parse error',
+        'NotFoundException',
+        'D: No MultiFormat Readers',
+        'Unable to detect',
+        'parse error',
+        'No MultiFormat Readers'
+      ];
+      if (ignoredPatterns.some(p => msg.includes(p))) {
+        return;
+      }
+      originalError.apply(console, args);
+    };
+
+    if (!(window as any).Html5Qrcode) {
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load QR library'));
+        document.head.appendChild(script);
+      });
+    }
+
+    const Html5Qrcode = (window as any).Html5Qrcode;
+    const scannerId = 'camera-scanner-' + Date.now();
+
+    if (containerRef.current) {
+      containerRef.current.id = scannerId;
+    }
+
+    const scanner = new Html5Qrcode(scannerId);
+    scannerRef.current = scanner;
+
+    const formats = scannerMode === 'qr' 
+      ? { qrbox: { width: 280, height: 280 } }
+      : { 
+          qrbox: { width: 400, height: 100 },
+          formatsToSupport: [
+            Html5Qrcode.ALL_FORMATS.CODE_128,
+            Html5Qrcode.ALL_FORMATS.CODE_39,
+            Html5Qrcode.ALL_FORMATS.EAN_13,
+            Html5Qrcode.ALL_FORMATS.EAN_8,
+            Html5Qrcode.ALL_FORMATS.UPC_A,
+            Html5Qrcode.ALL_FORMATS.UPC_E,
+            Html5Qrcode.ALL_FORMATS.QR_CODE,
+          ]
+        };
+
+    await scanner.start(
+      { facingMode: 'environment' },
+      {
+        fps: 5,
+        ...formats,
+        aspectRatio: 1.0,
+      },
+      handleDecodedText,
+      (error: any) => {
+        // ✅ تجاهل كل الأخطاء المزعجة
+        const errorMessage = error?.message || '';
+        const ignoredPatterns = [
+          'NoMultiFormatReaders',
+          'QR code parse error',
+          'NotFoundException',
+          'D: No MultiFormat Readers',
+          'Unable to detect',
+          'parse error',
+          'No MultiFormat Readers'
+        ];
+        if (ignoredPatterns.some(p => errorMessage.includes(p))) {
           return;
         }
-        originalConsoleError.apply(console, args);
-      };
-
-      const scanner = new Html5Qrcode(scannerId);
-      scannerRef.current = scanner;
-
-      const formats = scannerMode === 'qr' 
-        ? { qrbox: { width: 280, height: 280 } }
-        : { 
-            qrbox: { width: 400, height: 100 },
-            formatsToSupport: [
-              Html5Qrcode.ALL_FORMATS.CODE_128,
-              Html5Qrcode.ALL_FORMATS.CODE_39,
-              Html5Qrcode.ALL_FORMATS.EAN_13,
-              Html5Qrcode.ALL_FORMATS.EAN_8,
-              Html5Qrcode.ALL_FORMATS.UPC_A,
-              Html5Qrcode.ALL_FORMATS.UPC_E,
-              Html5Qrcode.ALL_FORMATS.QR_CODE,
-            ]
-          };
-
-      await scanner.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          ...formats,
-          aspectRatio: 1.0,
-        },
-        async (decodedText: string) => {
-          let studentId = decodedText.trim();
-          
-          try {
-            const parsed = JSON.parse(studentId);
-            studentId = String(parsed.id || parsed.student_id || parsed.studentId || parsed.barcode || studentId);
-          } catch {
-            // Not JSON
-          }
-
-          const urlMatch = studentId.match(/(?:id=|\/students?\/|barcode=)(\d+)/i);
-          if (urlMatch) studentId = urlMatch[1];
-
-          if (!/^\d+$/.test(studentId)) {
-            toast.error(isRTL ? 'QR/باركود غير صالح' : 'Invalid QR/Barcode');
-            playErrorFeedback();
-            return;
-          }
-
-          if (scannedIdsRef.current.has(studentId)) {
-            toast.info(isRTL ? 'تم تسجيل هذا الطالب بالفعل' : 'Student already recorded');
-            vibratePhone(100);
-            return;
-          }
-
-          setLastScanned(studentId);
-          scannedIdsRef.current.add(studentId);
-          setLoading(true);
-
-          try {
-            const response = await api.post('/student/index', {
-              filters: {
-                barcode: studentId,
-                teacher_id: teacherId,
-              },
-              orderBy: 'id',
-              orderByDirection: 'desc',
-              perPage: 1,
-              page: 1,
-              paginate: true,
-              delete: false,
-            });
-
-            const student = response.data?.data?.[0] || response.data?.data;
-
-            if (!student) {
-              toast.error(isRTL ? 'الطالب غير موجود' : 'Student not found');
-              playErrorFeedback();
-              scannedIdsRef.current.delete(studentId);
-              setLoading(false);
-              return;
-            }
-
-            if (autoMode) {
-              await recordStudentInstantly(Number(studentId), student.name);
-            } else {
-              playSuccessFeedback();
-              setScannedStudents(prev => [...prev, student]);
-              toast.success(
-                isRTL 
-                  ? `✅ تم سكان: ${student.name}` 
-                  : `✅ Scanned: ${student.name}`,
-                {
-                  icon: '📳',
-                  duration: 2000,
-                }
-              );
-              if (scannedStudents.length === 0) {
-                setShowNoteInput(true);
-              }
-            }
-
-          } catch (error: any) {
-            console.error('Error:', error);
-            toast.error(error.response?.data?.message || (isRTL ? 'حدث خطأ' : 'An error occurred'));
-            playErrorFeedback();
-            scannedIdsRef.current.delete(studentId);
-          } finally {
-            setLoading(false);
-          }
-        },
-        (error: any) => {
-          const errorMessage = error?.message || '';
-          if (
-            errorMessage.includes('NoMultiFormatReaders') ||
-            errorMessage.includes('QR code parse error') ||
-            errorMessage.includes('NotFoundException') ||
-            errorMessage.includes('D: No MultiFormat Readers')
-          ) {
-            return;
-          }
-          console.warn('Scanner warning:', error);
-        }
-      );
-
-      console.error = originalConsoleError;
-      setScannerReady(true);
-      toast.success(
-        isRTL 
-          ? `✅ الكاميرا جاهزة - وضع ${autoMode ? 'تلقائي' : 'يدوي'}` 
-          : `✅ Camera ready - ${autoMode ? 'Auto' : 'Manual'} mode`
-      );
-
-    } catch (err: any) {
-      console.error('Scanner error:', err);
-      if (err?.message?.includes('NotAllowedError') || err?.name === 'NotAllowedError') {
-        setScannerError(isRTL ? 'تم رفض الوصول للكاميرا' : 'Camera access denied');
-      } else if (err?.message?.includes('NotFoundError') || err?.name === 'NotFoundError') {
-        setScannerError(isRTL ? 'لا توجد كاميرا على هذا الجهاز' : 'No camera found');
-      } else {
-        setScannerError(isRTL ? 'تعذر تشغيل الكاميرا' : 'Could not start camera');
+        console.warn('Scanner warning:', error);
       }
-      playErrorFeedback();
+    );
+
+    // ✅ استعادة الـ console
+    console.warn = originalWarn;
+    console.error = originalError;
+    
+    setScannerReady(true);
+    toast.success(
+      isRTL 
+        ? `✅ الكاميرا جاهزة - وضع ${autoMode ? 'تلقائي' : 'يدوي'}` 
+        : `✅ Camera ready - ${autoMode ? 'Auto' : 'Manual'} mode`
+    );
+
+  } catch (err: any) {
+    // ✅ استعادة الـ console في حالة الخطأ
+    console.warn = originalWarn;
+    console.error = originalError;
+    
+    console.error('Scanner error:', err);
+    if (err?.message?.includes('NotAllowedError') || err?.name === 'NotAllowedError') {
+      setScannerError(isRTL ? '❌ تم رفض الوصول للكاميرا' : '❌ Camera access denied');
+    } else if (err?.message?.includes('NotFoundError') || err?.name === 'NotFoundError') {
+      setScannerError(isRTL ? '❌ لا توجد كاميرا على هذا الجهاز' : '❌ No camera found');
+    } else {
+      setScannerError(isRTL ? '❌ تعذر تشغيل الكاميرا' : '❌ Could not start camera');
     }
-  }, [isRTL, teacherId, scannerMode, autoMode, playSuccessFeedback, playErrorFeedback, vibratePhone, recordStudentInstantly]);
+    playErrorFeedback();
+  }
+}, [isRTL, scannerMode, autoMode, playErrorFeedback, handleDecodedText]);
 
   const stopScanner = useCallback(async () => {
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
-        scannerRef.current.clear();
+        await scannerRef.current.clear();
       } catch {
         // ignore
       }
@@ -392,7 +519,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
 
   const handleRemoveStudent = (studentId: number) => {
     setScannedStudents(prev => prev.filter(s => s.id !== studentId));
-    scannedIdsRef.current.delete(String(studentId));
+    scannedIdsRef.current.delete(studentId);
     vibratePhone(50);
   };
 
@@ -404,14 +531,20 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
 
     setRecording(true);
     try {
-      const studentIds = scannedStudents.map(s => s.id);
-      
-      for (const studentId of studentIds) {
-        await api.post('/course-detail-attendance', {
+      // ✅ نبعت الـ ID لكل طالب
+      for (const student of scannedStudents) {
+        console.log('📝 Recording student:', student.id, student.name);
+        
+        const payload: any = {
           course_detail_id: lessonId,
-          student_id: studentId,
-          note: note.trim() || undefined,
-        });
+          student_id: student.id, // ✅ الـ ID الحقيقي
+        };
+
+        if (note.trim()) {
+          payload.note = note.trim();
+        }
+
+        await api.post('/all/course-detail-attendance', payload);
       }
 
       vibratePhone([200, 100, 200, 100, 400]);
@@ -426,12 +559,13 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         }
       );
 
-      onAttendanceRecorded(studentIds, note.trim() || undefined);
+      onAttendanceRecorded(scannedStudents.map(s => s.id), note.trim() || undefined);
       
       setScannedStudents([]);
       scannedIdsRef.current.clear();
       setNote('');
       setShowNoteInput(false);
+      setRecordedCount(prev => prev + scannedStudents.length);
       
     } catch (error: any) {
       console.error('Error recording attendance:', error);
@@ -473,9 +607,13 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     setRecordedCount(0);
   };
 
+  // ✅ تنظيف عند الخروج
   useEffect(() => {
     startScanner();
     return () => {
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current);
+      }
       stopScanner();
     };
   }, [startScanner, stopScanner]);
@@ -1224,7 +1362,6 @@ export const StudentAttendance: React.FC = () => {
           open={modalOpen}
           onClose={() => {
             setModalOpen(false);
-            setSelectedLesson(null);
           }}
           lesson={selectedLesson}
           onRecordAttendance={recordAttendance}

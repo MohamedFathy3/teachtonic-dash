@@ -415,6 +415,7 @@ seocounts:"socile-counts",
     totalInstructors: "Total instructors",
     totalEarnings: "Total earnings",
     linkdrive:"linkDrive",
+    AttendancePage: "Attendance Page",
   },
   ar: {
     teacher: "المعلمون",
@@ -860,6 +861,7 @@ avgMarks: "متوسط الدرجات",
     saveChanges: "حفظ التغييرات",
     confirmActivation: "تأكيد التفعيل",
     deactivatedSuccess: "تم إلغاء التفعيل بنجاح",
+    AttendancePage: "صفحة الحضور",
 
   },
 } as const;

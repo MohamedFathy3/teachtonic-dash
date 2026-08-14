@@ -52,6 +52,7 @@ import { MyAssistantPage } from "./pages/instructor/MyAssistantPage";
 import SettingsPages from '@/pages/instructor/SettingsPage';
 import SeoCountsPage from '@/pages/instructor/SeoCountsPage';
 import { SemesterDetailsPage } from '@/pages/instructor/SemesterDetailsPage';
+import { AttendancePage } from '@/pages/instructor/AttendancePage';
 
 
 const queryClient = new QueryClient();
@@ -114,6 +115,7 @@ const App = () => {
                 <Route path="center-hours" element={<CenterHoursPage />} />
                 <Route path="lesson/:lessonId" element={<LessonDetailsPage />} />
                 <Route path="books/:id" element={<BookDetailsPage />} />
+                <Route path="AttendancePage" element={<AttendancePage />} />
                 <Route path="offers" element={<OffersPage />} />
                 <Route path="Notifications" element={<BannersPage />} />
                 <Route path="attens" element={<StudentAttendance />} />
