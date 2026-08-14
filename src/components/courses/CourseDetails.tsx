@@ -3,13 +3,13 @@
 // src/components/courses/CourseDetails.tsx
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Clock, Users, DollarSign, BookOpen, GraduationCap, User, MapPin, Globe, ChevronLeft, Edit2, Heart, Share2, Eye, Award, Target, CheckCircle2, Plus, Trash2, Video, Link as LinkIcon, Loader2, Phone, Mail, Star, UserCheck, Lock, X, Filter, Search } from 'lucide-react';
+import { Calendar, Clock, Users, DollarSign, BookOpen, GraduationCap, User, MapPin, Globe, ChevronLeft, Edit2, Heart, Share2, Eye, Award, Target, CheckCircle2, Plus, Trash2, Video, Link as LinkIcon, Loader2, Phone, Mail, Star, UserCheck, Lock, X, Filter, Search, AlertTriangle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useApp } from '@/contexts/AppContext';
@@ -25,6 +25,7 @@ import FileUploader from '@/components/FileUploader';
 import { Switch } from '@/components/ui/switch';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { useNavigate } from 'react-router-dom';
+import api from '@/lib/api';
 
 interface CourseDetailsProps {
   courseId: number;
@@ -71,7 +72,6 @@ const InfoCard: React.FC<{ icon: React.ElementType; label: string; value: React.
   </motion.div>
 );
 
-// ✅ مكوّن لإدارة قائمة ديناميكية (Array Field)
 // ✅ مكوّن لإدارة قائمة ديناميكية (Array Field) مع Required
 const ArrayFieldManager: React.FC<{
   label: string;
@@ -80,9 +80,9 @@ const ArrayFieldManager: React.FC<{
   placeholder: string;
   dir?: 'rtl' | 'ltr';
   icon?: React.ElementType;
-  required?: boolean;        // ✅ إضافة prop required
-  error?: string;            // ✅ رسالة خطأ
-  minItems?: number;         // ✅ الحد الأدنى للعناصر
+  required?: boolean;
+  error?: string;
+  minItems?: number;
 }> = ({ 
   label, 
   values, 
@@ -99,7 +99,6 @@ const ArrayFieldManager: React.FC<{
   const handleChange = (idx: number, val: string) =>
     onChange(values.map((v, i) => (i === idx ? val : v)));
 
-  // ✅ التحقق من وجود قيمة فارغة
   const hasEmptyValue = values.some(v => v.trim() === '');
   const showError = required && (hasEmptyValue || values.length === 0);
 
@@ -157,7 +156,6 @@ const ArrayFieldManager: React.FC<{
         ))}
       </AnimatePresence>
       
-      {/* ✅ عرض رسالة الخطأ */}
       {showError && (
         <motion.p
           initial={{ opacity: 0, y: -5 }}
@@ -240,10 +238,52 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     price: 0,
     image_id: null as number | null,
     pdf: null as number | null,
-    available_watch_count:null as number | null,
-    link_drive:'',
-
+    available_watch_count: null as number | null,
+    link_drive: '',
   });
+
+  // ✅ State للحذف
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [studentToRemove, setStudentToRemove] = useState<any>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  // ✅ دالة حذف الطالب من الكورس
+  const handleRemoveStudentFromCourse = (studentId: number, studentName: string) => {
+    setStudentToRemove({ id: studentId, name: studentName });
+    setShowRemoveDialog(true);
+  };
+
+  // ✅ تأكيد الحذف
+  const confirmRemoveStudent = async () => {
+    if (!studentToRemove) return;
+    
+    setIsRemoving(true);
+    
+    try {
+      // ✅ استدعاء الـ API
+      await api.delete(`/student-delete/course/${courseId}/${studentToRemove.id}`);
+      
+      toast.success(
+        lang === 'ar' 
+          ? `✅ تم حذف الطالب ${studentToRemove.name} من الكورس بنجاح` 
+          : `✅ Student ${studentToRemove.name} removed from course successfully`
+      );
+      
+      // ✅ تحديث القائمة
+      const updatedStudents = (course as any)?.students?.filter((s: any) => s.id !== studentToRemove.id) || [];
+      setCourse((prev: any) => ({ ...prev, students: updatedStudents }));
+      setShowRemoveDialog(false);
+      setStudentToRemove(null);
+      
+    } catch (error: any) {
+      console.error('Error removing student:', error);
+      toast.error(
+        error.response?.data?.message || (lang === 'ar' ? '❌ حدث خطأ في الحذف' : '❌ Error removing student')
+      );
+    } finally {
+      setIsRemoving(false);
+    }
+  };
 
   // ✅ جلب بيانات الكورس من API
   const fetchCourse = async () => {
@@ -346,17 +386,15 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     setShowStudentFilters(false);
   };
 
-  // 🔥 فتح Modal طلاب الدرس (يستخدم نفس طلاب الكورس)
+  // 🔥 فتح Modal طلاب الدرس
   const openLessonStudentsModal = (lesson: any) => {
     setSelectedLesson(lesson);
     setShowLessonStudentsModal(true);
   };
 
-  // 🔥 الحصول على طلاب الدرس (من طلاب الكورس مع فلتر اختياري)
+  // 🔥 الحصول على طلاب الدرس
   const getLessonStudents = () => {
     const allStudents = (course as any)?.students || [];
-    // يمكن إضافة فلتر حسب الدرس إذا كان في API
-    // حالياً نرجع كل طلاب الكورس
     return allStudents;
   };
 
@@ -427,8 +465,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       lession_time: lessonForm.lession_time,
       price: lessonForm.price,
       pdf: lessonForm.pdf,
-      available_watch_count:lessonForm.available_watch_count,
-
+      available_watch_count: lessonForm.available_watch_count,
     };
 
     if (selectedImageId) {
@@ -481,8 +518,8 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       price: 0,
       image_id: null,
       pdf: null,
-      link_drive:'',
-      available_watch_count:null,
+      link_drive: '',
+      available_watch_count: null,
     });
     setSelectedImageId(null);
     setSelectedImageUrl(null);
@@ -797,7 +834,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                             ))
                             : <h4 className="font-semibold text-base">{(isRTL ? lesson.titles_ar : lesson.titles) || '—'}</h4>
                           }
-
                         </div>
 
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
@@ -835,12 +871,11 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                           />
                         </div>
 
-                        {/* 🔥 زر عرض طلاب الدرس */}
                         <Button
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/20 text-blue-500"
-                          onClick={() => navigate(`/instructor/lesson/${lesson.id}`)} // نفس الكلام، دلوقتي الـ Route موجود
+                          onClick={() => navigate(`/instructor/lesson/${lesson.id}`)}
                           title={lang === 'ar' ? 'عرض تفاصيل الدرس' : 'View Lesson Details'}
                         >
                           <Eye className="h-4 w-4" />
@@ -891,7 +926,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               {lang === 'ar' ? 'الطلاب المسجلين في هذا الكورس' : 'Students Enrolled in This Course'} ({students.length})
             </h3>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button
                 variant="outline"
                 size="sm"
@@ -1058,8 +1093,19 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: idx * 0.05 }}
                   whileHover={{ y: -3 }}
-                  className="p-4 rounded-xl bg-gradient-to-r from-card to-muted/20 border shadow-sm group"
+                  className="p-4 rounded-xl bg-gradient-to-r from-card to-muted/20 border shadow-sm group relative"
                 >
+                  {/* ✅ زر حذف الطالب من الكورس */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                    onClick={() => handleRemoveStudentFromCourse(student.id, student.name)}
+                    title={lang === 'ar' ? 'حذف من الكورس' : 'Remove from course'}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+
                   <div className="flex items-start gap-3">
                     <Avatar className="h-12 w-12 border-2 border-primary/20">
                       {student.imageUrl || student.image?.fullUrl ? (
@@ -1154,6 +1200,57 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               </div>
             </div>
           )}
+
+          {/* ✅ Dialog تأكيد الحذف */}
+          <Dialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
+            <DialogContent className="max-w-md rounded-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-red-600">
+                  <AlertTriangle className="h-5 w-5" />
+                  {lang === 'ar' ? 'تأكيد حذف الطالب' : 'Confirm Remove Student'}
+                </DialogTitle>
+                <DialogDescription>
+                  {lang === 'ar' 
+                    ? `هل أنت متأكد من رغبتك في حذف الطالب "${studentToRemove?.name}" من هذا الكورس؟`
+                    : `Are you sure you want to remove student "${studentToRemove?.name}" from this course?`}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-3">
+                <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
+                  <p className="text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    {lang === 'ar'
+                      ? 'سيتم إلغاء تسجيل الطالب من هذا الكورس فقط، ولن يتم حذف بيانات الطالب بالكامل.'
+                      : 'The student will be unenrolled from this course only. Student data will not be deleted.'}
+                  </p>
+                </div>
+              </div>
+              <DialogFooter className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowRemoveDialog(false)}
+                  disabled={isRemoving}
+                  className="gap-2 rounded-xl"
+                >
+                  <X className="h-4 w-4" />
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={confirmRemoveStudent}
+                  disabled={isRemoving}
+                  className="gap-2 rounded-xl"
+                >
+                  {isRemoving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  {lang === 'ar' ? 'تأكيد الحذف' : 'Confirm Remove'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Details Tab */}
@@ -1361,7 +1458,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               onChange={(vals) => setLessonForm(prev => ({ ...prev, titles_ar: vals }))}
               placeholder="عنوان الدرس بالعربية"
               dir="rtl"
-              
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1406,7 +1502,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                 className="rounded-xl"
               />
             </div>
-             <div>
+            <div>
               <label className="block text-sm font-medium mb-1">{t('linkdrive') || 'رابط المحتوى'}</label>
               <Input
                 value={lessonForm.link_drive}
@@ -1446,7 +1542,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                 setLessonForm(prev => ({ ...prev, pdf: null }));
               }}
             />
-available_watch_count
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">{t('date') || 'التاريخ'}</label>
@@ -1467,12 +1563,12 @@ available_watch_count
                   className="rounded-xl"
                 />
               </div>
-                <div>
+              <div>
                 <label className="block text-sm font-medium mb-1">{t('watch_count') || 'مشاهده الدرس'}</label>
                 <Input
                   type="number"
-                  value={lessonForm.available_watch_count}
-                  onChange={(e) => setLessonForm({ ...lessonForm, available_watch_count:parseFloat(e.target.value) || 0 })}
+                  value={lessonForm.available_watch_count || ''}
+                  onChange={(e) => setLessonForm({ ...lessonForm, available_watch_count: parseFloat(e.target.value) || 0 })}
                   className="rounded-xl"
                 />
               </div>
@@ -1482,9 +1578,9 @@ available_watch_count
                 <Input
                   type="number"
                   value={lessonForm.price}
-                  onChange={(e) => setLessonForm({ ...lessonForm, price: parseFloat(e.target.value)})}
+                  onChange={(e) => setLessonForm({ ...lessonForm, price: parseFloat(e.target.value) || 0 })}
                   placeholder="0"
-                  min=""
+                  min="0"
                   step="0.5"
                   className="rounded-xl"
                 />
