@@ -24,19 +24,39 @@ import {
     Loader2, Search, ChevronLeft, ChevronRight, Filter, X, 
     GraduationCap, BookOpen, HelpCircle, Sparkles, FileText, 
     Grid3x3, List, CheckCircle, XCircle, Award, Calendar, 
-    RefreshCw, Eye, Edit2, Trash2, Plus, Save, Clock
+    RefreshCw, Eye, Edit2, Trash2, Plus, Save, Clock, Layers,
+    BookMarked
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
+import api from '@/lib/api';
 
 // ✅ Types
 interface QuestionFilters {
     stageId: number | null;
     subjectId: number | null;
+    courseId: number | null;
+    courseDetailId: number | null;
     questionType: string | null;
     minMarks: number | null;
     maxMarks: number | null;
+}
+
+interface Course {
+    id: number;
+    title: string;
+    title_ar: string;
+    type: 'online' | 'center';
+    stage_id: number | null;
+    subject_id: number | null;
+}
+
+interface CourseDetail {
+    id: number;
+    title: string;
+    title_ar: string;
+    course_id: number;
 }
 
 // ✅ Animations
@@ -91,7 +111,12 @@ const getQuestionTypeIcon = (type: string) => {
     }
 };
 
-const BankQuestionCard: React.FC<{ question: BankQuestion; lang: string }> = ({ question, lang }) => {
+const BankQuestionCard: React.FC<{ 
+    question: BankQuestion; 
+    lang: string;
+    onDelete?: (id: number) => void;
+    onEdit?: (question: BankQuestion) => void;
+}> = ({ question, lang, onDelete, onEdit }) => {
     return (
         <motion.div
             layout
@@ -100,9 +125,24 @@ const BankQuestionCard: React.FC<{ question: BankQuestion; lang: string }> = ({ 
             exit={{ opacity: 0, y: -15 }}
             transition={{ type: 'spring', stiffness: 260, damping: 22 }}
             whileHover={{ scale: 1.02, y: -5 }}
+            className="relative group"
         >
             <Card className="overflow-hidden rounded-2xl border-border/50 bg-card/80 backdrop-blur-sm shadow-lg hover:shadow-2xl hover:border-primary/40 transition-all duration-300">
                 <div className="h-1 bg-gradient-to-r from-primary/70 to-secondary/70" />
+                
+                {/* زر الحذف والتعديل */}
+                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    {onDelete && (
+                        <button
+                            onClick={() => onDelete(question.id)}
+                            className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 transition-colors"
+                            title={lang === 'ar' ? 'حذف' : 'Delete'}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
+
                 <CardContent className="p-5 space-y-4">
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
@@ -115,6 +155,14 @@ const BankQuestionCard: React.FC<{ question: BankQuestion; lang: string }> = ({ 
                                     <Award className="h-3 w-3" />
                                     {question.mark} {lang === 'ar' ? 'درجة' : 'marks'}
                                 </Badge>
+                                {question.course_detail && (
+                                    <Badge variant="outline" className="gap-1 border-purple-300 bg-purple-50 text-purple-700">
+                                        <Layers className="h-3 w-3" />
+                                        {lang === 'ar' 
+                                            ? question.course_detail.title_ar || question.course_detail.title
+                                            : question.course_detail.title || question.course_detail.title_ar}
+                                    </Badge>
+                                )}
                             </div>
                             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1">
@@ -210,11 +258,20 @@ export const InstructorBankQuestions: React.FC = () => {
     const [questions, setQuestions] = useState<BankQuestion[]>([]);
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
     const [showFilters, setShowFilters] = useState(false);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
+
+    // ✅ Courses & Course Details State
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [courseDetails, setCourseDetails] = useState<CourseDetail[]>([]);
+    const [loadingCourses, setLoadingCourses] = useState(false);
+    const [loadingCourseDetails, setLoadingCourseDetails] = useState(false);
 
     // ✅ Filter State
     const [filters, setFilters] = useState<QuestionFilters>({
         stageId: null,
         subjectId: null,
+        courseId: null,
+        courseDetailId: null,
         questionType: null,
         minMarks: null,
         maxMarks: null,
@@ -250,8 +307,101 @@ export const InstructorBankQuestions: React.FC = () => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
+    // ✅ Fetch Courses based on selected subject
+    const fetchCourses = useCallback(async (subjectId: number | null) => {
+        if (!subjectId) {
+            setCourses([]);
+            return;
+        }
+
+        setLoadingCourses(true);
+        try {
+            const response = await api.post('/course/index', {
+                filters: {
+                    subject_id: subjectId,
+                    teacher_id: user?.id,
+                },
+                orderBy: 'id',
+                orderByDirection: 'desc',
+                perPage: 100,
+                paginate: false,
+                delete: false,
+            });
+
+            const courseData = response.data?.data || [];
+            setCourses(courseData);
+
+            // ✅ Reset courseId if it doesn't exist
+            if (filters.courseId) {
+                const exists = courseData.some((c: Course) => c.id === filters.courseId);
+                if (!exists) {
+                    setFilters(prev => ({ ...prev, courseId: null, courseDetailId: null }));
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error fetching courses:', error);
+            setCourses([]);
+        } finally {
+            setLoadingCourses(false);
+        }
+    }, [user?.id, filters.courseId]);
+
+    // ✅ Fetch Course Details based on selected course
+    const fetchCourseDetails = useCallback(async (courseId: number | null) => {
+        if (!courseId) {
+            setCourseDetails([]);
+            return;
+        }
+
+        setLoadingCourseDetails(true);
+        try {
+            console.log('📡 Fetching course details for course_id:', courseId);
+            
+            const response = await api.post('/course-detail/index', {
+                filters: {
+                    course_id: courseId,
+                },
+                orderBy: 'id',
+                orderByDirection: 'desc',
+                perPage: 100,
+                paginate: false,
+                delete: false,
+            });
+
+            console.log('📥 Course details response:', response.data);
+
+            const details = response.data?.data || [];
+            setCourseDetails(details);
+
+            // ✅ Reset courseDetailId if it doesn't exist
+            if (filters.courseDetailId) {
+                const exists = details.some((d: CourseDetail) => d.id === filters.courseDetailId);
+                if (!exists) {
+                    console.log('⚠️ Selected course detail not found, resetting...');
+                    setFilters(prev => ({ ...prev, courseDetailId: null }));
+                } else {
+                    console.log('✅ Course detail exists:', filters.courseDetailId);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error fetching course details:', error);
+            setCourseDetails([]);
+        } finally {
+            setLoadingCourseDetails(false);
+        }
+    }, [filters.courseDetailId]);
+
+    // ✅ Fetch courses when subject changes
+    useEffect(() => {
+        fetchCourses(filters.subjectId);
+    }, [filters.subjectId, fetchCourses]);
+
+    // ✅ Fetch course details when course changes
+    useEffect(() => {
+        fetchCourseDetails(filters.courseId);
+    }, [filters.courseId, fetchCourseDetails]);
+
     // ✅ Fetch Questions
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     const fetchQuestions = useCallback(async (page = 1) => {
         if (!user?.id) return;
         setLoading(true);
@@ -262,6 +412,8 @@ export const InstructorBankQuestions: React.FC = () => {
             
             if (filters.stageId) filterParams.stage_id = filters.stageId;
             if (filters.subjectId) filterParams.subject_id = filters.subjectId;
+            if (filters.courseId) filterParams.course_id = filters.courseId;
+            if (filters.courseDetailId) filterParams.course_detail_id = filters.courseDetailId;
             if (filters.questionType) filterParams.question_type = filters.questionType;
             if (filters.minMarks !== null && filters.minMarks !== undefined) filterParams.min_mark = filters.minMarks;
             if (filters.maxMarks !== null && filters.maxMarks !== undefined) filterParams.max_mark = filters.maxMarks;
@@ -269,7 +421,7 @@ export const InstructorBankQuestions: React.FC = () => {
             
             filterParams.teacher_id = user.id;
 
-         
+            console.log('🔍 Filters being sent to service:', filterParams);
 
             const response = await bankQuestionsService.getAllBankQuestions({
                 page,
@@ -277,8 +429,8 @@ export const InstructorBankQuestions: React.FC = () => {
                 ...filterParams
             });
 
+            console.log('📥 Questions response:', response);
 
-            // ✅ معالجة الاستجابة حسب هيكلها
             if (response && response.data && Array.isArray(response.data)) {
                 setQuestions(response.data);
                 setPagination({
@@ -334,12 +486,14 @@ export const InstructorBankQuestions: React.FC = () => {
         const urlFilters: QuestionFilters = {
             stageId: searchParams.get('stage') ? Number(searchParams.get('stage')) : null,
             subjectId: searchParams.get('subject') ? Number(searchParams.get('subject')) : null,
+            courseId: searchParams.get('course') ? Number(searchParams.get('course')) : null,
+            courseDetailId: searchParams.get('courseDetail') ? Number(searchParams.get('courseDetail')) : null,
             questionType: searchParams.get('type') || null,
             minMarks: searchParams.get('minMarks') ? Number(searchParams.get('minMarks')) : null,
             maxMarks: searchParams.get('maxMarks') ? Number(searchParams.get('maxMarks')) : null,
         };
 
-        const hasAny = urlFilters.stageId || urlFilters.subjectId ||
+        const hasAny = urlFilters.stageId || urlFilters.subjectId || urlFilters.courseId || urlFilters.courseDetailId ||
             urlFilters.questionType || urlFilters.minMarks || urlFilters.maxMarks;
 
         if (hasAny) {
@@ -347,16 +501,37 @@ export const InstructorBankQuestions: React.FC = () => {
         }
     }, [searchParams]);
 
+    // ✅ Delete Question
+    const handleDeleteQuestion = useCallback(async (id: number) => {
+        setDeletingId(id);
+        try {
+            await bankQuestionsService.deleteBankQuestion(id);
+            toast.success(
+                lang === 'ar' ? 'تم حذف السؤال بنجاح' : 'Question deleted successfully'
+            );
+            fetchQuestions(pagination.currentPage);
+        } catch (error: any) {
+            console.error('❌ Error deleting question:', error);
+            toast.error(
+                lang === 'ar' ? 'حدث خطأ أثناء حذف السؤال' : 'Error deleting question'
+            );
+        } finally {
+            setDeletingId(null);
+        }
+    }, [lang, fetchQuestions, pagination.currentPage]);
+
     // ✅ Apply Filters
     const applyFilters = () => {
-        // حفظ الفلاتر في localStorage
+        console.log('🔄 Applying filters:', filters);
+        
         localStorage.setItem('bankQuestionFilters', JSON.stringify(filters));
         setSavedFilters(filters);
 
-        // تحديث URL params
         const newParams = new URLSearchParams();
         if (filters.stageId) newParams.set('stage', String(filters.stageId));
         if (filters.subjectId) newParams.set('subject', String(filters.subjectId));
+        if (filters.courseId) newParams.set('course', String(filters.courseId));
+        if (filters.courseDetailId) newParams.set('courseDetail', String(filters.courseDetailId));
         if (filters.questionType) newParams.set('type', filters.questionType);
         if (filters.minMarks) newParams.set('minMarks', String(filters.minMarks));
         if (filters.maxMarks) newParams.set('maxMarks', String(filters.maxMarks));
@@ -364,7 +539,6 @@ export const InstructorBankQuestions: React.FC = () => {
         setSearchParams(newParams);
         setShowFilters(false);
         
-        // ✅ جلب البيانات بعد تطبيق الفلاتر
         fetchQuestions(1);
         
         toast.success(lang === 'ar' ? 'تم تطبيق الفلاتر بنجاح' : 'Filters applied successfully');
@@ -375,6 +549,8 @@ export const InstructorBankQuestions: React.FC = () => {
         const reset = {
             stageId: null,
             subjectId: null,
+            courseId: null,
+            courseDetailId: null,
             questionType: null,
             minMarks: null,
             maxMarks: null,
@@ -383,8 +559,8 @@ export const InstructorBankQuestions: React.FC = () => {
         setSavedFilters(null);
         localStorage.removeItem('bankQuestionFilters');
         setSearchParams({});
-        
-        // ✅ جلب البيانات بدون فلتر
+        setCourses([]);
+        setCourseDetails([]);
         fetchQuestions(1);
         
         toast.info(lang === 'ar' ? 'تم مسح جميع الفلاتر' : 'All filters cleared');
@@ -420,7 +596,7 @@ export const InstructorBankQuestions: React.FC = () => {
         >
             <div className="max-w-[1600px] mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
-                {/* ✅ Header Section */}
+                {/* Header Section */}
                 <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <div className="flex items-center gap-3">
@@ -443,7 +619,6 @@ export const InstructorBankQuestions: React.FC = () => {
                     </div>
 
                     <div className="flex gap-2">
-                        {/* View Mode Toggle */}
                         <div className="flex bg-muted/50 rounded-xl p-1">
                             <button
                                 onClick={() => setViewMode('grid')}
@@ -465,7 +640,6 @@ export const InstructorBankQuestions: React.FC = () => {
                             </button>
                         </div>
 
-                        {/* Export Button */}
                         <ExportExcelButton
                             data={questions}
                             fileName="bank-questions"
@@ -475,7 +649,7 @@ export const InstructorBankQuestions: React.FC = () => {
                     </div>
                 </motion.div>
 
-                {/* ✅ Stats Cards */}
+                {/* Stats Cards */}
                 <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     {[
                         { label: lang === 'ar' ? 'إجمالي الأسئلة' : 'Total Questions', value: stats.total, icon: HelpCircle, color: 'from-blue-500 to-cyan-500' },
@@ -512,10 +686,9 @@ export const InstructorBankQuestions: React.FC = () => {
                     ))}
                 </motion.div>
 
-                {/* ✅ Search & Filters Section */}
+                {/* Search & Filters Section */}
                 <motion.div variants={itemVariants} className="space-y-4">
                     <div className="flex flex-col sm:flex-row justify-between gap-4">
-                        {/* Search Input */}
                         <div className="relative flex-1 max-w-md">
                             <Search className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
                             <Input
@@ -527,7 +700,6 @@ export const InstructorBankQuestions: React.FC = () => {
                         </div>
 
                         <div className="flex gap-2">
-                            {/* Filter Toggle Button */}
                             <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
@@ -540,7 +712,6 @@ export const InstructorBankQuestions: React.FC = () => {
                                 <Filter className="h-4 w-4" />
                             </motion.button>
 
-                            {/* Load Saved Filters Button */}
                             {savedFilters && (
                                 <motion.button
                                     whileHover={{ scale: 1.05 }}
@@ -554,7 +725,7 @@ export const InstructorBankQuestions: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* ✅ Filters Panel */}
+                    {/* Filters Panel */}
                     <AnimatePresence>
                         {showFilters && (
                             <motion.div
@@ -573,12 +744,18 @@ export const InstructorBankQuestions: React.FC = () => {
                                             </Label>
                                             <select
                                                 value={filters.stageId || ''}
-                                                onChange={(e) =>
+                                                onChange={(e) => {
+                                                    const val = e.target.value ? Number(e.target.value) : null;
                                                     setFilters(prev => ({
                                                         ...prev,
-                                                        stageId: e.target.value ? Number(e.target.value) : null
-                                                    }))
-                                                }
+                                                        stageId: val,
+                                                        subjectId: null,
+                                                        courseId: null,
+                                                        courseDetailId: null,
+                                                    }));
+                                                    setCourses([]);
+                                                    setCourseDetails([]);
+                                                }}
                                                 className="w-full rounded-xl border px-3 py-2 text-sm bg-background"
                                             >
                                                 <option value="">
@@ -600,12 +777,17 @@ export const InstructorBankQuestions: React.FC = () => {
                                             </Label>
                                             <select
                                                 value={filters.subjectId || ''}
-                                                onChange={(e) =>
+                                                onChange={(e) => {
+                                                    const val = e.target.value ? Number(e.target.value) : null;
                                                     setFilters(prev => ({
                                                         ...prev,
-                                                        subjectId: e.target.value ? Number(e.target.value) : null
-                                                    }))
-                                                }
+                                                        subjectId: val,
+                                                        courseId: null,
+                                                        courseDetailId: null,
+                                                    }));
+                                                    setCourses([]);
+                                                    setCourseDetails([]);
+                                                }}
                                                 className="w-full rounded-xl border px-3 py-2 text-sm bg-background"
                                             >
                                                 <option value="">
@@ -619,6 +801,100 @@ export const InstructorBankQuestions: React.FC = () => {
                                                         </option>
                                                     ))}
                                             </select>
+                                        </div>
+
+                                        {/* Course Filter - based on subject */}
+                                        <div className="space-y-2">
+                                            <Label className="flex items-center gap-1 text-sm font-medium">
+                                                <BookMarked className="h-4 w-4 text-indigo-500" />
+                                                {lang === 'ar' ? 'الكورس' : 'Course'}
+                                            </Label>
+                                            <select
+                                                value={filters.courseId || ''}
+                                                onChange={(e) => {
+                                                    const val = e.target.value ? Number(e.target.value) : null;
+                                                    setFilters(prev => ({
+                                                        ...prev,
+                                                        courseId: val,
+                                                        courseDetailId: null,
+                                                    }));
+                                                    setCourseDetails([]);
+                                                }}
+                                                disabled={!filters.subjectId || loadingCourses}
+                                                className="w-full rounded-xl border px-3 py-2 text-sm bg-background disabled:opacity-50"
+                                            >
+                                                <option value="">
+                                                    {!filters.subjectId 
+                                                        ? (lang === 'ar' ? 'اختر المادة أولاً' : 'Select subject first')
+                                                        : loadingCourses
+                                                        ? (lang === 'ar' ? 'جاري التحميل...' : 'Loading...')
+                                                        : courses.length === 0
+                                                        ? (lang === 'ar' ? 'لا توجد كورسات' : 'No courses found')
+                                                        : (lang === 'ar' ? 'جميع الكورسات' : 'All Courses')}
+                                                </option>
+                                                {courses.map((course) => (
+                                                    <option key={course.id} value={course.id}>
+                                                        {isRTL
+                                                            ? course.title_ar || course.title || `كورس ${course.id}`
+                                                            : course.title || course.title_ar || `Course ${course.id}`}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {loadingCourses && (
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                    {lang === 'ar' ? 'جاري تحميل الكورسات...' : 'Loading courses...'}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Course Detail (Lesson) Filter - based on course */}
+                                        <div className="space-y-2">
+                                            <Label className="flex items-center gap-1 text-sm font-medium">
+                                                <Layers className="h-4 w-4 text-purple-500" />
+                                                {lang === 'ar' ? 'الدرس' : 'Lesson'}
+                                            </Label>
+                                            <select
+                                                value={filters.courseDetailId || ''}
+                                                onChange={(e) => {
+                                                    const val = e.target.value ? Number(e.target.value) : null;
+                                                    console.log('🔄 Course detail changed to:', val);
+                                                    setFilters(prev => {
+                                                        const newFilters = { ...prev, courseDetailId: val };
+                                                        console.log('📝 New filters after course detail change:', newFilters);
+                                                        return newFilters;
+                                                    });
+                                                }}
+                                                disabled={!filters.courseId || loadingCourseDetails}
+                                                className="w-full rounded-xl border px-3 py-2 text-sm bg-background disabled:opacity-50"
+                                            >
+                                                <option value="">
+                                                    {!filters.courseId 
+                                                        ? (lang === 'ar' ? 'اختر الكورس أولاً' : 'Select course first')
+                                                        : loadingCourseDetails
+                                                        ? (lang === 'ar' ? 'جاري التحميل...' : 'Loading...')
+                                                        : courseDetails.length === 0
+                                                        ? (lang === 'ar' ? 'لا توجد دروس' : 'No lessons found')
+                                                        : (lang === 'ar' ? 'جميع الدروس' : 'All Lessons')}
+                                                </option>
+                                                {courseDetails.map((detail) => (
+                                                    <option key={detail.id} value={detail.id}>
+                                                        {isRTL
+                                                            ? detail.title_ar || detail.title || `درس ${detail.id}`
+                                                            : detail.title || detail.title_ar || `Lesson ${detail.id}`}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {loadingCourseDetails && (
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                    {lang === 'ar' ? 'جاري تحميل الدروس...' : 'Loading lessons...'}
+                                                </div>
+                                            )}
+                                            {/* ✅ عرض الـ courseDetailId الحالي */}
+                                            <div className="text-xs text-muted-foreground">
+                                                Current course_detail_id: {filters.courseDetailId || 'null'}
+                                            </div>
                                         </div>
 
                                         {/* Question Type Filter */}
@@ -640,7 +916,7 @@ export const InstructorBankQuestions: React.FC = () => {
                                         </div>
 
                                         {/* Marks Range */}
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 col-span-full md:col-span-2 lg:col-span-1">
                                             <Label className="flex items-center gap-1 text-sm font-medium">
                                                 <Award className="h-4 w-4 text-primary" />
                                                 {lang === 'ar' ? 'نطاق الدرجات' : 'Marks Range'}
@@ -648,11 +924,18 @@ export const InstructorBankQuestions: React.FC = () => {
                                             <div className="flex gap-2">
                                                 <Input
                                                     type="number"
+                                                    placeholder={lang === 'ar' ? 'من' : 'Min'}
                                                     value={filters.minMarks || ''}
                                                     onChange={(e) => setFilters(prev => ({ ...prev, minMarks: e.target.value ? Number(e.target.value) : null }))}
                                                     className="rounded-xl"
                                                 />
-                                              
+                                                <Input
+                                                    type="number"
+                                                    placeholder={lang === 'ar' ? 'إلى' : 'Max'}
+                                                    value={filters.maxMarks || ''}
+                                                    onChange={(e) => setFilters(prev => ({ ...prev, maxMarks: e.target.value ? Number(e.target.value) : null }))}
+                                                    className="rounded-xl"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -670,7 +953,7 @@ export const InstructorBankQuestions: React.FC = () => {
                                     </div>
 
                                     {/* Active Filters Display */}
-                                    {(filters.stageId || filters.subjectId || filters.questionType || filters.minMarks || filters.maxMarks) && (
+                                    {(filters.stageId || filters.subjectId || filters.courseId || filters.courseDetailId || filters.questionType || filters.minMarks || filters.maxMarks) && (
                                         <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
                                             <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}</span>
                                             {filters.stageId && (
@@ -683,6 +966,18 @@ export const InstructorBankQuestions: React.FC = () => {
                                                 <Badge variant="secondary" className="gap-1 text-xs">
                                                     <BookOpen className="h-3 w-3" /> 
                                                     {subjects.find((s: any) => s.id === filters.subjectId)?.name || lang === 'ar' ? 'المادة' : 'Subject'}
+                                                </Badge>
+                                            )}
+                                            {filters.courseId && (
+                                                <Badge variant="secondary" className="gap-1 text-xs bg-indigo-100 text-indigo-700 border-indigo-300">
+                                                    <BookMarked className="h-3 w-3" /> 
+                                                    {courses.find((c: Course) => c.id === filters.courseId)?.title || lang === 'ar' ? 'الكورس' : 'Course'}
+                                                </Badge>
+                                            )}
+                                            {filters.courseDetailId && (
+                                                <Badge variant="secondary" className="gap-1 text-xs bg-purple-100 text-purple-700 border-purple-300">
+                                                    <Layers className="h-3 w-3" /> 
+                                                    {courseDetails.find((d: CourseDetail) => d.id === filters.courseDetailId)?.title || lang === 'ar' ? 'الدرس' : 'Lesson'}
                                                 </Badge>
                                             )}
                                             {filters.questionType && (
@@ -705,7 +1000,7 @@ export const InstructorBankQuestions: React.FC = () => {
                     </AnimatePresence>
                 </motion.div>
 
-                {/* ✅ Loading & Error & Empty States */}
+                {/* Loading & Error & Empty States */}
                 {loading && (
                     <div className="flex flex-col items-center justify-center py-20">
                         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -734,7 +1029,7 @@ export const InstructorBankQuestions: React.FC = () => {
                     </motion.div>
                 )}
 
-                {/* ✅ Grid View */}
+                {/* Grid View */}
                 {!loading && !error && questions.length > 0 && viewMode === 'grid' && (
                     <>
                         <motion.div
@@ -745,7 +1040,12 @@ export const InstructorBankQuestions: React.FC = () => {
                         >
                             <AnimatePresence mode="popLayout">
                                 {questions.map((question) => (
-                                    <BankQuestionCard key={question.id} question={question} lang={lang} />
+                                    <BankQuestionCard 
+                                        key={question.id} 
+                                        question={question} 
+                                        lang={lang}
+                                        onDelete={handleDeleteQuestion}
+                                    />
                                 ))}
                             </AnimatePresence>
                         </motion.div>
@@ -796,7 +1096,7 @@ export const InstructorBankQuestions: React.FC = () => {
                     </>
                 )}
 
-                {/* ✅ Table View */}
+                {/* Table View */}
                 {!loading && !error && questions.length > 0 && viewMode === 'table' && (
                     <Card className="rounded-2xl overflow-hidden shadow-xl border-0">
                         <div className="overflow-x-auto">
@@ -808,6 +1108,9 @@ export const InstructorBankQuestions: React.FC = () => {
                                         <th className="px-5 py-4 text-center text-sm font-semibold">{lang === 'ar' ? 'الدرجة' : 'Marks'}</th>
                                         <th className="px-5 py-4 text-center text-sm font-semibold hidden lg:table-cell">{lang === 'ar' ? 'المرحلة' : 'Stage'}</th>
                                         <th className="px-5 py-4 text-center text-sm font-semibold hidden xl:table-cell">{lang === 'ar' ? 'المادة' : 'Subject'}</th>
+                                        <th className="px-5 py-4 text-center text-sm font-semibold hidden xl:table-cell">{lang === 'ar' ? 'الكورس' : 'Course'}</th>
+                                        <th className="px-5 py-4 text-center text-sm font-semibold hidden xl:table-cell">{lang === 'ar' ? 'الدرس' : 'Lesson'}</th>
+                                        <th className="px-5 py-4 text-center text-sm font-semibold">{lang === 'ar' ? 'إجراء' : 'Action'}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -834,7 +1137,7 @@ export const InstructorBankQuestions: React.FC = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-5 py-4 text-center">
+                                            <td className="px-5 py-4 text-center hidden md:table-cell">
                                                 <Badge variant="secondary" className="gap-1">
                                                     {getQuestionTypeIcon(question.question_type)}
                                                     {getQuestionTypeLabel(question.question_type, lang)}
@@ -850,6 +1153,46 @@ export const InstructorBankQuestions: React.FC = () => {
                                             </td>
                                             <td className="px-5 py-4 text-center hidden xl:table-cell">
                                                 <span className="text-sm">{question.subject}</span>
+                                            </td>
+                                            <td className="px-5 py-4 text-center hidden xl:table-cell">
+                                                {question.course ? (
+                                                    <Badge variant="outline" className="gap-1 border-indigo-300 bg-indigo-50 text-indigo-700">
+                                                        <BookMarked className="h-3 w-3" />
+                                                        {isRTL 
+                                                            ? question.course?.title_ar || question.course?.title
+                                                            : question.course?.title || question.course?.title_ar}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-5 py-4 text-center hidden xl:table-cell">
+                                                {question.course_detail ? (
+                                                    <Badge variant="outline" className="gap-1 border-purple-300 bg-purple-50 text-purple-700">
+                                                        <Layers className="h-3 w-3" />
+                                                        {isRTL 
+                                                            ? question.course_detail.title_ar || question.course_detail.title
+                                                            : question.course_detail.title || question.course_detail.title_ar}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-5 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <button
+                                                        onClick={() => handleDeleteQuestion(question.id)}
+                                                        disabled={deletingId === question.id}
+                                                        className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 transition-colors disabled:opacity-50"
+                                                        title={lang === 'ar' ? 'حذف' : 'Delete'}
+                                                    >
+                                                        {deletingId === question.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                </div>
                                             </td>
                                         </motion.tr>
                                     ))}

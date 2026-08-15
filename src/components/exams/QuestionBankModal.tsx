@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/contexts/AppContext';
+import { useTeacherMeta } from '@/hooks/useTeacherMeta';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -43,6 +44,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  GraduationCap,
+  BookMarked,
+  Layers,
 } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
 import api from '@/lib/api';
@@ -52,14 +56,29 @@ interface BankQuestion {
   teacher: string;
   stage: string;
   subject: string;
+  course: string | null;
   course_detail: string | null;
   question_type: 'true_false' | 'multiple_choice' | 'essay';
   question: string;
   mark: string;
   correct_answer: string | null;
   image: any;
-  options: any[] | null; // ✅ Allow null
+  options: any[] | null;
   createdAt: string;
+}
+
+interface Course {
+  id: number;
+  title: string;
+  title_ar: string;
+  subject_id: number;
+}
+
+interface CourseDetail {
+  id: number;
+  title: string;
+  title_ar: string;
+  course_id: number;
 }
 
 interface QuestionBankModalProps {
@@ -78,15 +97,23 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
   const { t, lang, user, instructorData } = useApp();
   const isRTL = lang === 'ar';
 
+  // ✅ استخدم useTeacherMeta عشان تجيب المراحل والمواد بتاعة المعلم
+  const { stages, subjects, loading: metaLoading } = useTeacherMeta(user?.id);
+
   const [bankQuestions, setBankQuestions] = useState<BankQuestion[]>([]);
   const [bankLoading, setBankLoading] = useState(false);
   const [selectedBankQuestions, setSelectedBankQuestions] = useState<Set<number>>(new Set());
+  
+  // ✅ Filter State
   const [bankFilters, setBankFilters] = useState({
-    subject_id: '',
     stage_id: '',
+    subject_id: '',
+    course_id: '',
+    course_detail_id: '',
     question_type: '',
     question: '',
   });
+  
   const [bankPagination, setBankPagination] = useState({
     current_page: 1,
     last_page: 1,
@@ -95,6 +122,12 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
   });
   const [selectedQuestion, setSelectedQuestion] = useState<BankQuestion | null>(null);
   const [questionDetailsOpen, setQuestionDetailsOpen] = useState(false);
+  
+  // ✅ State للكورسات والدروس
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [courseDetails, setCourseDetails] = useState<CourseDetail[]>([]);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [loadingCourseDetails, setLoadingCourseDetails] = useState(false);
   
   // ✅ Refs للسكرول
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -107,7 +140,64 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
     return null;
   };
 
-  // ✅ جلب أسئلة البنك مع دعم البحث
+  // ✅ جلب الكورسات بناءً على المادة
+  const fetchCourses = async (subjectId: string) => {
+    if (!subjectId) {
+      setCourses([]);
+      return;
+    }
+    
+    setLoadingCourses(true);
+    try {
+      const response = await api.post('/course/index', {
+        filters: { 
+          subject_id: subjectId,
+          teacher_id: getTeacherId() 
+        },
+        paginate: false,
+        delete: false,
+      });
+      
+      console.log('📥 Courses response:', response.data);
+      
+      const coursesData = response.data?.data || response.data || [];
+      setCourses(Array.isArray(coursesData) ? coursesData : []);
+    } catch (error) {
+      console.error('❌ Error fetching courses:', error);
+      setCourses([]);
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
+
+  // ✅ جلب الدروس بناءً على الكورس
+  const fetchCourseDetails = async (courseId: string) => {
+    if (!courseId) {
+      setCourseDetails([]);
+      return;
+    }
+    
+    setLoadingCourseDetails(true);
+    try {
+      const response = await api.post('/course-detail/index', {
+        filters: { course_id: courseId },
+        paginate: false,
+        delete: false,
+      });
+      
+      console.log('📥 Course details response:', response.data);
+      
+      const detailsData = response.data?.data || response.data || [];
+      setCourseDetails(Array.isArray(detailsData) ? detailsData : []);
+    } catch (error) {
+      console.error('❌ Error fetching course details:', error);
+      setCourseDetails([]);
+    } finally {
+      setLoadingCourseDetails(false);
+    }
+  };
+
+  // ✅ جلب أسئلة البنك مع دعم البحث والفلاتر
   const fetchBankQuestions = async (page = 1) => {
     const teacherId = getTeacherId();
     
@@ -120,13 +210,14 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
     try {
       const filters: any = {};
       
-      // ✅ إضافة فلتر البحث في النص
       if (bankFilters.question && bankFilters.question.trim()) {
         filters.question = bankFilters.question.trim();
       }
       
-      if (bankFilters.subject_id) filters.subject_id = bankFilters.subject_id;
       if (bankFilters.stage_id) filters.stage_id = bankFilters.stage_id;
+      if (bankFilters.subject_id) filters.subject_id = bankFilters.subject_id;
+      if (bankFilters.course_id) filters.course_id = bankFilters.course_id;
+      if (bankFilters.course_detail_id) filters.course_detail_id = bankFilters.course_detail_id;
       if (bankFilters.question_type) filters.question_type = bankFilters.question_type;
       filters.teacher_id = teacherId;
 
@@ -146,13 +237,10 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
       
       console.log('📥 Bank questions response:', data);
       
-      // ✅ FIX: Check if data and meta exist before accessing
       if (data && data.status) {
-        // ✅ Ensure data.data is an array
         const questions = Array.isArray(data.data) ? data.data : [];
         setBankQuestions(questions);
         
-        // ✅ Safely set pagination with fallback values
         setBankPagination({
           current_page: data.meta?.current_page || 1,
           last_page: data.meta?.last_page || 1,
@@ -160,12 +248,10 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
           total: data.meta?.total || 0,
         });
         
-        // ✅ إعادة السكرول للأعلى عند تغيير الصفحة
         if (scrollContainerRef.current) {
           scrollContainerRef.current.scrollTop = 0;
         }
       } else {
-        // ✅ Handle case where status is false or data is missing
         setBankQuestions([]);
         setBankPagination({
           current_page: 1,
@@ -268,7 +354,16 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
 
   // ✅ إعادة تعيين الفلاتر
   const resetFilters = () => {
-    setBankFilters({ subject_id: '', stage_id: '', question_type: '', question: '' });
+    setBankFilters({ 
+      stage_id: '', 
+      subject_id: '', 
+      course_id: '',
+      course_detail_id: '',
+      question_type: '', 
+      question: '' 
+    });
+    setCourses([]);
+    setCourseDetails([]);
     fetchBankQuestions(1);
   };
 
@@ -293,6 +388,37 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
     }
   }, [open]);
 
+  // ✅ جلب الكورسات عند تغيير المادة
+  useEffect(() => {
+    if (bankFilters.subject_id) {
+      fetchCourses(bankFilters.subject_id);
+      // إعادة تعيين الكورس والدرس عند تغيير المادة
+      setBankFilters(prev => ({
+        ...prev,
+        course_id: '',
+        course_detail_id: '',
+      }));
+      setCourseDetails([]);
+    } else {
+      setCourses([]);
+      setCourseDetails([]);
+    }
+  }, [bankFilters.subject_id]);
+
+  // ✅ جلب الدروس عند تغيير الكورس
+  useEffect(() => {
+    if (bankFilters.course_id) {
+      fetchCourseDetails(bankFilters.course_id);
+      // إعادة تعيين الدرس عند تغيير الكورس
+      setBankFilters(prev => ({
+        ...prev,
+        course_detail_id: '',
+      }));
+    } else {
+      setCourseDetails([]);
+    }
+  }, [bankFilters.course_id]);
+
   return (
     <>
       {/* ✅ مودال بنك الأسئلة الرئيسي */}
@@ -314,8 +440,9 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
             {/* Filters - ثابت في المنتصف */}
             <div className="p-4 border-b bg-muted/20 flex-shrink-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {/* <div className="relative">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* 🔍 Search */}
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder={lang === 'ar' ? 'بحث في الأسئلة...' : 'Search questions...'}
@@ -324,44 +451,156 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
                     onKeyDown={handleSearchKeyDown}
                     className="pl-9 rounded-xl"
                   />
-                </div> */}
-                <Select
-                  value={bankFilters.subject_id || "all_subjects"}
-                  onValueChange={(value) => setBankFilters({ 
-                    ...bankFilters, 
-                    subject_id: value === "all_subjects" ? "" : value 
-                  })}
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder={lang === 'ar' ? 'المادة' : 'Subject'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all_subjects">{lang === 'ar' ? 'كل المواد' : 'All Subjects'}</SelectItem>
-                    <SelectItem value="Biology">Biology</SelectItem>
-                    <SelectItem value="Chemistry">Chemistry</SelectItem>
-                    <SelectItem value="Physics">Physics</SelectItem>
-                    <SelectItem value="Mathematics">Mathematics</SelectItem>
-                    <SelectItem value="English">English</SelectItem>
-                    <SelectItem value="Arabic">Arabic</SelectItem>
-                  </SelectContent>
-                </Select>
+                </div>
+
+                {/* 🎓 Stage Filter - من useTeacherMeta */}
                 <Select
                   value={bankFilters.stage_id || "all_stages"}
-                  onValueChange={(value) => setBankFilters({ 
-                    ...bankFilters, 
-                    stage_id: value === "all_stages" ? "" : value 
-                  })}
+                  onValueChange={(value) => {
+                    const val = value === "all_stages" ? "" : value;
+                    setBankFilters({ 
+                      ...bankFilters, 
+                      stage_id: val,
+                      subject_id: '',  // ✅ إعادة تعيين المادة عند تغيير المرحلة
+                      course_id: '',    // ✅ إعادة تعيين الكورس
+                      course_detail_id: '', // ✅ إعادة تعيين الدرس
+                    });
+                    setCourses([]);
+                    setCourseDetails([]);
+                  }}
+                  disabled={metaLoading}
                 >
                   <SelectTrigger className="rounded-xl">
                     <SelectValue placeholder={lang === 'ar' ? 'المرحلة' : 'Stage'} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all_stages">{lang === 'ar' ? 'كل المراحل' : 'All Stages'}</SelectItem>
-                    <SelectItem value="First Secondary">First Secondary</SelectItem>
-                    <SelectItem value="Second Secondary">Second Secondary</SelectItem>
-                    <SelectItem value="Third Secondary">Third Secondary</SelectItem>
+                    <SelectItem value="all_stages">
+                      {lang === 'ar' ? 'كل المراحل' : 'All Stages'}
+                    </SelectItem>
+                    {stages.map((stage: any) => (
+                      <SelectItem key={stage.id} value={String(stage.id)}>
+                        {isRTL ? stage.name_ar || stage.name : stage.name || stage.name_ar}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+
+                {/* 📚 Subject Filter - من useTeacherMeta */}
+                <Select
+                  value={bankFilters.subject_id || "all_subjects"}
+                  onValueChange={(value) => {
+                    const val = value === "all_subjects" ? "" : value;
+                    setBankFilters({ 
+                      ...bankFilters, 
+                      subject_id: val,
+                      course_id: '',    // ✅ إعادة تعيين الكورس
+                      course_detail_id: '', // ✅ إعادة تعيين الدرس
+                    });
+                    setCourseDetails([]);
+                  }}
+                  disabled={!bankFilters.stage_id || metaLoading}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue 
+                      placeholder={
+                        !bankFilters.stage_id 
+                          ? (lang === 'ar' ? 'اختر المرحلة أولاً' : 'Select stage first')
+                          : metaLoading
+                          ? (lang === 'ar' ? 'جاري التحميل...' : 'Loading...')
+                          : (lang === 'ar' ? 'المادة' : 'Subject')
+                      } 
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all_subjects">
+                      {lang === 'ar' ? 'كل المواد' : 'All Subjects'}
+                    </SelectItem>
+                    {subjects
+                      .filter((s: any) => !bankFilters.stage_id || String(s.stage_id) === bankFilters.stage_id)
+                      .map((subject: any) => (
+                        <SelectItem key={subject.id} value={String(subject.id)}>
+                          {isRTL ? subject.name_ar || subject.name : subject.name || subject.name_ar}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+
+                {/* 📖 Course Filter */}
+                <Select
+                  value={bankFilters.course_id || "all_courses"}
+                  onValueChange={(value) => {
+                    const val = value === "all_courses" ? "" : value;
+                    setBankFilters({ 
+                      ...bankFilters, 
+                      course_id: val,
+                      course_detail_id: '', // ✅ إعادة تعيين الدرس
+                    });
+                  }}
+                  disabled={!bankFilters.subject_id || loadingCourses}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue 
+                      placeholder={
+                        !bankFilters.subject_id 
+                          ? (lang === 'ar' ? 'اختر المادة أولاً' : 'Select subject first')
+                          : loadingCourses
+                          ? (lang === 'ar' ? 'جاري التحميل...' : 'Loading...')
+                          : courses.length === 0
+                          ? (lang === 'ar' ? 'لا توجد كورسات' : 'No courses')
+                          : (lang === 'ar' ? 'الكورس' : 'Course')
+                      } 
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all_courses">
+                      {lang === 'ar' ? 'كل الكورسات' : 'All Courses'}
+                    </SelectItem>
+                    {courses.map((course) => (
+                      <SelectItem key={course.id} value={String(course.id)}>
+                        {isRTL ? course.title_ar || course.title : course.title || course.title_ar}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* 📝 Course Detail (Lesson) Filter */}
+                <Select
+                  value={bankFilters.course_detail_id || "all_lessons"}
+                  onValueChange={(value) => {
+                    const val = value === "all_lessons" ? "" : value;
+                    setBankFilters({ 
+                      ...bankFilters, 
+                      course_detail_id: val,
+                    });
+                  }}
+                  disabled={!bankFilters.course_id || loadingCourseDetails}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue 
+                      placeholder={
+                        !bankFilters.course_id 
+                          ? (lang === 'ar' ? 'اختر الكورس أولاً' : 'Select course first')
+                          : loadingCourseDetails
+                          ? (lang === 'ar' ? 'جاري التحميل...' : 'Loading...')
+                          : courseDetails.length === 0
+                          ? (lang === 'ar' ? 'لا توجد دروس' : 'No lessons')
+                          : (lang === 'ar' ? 'الدرس' : 'Lesson')
+                      } 
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all_lessons">
+                      {lang === 'ar' ? 'كل الدروس' : 'All Lessons'}
+                    </SelectItem>
+                    {courseDetails.map((detail) => (
+                      <SelectItem key={detail.id} value={String(detail.id)}>
+                        {isRTL ? detail.title_ar || detail.title : detail.title || detail.title_ar}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* ❓ Question Type Filter */}
                 <Select
                   value={bankFilters.question_type || "all_types"}
                   onValueChange={(value) => setBankFilters({ 
@@ -380,6 +619,8 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+              
+              {/* 🔘 Action Buttons */}
               <div className="flex justify-end mt-3 gap-2">
                 <Button 
                   variant="outline" 
@@ -399,13 +640,52 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
                   {lang === 'ar' ? 'بحث' : 'Search'}
                 </Button>
               </div>
+
+              {/* 🏷️ Active Filters Display */}
+              {(bankFilters.stage_id || bankFilters.subject_id || bankFilters.course_id || 
+                bankFilters.course_detail_id || bankFilters.question_type) && (
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
+                  <span className="text-xs text-muted-foreground">
+                    {lang === 'ar' ? 'الفلاتر النشطة:' : 'Active Filters:'}
+                  </span>
+                  {bankFilters.stage_id && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      <GraduationCap className="h-3 w-3" /> 
+                      {stages.find((s: any) => String(s.id) === bankFilters.stage_id)?.name || bankFilters.stage_id}
+                    </Badge>
+                  )}
+                  {bankFilters.subject_id && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      <BookOpen className="h-3 w-3" /> 
+                      {subjects.find((s: any) => String(s.id) === bankFilters.subject_id)?.name || bankFilters.subject_id}
+                    </Badge>
+                  )}
+                  {bankFilters.course_id && (
+                    <Badge variant="secondary" className="gap-1 text-xs bg-indigo-100 text-indigo-700 border-indigo-300">
+                      <BookMarked className="h-3 w-3" /> 
+                      {courses.find(c => String(c.id) === bankFilters.course_id)?.title || bankFilters.course_id}
+                    </Badge>
+                  )}
+                  {bankFilters.course_detail_id && (
+                    <Badge variant="secondary" className="gap-1 text-xs bg-purple-100 text-purple-700 border-purple-300">
+                      <Layers className="h-3 w-3" /> 
+                      {courseDetails.find(d => String(d.id) === bankFilters.course_detail_id)?.title || bankFilters.course_detail_id}
+                    </Badge>
+                  )}
+                  {bankFilters.question_type && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      {getQuestionTypeLabel(bankFilters.question_type)}
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* ✅ قائمة الأسئلة مع Scroll - الجزء الذي يمكن التمرير */}
+            {/* ✅ قائمة الأسئلة مع Scroll */}
             <div 
               ref={scrollContainerRef}
               className="flex-1 overflow-y-auto p-4 min-h-0"
-              style={{ maxHeight: 'calc(100% - 180px)' }}
+              style={{ maxHeight: 'calc(100% - 280px)' }}
             >
               {bankLoading ? (
                 <div className="flex items-center justify-center py-20">
@@ -468,6 +748,18 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
                             <Badge variant="secondary" className="text-xs">
                               {q.stage}
                             </Badge>
+                            {q.course && (
+                              <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700">
+                                <BookMarked className="h-3 w-3 mr-1" />
+                                {q.course}
+                              </Badge>
+                            )}
+                            {q.course_detail && (
+                              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+                                <Layers className="h-3 w-3 mr-1" />
+                                {q.course_detail}
+                              </Badge>
+                            )}
                             <Badge variant="secondary" className="text-xs">
                               🔖 {q.mark} {lang === 'ar' ? 'درجة' : 'mark'}
                             </Badge>
@@ -586,6 +878,18 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
                 </Badge>
                 <Badge variant="outline">{selectedQuestion.subject}</Badge>
                 <Badge variant="secondary">{selectedQuestion.stage}</Badge>
+                {selectedQuestion.course && (
+                  <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
+                    <BookMarked className="h-3 w-3 mr-1" />
+                    {selectedQuestion.course}
+                  </Badge>
+                )}
+                {selectedQuestion.course_detail && (
+                  <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                    <Layers className="h-3 w-3 mr-1" />
+                    {selectedQuestion.course_detail}
+                  </Badge>
+                )}
                 <Badge variant="secondary">🔖 {selectedQuestion.mark} {lang === 'ar' ? 'درجة' : 'marks'}</Badge>
               </div>
               <div className="p-4 bg-muted/30 rounded-xl">
@@ -607,7 +911,6 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
                   </p>
                 </div>
               )}
-              {/* ✅ FIX: Check if options exist and is an array before mapping */}
               {selectedQuestion.options && Array.isArray(selectedQuestion.options) && selectedQuestion.options.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-semibold">{lang === 'ar' ? 'الخيارات' : 'Options'}</p>
