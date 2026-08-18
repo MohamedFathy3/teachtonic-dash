@@ -588,16 +588,19 @@ export const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
                       } 
                     />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all_lessons">
-                      {lang === 'ar' ? 'كل الدروس' : 'All Lessons'}
-                    </SelectItem>
-                    {courseDetails.map((detail) => (
-                      <SelectItem key={detail.id} value={String(detail.id)}>
-                        {isRTL ? detail.title_ar || detail.title : detail.title || detail.title_ar}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                 <SelectContent>
+  <SelectItem value="all_lessons">
+    {lang === 'ar' ? 'كل الدروس' : 'All Lessons'}
+  </SelectItem>
+
+  {courseDetails.map((detail, index) => (
+    <SelectItem key={detail.id} value={String(detail.id)}>
+      {isRTL
+        ? detail.titles_ar?.[index] || detail.titles?.[index]
+        : detail.titles?.[index] || detail.titles_ar?.[index]}
+    </SelectItem>
+  ))}
+</SelectContent>
                 </Select>
 
                 {/* ❓ Question Type Filter */}

@@ -58,6 +58,7 @@ import {
   XCircle,
   Plus,
   Check,
+  Clock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -74,6 +75,7 @@ interface AttendanceRecord {
   created_at: string;
   attended: boolean;
   attended_at: string | null;
+  center_hour_id?: number | null;
   stage?: {
     id: number;
     name: string;
@@ -121,6 +123,7 @@ interface Filters {
   course_detail_id: number | null;
   type_of_attendance: 'online' | 'center' | null;
   teacher_id: number | null;
+  center_hour_id: number | null; // ✅ الفلتر الجديد
 }
 
 interface Course {
@@ -137,6 +140,24 @@ interface CourseDetail {
   title: string;
   title_ar: string;
   course_id: number;
+}
+
+// ✅ Interface للـ Center Hour
+interface CenterHour {
+  id: number;
+  title: string;
+  date: string;
+  hours_start: string;
+  hours_end: string;
+  address: string;
+  phone: string;
+  note: string;
+  teacher_id: number;
+  subject_id: number;
+  stage_id: number;
+  subject: string;
+  stage: string;
+  createdAt: string;
 }
 
 // Student interface for marking attendance
@@ -200,6 +221,7 @@ export const AttendancePage: React.FC = () => {
     course_detail_id: null,
     type_of_attendance: null,
     teacher_id: user?.id || null,
+    center_hour_id: null, // ✅ الفلتر الجديد
   });
   const [showFilters, setShowFilters] = useState(false);
   const [pagination, setPagination] = useState<PaginationMeta>({
@@ -215,6 +237,10 @@ export const AttendancePage: React.FC = () => {
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [deletingAttendance, setDeletingAttendance] = useState<AttendanceRecord | null>(null);
 
+  // ✅ State للـ Center Hours
+  const [centerHours, setCenterHours] = useState<CenterHour[]>([]);
+  const [loadingCenterHours, setLoadingCenterHours] = useState(false);
+
   // New state for marking attendance
   const [showMarkAttendance, setShowMarkAttendance] = useState(false);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<number | null>(null);
@@ -222,7 +248,37 @@ export const AttendancePage: React.FC = () => {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [markingAttendance, setMarkingAttendance] = useState<number | null>(null);
 
-  // Fetch attendance records
+  // ✅ Fetch Center Hours للفلتر
+  const fetchCenterHours = useCallback(async () => {
+    if (!user?.id) return;
+    setLoadingCenterHours(true);
+
+    try {
+      console.log('📡 Fetching center hours for filter...');
+      
+      const response = await api.post('/center-hour/index', {
+        filters: {
+          teacher_id: user.id,
+        },
+        orderBy: 'id',
+        orderByDirection: 'desc',
+        perPage: 100,
+        paginate: false,
+        delete: false,
+      });
+
+      console.log('📥 Center hours response:', response.data);
+
+      const data = response.data?.data || [];
+      setCenterHours(data);
+    } catch (error) {
+      console.error('❌ Error fetching center hours:', error);
+    } finally {
+      setLoadingCenterHours(false);
+    }
+  }, [user?.id]);
+
+  // Fetch attendance records - محدث
   const fetchAttendance = useCallback(
     async (page = 1) => {
       setLoading(true);
@@ -241,6 +297,8 @@ export const AttendancePage: React.FC = () => {
           filterParams.course_detail_id = filters.course_detail_id;
         if (filters.type_of_attendance)
           filterParams.type_of_attendance = filters.type_of_attendance;
+        if (filters.center_hour_id) // ✅ الفلتر الجديد
+          filterParams.center_hour_id = filters.center_hour_id;
 
         console.log('📡 Fetching attendance with filters:', filterParams);
 
@@ -449,6 +507,7 @@ export const AttendancePage: React.FC = () => {
   useEffect(() => {
     fetchAttendance(1);
     fetchCourses();
+    fetchCenterHours(); // ✅ جلب الـ Center Hours
   }, []);
 
   // Handle search
@@ -456,7 +515,7 @@ export const AttendancePage: React.FC = () => {
     fetchAttendance(1);
   };
 
-  // Handle filter change
+  // Handle filter change - محدث
   const handleFilterChange = (key: keyof Filters, value: any) => {
     setFilters((prev) => {
       const newFilters = { ...prev, [key]: value };
@@ -464,17 +523,23 @@ export const AttendancePage: React.FC = () => {
       if (key === 'type_of_attendance') {
         newFilters.course_id = null;
         newFilters.course_detail_id = null;
+        newFilters.center_hour_id = null; // ✅ إعادة تعيين
       }
       
       if (key === 'course_id') {
         newFilters.course_detail_id = null;
+        newFilters.center_hour_id = null; // ✅ إعادة تعيين
+      }
+
+      if (key === 'course_detail_id') {
+        newFilters.center_hour_id = null; // ✅ إعادة تعيين
       }
       
       return newFilters;
     });
   };
 
-  // Clear all filters
+  // Clear all filters - محدث
   const clearFilters = () => {
     setFilters({
       name: '',
@@ -485,6 +550,7 @@ export const AttendancePage: React.FC = () => {
       course_detail_id: null,
       type_of_attendance: null,
       teacher_id: user?.id || null,
+      center_hour_id: null, // ✅ الفلتر الجديد
     });
     setSearchQuery('');
     setShowFilters(false);
@@ -499,32 +565,62 @@ export const AttendancePage: React.FC = () => {
     }
   };
 
-// Handle delete attendance - التعديل المطلوب
+  // Handle delete attendance - التعديل المطلوب
+// Handle delete attendance - باستخدام الفلتر المختار
 const handleDeleteAttendance = async (attendance: AttendanceRecord) => {
   try {
-    // ✅ التعديل هنا: استخدم course_detail_id و student_id بدلاً من attendance.id
-    const courseDetailId = attendance.course_detail?.id;
-    const studentId = attendance.id; // أو attendance.student_id حسب الـ API بتاعك
+    // ✅ جلب الـ student_id من سجل الحضور
+    const studentId = (attendance as any).student_id || attendance.id;
+    
+    // ✅ جلب الـ course_detail_id من الفلتر المختار
+    // لو الفلتر مختار درس معين، استخدمه، غير كده استخدم اللي في سجل الحضور
+    const courseDetailId = filters.course_detail_id || attendance.course_detail?.id;
     
     if (!courseDetailId) {
       toast.error(
-        lang === 'ar' ? 'لا يوجد درس مرتبط بهذا الحضور' : 'No course detail associated with this attendance'
+        lang === 'ar' 
+          ? 'الرجاء اختيار درس من الفلتر أولاً' 
+          : 'Please select a lesson from the filter first'
       );
       return;
     }
 
-    // ✅ الـ endpoint الصحيح: attendance/{courseDetail}/{student}
+    if (!studentId) {
+      toast.error(
+        lang === 'ar' 
+          ? 'لا يوجد طالب مرتبط بهذا الحضور' 
+          : 'No student associated with this attendance'
+      );
+      return;
+    }
+
+    console.log('🗑️ Deleting attendance:', { 
+      courseDetailId, 
+      studentId,
+      fromFilter: !!filters.course_detail_id 
+    });
+
+    // ✅ الـ endpoint: attendance/{courseDetailId}/{studentId}
     await api.delete(`/attendance/${courseDetailId}/${studentId}`);
     
     toast.success(
-      lang === 'ar' ? 'تم حذف سجل الحضور بنجاح' : 'Attendance record deleted successfully'
+      lang === 'ar' 
+        ? 'تم حذف سجل الحضور بنجاح' 
+        : 'Attendance record deleted successfully'
     );
+    
     fetchAttendance(pagination.current_page);
     setDeletingAttendance(null);
+    
   } catch (err: any) {
     console.error('❌ Error deleting attendance:', err);
+    
+    // عرض رسالة الخطأ من الباك اند
+    const errorMessage = err.response?.data?.message || err.message;
     toast.error(
-      lang === 'ar' ? 'حدث خطأ في حذف سجل الحضور' : 'Failed to delete attendance record'
+      lang === 'ar' 
+        ? `حدث خطأ في حذف سجل الحضور` 
+        : `Failed to delete attendance record`
     );
   }
 };
@@ -809,7 +905,7 @@ const handleDeleteAttendance = async (attendance: AttendanceRecord) => {
             </div>
           </div>
 
-          {/* Filters Panel */}
+          {/* Filters Panel - محدث */}
           <AnimatePresence>
             {showFilters && (
               <motion.div
@@ -819,7 +915,7 @@ const handleDeleteAttendance = async (attendance: AttendanceRecord) => {
                 className="overflow-hidden"
               >
                 <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {/* Name Filter */}
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1 text-sm font-medium">
@@ -1001,16 +1097,60 @@ const handleDeleteAttendance = async (attendance: AttendanceRecord) => {
                           {courseDetails.map((detail) => (
                             <SelectItem key={detail.id} value={detail.id.toString()}>
                               {isRTL
-                                ? detail.titles_ar || detail.titles || `درس ${detail.id}`
-                                : detail.titles_ar || detail.titles || `Lesson ${detail.id}`}
+                                ? detail.title_ar || detail.title || `درس ${detail.id}`
+                                : detail.title || detail.title_ar || `Lesson ${detail.id}`}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
 
+                    {/* ✅ Center Hour Filter - الجديد */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1 text-sm font-medium">
+                        <Clock className="h-4 w-4 text-amber-500" />
+                        {lang === 'ar' ? 'الساعة المركزية' : 'Center Hour'}
+                      </Label>
+                      <Select
+                        value={filters.center_hour_id?.toString() || 'all'}
+                        onValueChange={(val) =>
+                          handleFilterChange('center_hour_id', val === 'all' ? null : Number(val))
+                        }
+                      >
+                        <SelectTrigger className="rounded-xl">
+                          <SelectValue
+                            placeholder={
+                              centerHours.length === 0 && !loadingCenterHours
+                                ? (lang === 'ar' ? 'لا توجد ساعات' : 'No center hours')
+                                : loadingCenterHours
+                                ? (lang === 'ar' ? 'جاري التحميل...' : 'Loading...')
+                                : (lang === 'ar' ? 'جميع الساعات' : 'All Center Hours')
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            {lang === 'ar' ? 'الكل' : 'All'}
+                          </SelectItem>
+                          {centerHours.map((hour) => (
+                            <SelectItem key={hour.id} value={hour.id.toString()}>
+                              {isRTL 
+                                ? `${hour.title} - ${hour.date} (${hour.hours_start} - ${hour.hours_end})`
+                                : `${hour.title} - ${hour.date} (${hour.hours_start} - ${hour.hours_end})`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {loadingCenterHours && (
+                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          {lang === 'ar' ? 'جاري التحميل...' : 'Loading...'}
+                        </p>
+                      )}
+                    </div>
+
                     {/* Filter Actions */}
-                    <div className="flex items-end gap-2 col-span-full md:col-span-1">
+                    <div className="flex items-end gap-2 col-span-full lg:col-span-1">
                       <Button
                         variant="outline"
                         onClick={clearFilters}
@@ -1056,8 +1196,6 @@ const handleDeleteAttendance = async (attendance: AttendanceRecord) => {
                   {lang === 'ar' ? 'غائب' : 'Absent'} ({stats.absent})
                 </TabsTrigger>
               </TabsList>
-
-          
             </div>
 
             <TabsContent value="all" className="mt-4">
@@ -1212,49 +1350,62 @@ const handleDeleteAttendance = async (attendance: AttendanceRecord) => {
         </motion.div>
       </div>
 
-
-
       {/* Delete Confirmation Dialog */}
-      <AnimatePresence>
-        {deletingAttendance && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-            onClick={() => setDeletingAttendance(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-xl font-semibold mb-2">
-                {lang === 'ar' ? 'تأكيد الحذف' : 'Confirm Delete'}
-              </h3>
-              <p className="text-muted-foreground mb-6">
-                {lang === 'ar'
-                  ? `هل أنت متأكد من حذف سجل حضور "${deletingAttendance.name}"؟ هذا الإجراء لا يمكن التراجع عنه.`
-                  : `Are you sure you want to delete attendance record for "${deletingAttendance.name}"? This action cannot be undone.`}
-              </p>
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setDeletingAttendance(null)}>
-                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => handleDeleteAttendance(deletingAttendance)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {lang === 'ar' ? 'حذف' : 'Delete'}
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
+    {/* Delete Confirmation Dialog - محدث */}
+<AnimatePresence>
+  {deletingAttendance && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={() => setDeletingAttendance(null)}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-xl font-semibold mb-2">
+          {lang === 'ar' ? 'تأكيد الحذف' : 'Confirm Delete'}
+        </h3>
+        
+        {/* ✅ تحذير إذا لم يتم اختيار درس */}
+        {!filters.course_detail_id && (
+          <Alert variant="warning" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {lang === 'ar' 
+                ? '⚠️ يرجى اختيار درس من الفلتر أولاً لحذف الحضور'
+                : '⚠️ Please select a lesson from the filter first to delete attendance'}
+            </AlertDescription>
+          </Alert>
         )}
-      </AnimatePresence>
+        
+        <p className="text-muted-foreground mb-6">
+          {lang === 'ar'
+            ? `هل أنت متأكد من حذف سجل حضور "${deletingAttendance.name}"؟ هذا الإجراء لا يمكن التراجع عنه.`
+            : `Are you sure you want to delete attendance record for "${deletingAttendance.name}"? This action cannot be undone.`}
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={() => setDeletingAttendance(null)}>
+            {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => handleDeleteAttendance(deletingAttendance)}
+            disabled={!filters.course_detail_id} // ✅ تعطيل الزر لو مفيش درس مختار
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {lang === 'ar' ? 'حذف' : 'Delete'}
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
     </motion.div>
   );
 };
@@ -1331,7 +1482,7 @@ const AttendanceTable: React.FC<AttendanceTableProps> = ({
         <Table>
           <TableHeader className="bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-purple-500/5">
             <TableRow>
-              <TableHead className="text-right font-bold">
+              <TableHead className="text-center font-bold">
                 {lang === 'ar' ? 'الطالب' : 'Student'}
               </TableHead>
               <TableHead className="text-right font-bold hidden md:table-cell">
