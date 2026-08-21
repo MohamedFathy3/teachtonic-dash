@@ -53,6 +53,7 @@ import SettingsPages from '@/pages/instructor/SettingsPage';
 import SeoCountsPage from '@/pages/instructor/SeoCountsPage';
 import { SemesterDetailsPage } from '@/pages/instructor/SemesterDetailsPage';
 import { AttendancePage } from '@/pages/instructor/AttendancePage';
+import WhatsAppSetup  from '@/pages/instructor/WhatsAppSetup';
 
 
 const queryClient = new QueryClient();
@@ -123,6 +124,7 @@ const App = () => {
                 <Route path="settings" element={<SettingsPages  />} />
                 <Route path="seo-counts" element={<SeoCountsPage />} />
                 <Route path="semesters/:id" element={<SemesterDetailsPage />} />
+<Route path="whatsapp-setup" element={<WhatsAppSetup />} />
 
               </Route>
 

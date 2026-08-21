@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/lib/api.ts
 import axios, { AxiosError } from "axios";
 import Cookies from "js-cookie";
 
@@ -10,14 +9,17 @@ const isDevelopment = import.meta.env.DEV;
 
 const logOnlyDev = (...args: any[]) => {
   if (isDevelopment) {
+    // console.log(...args);
   }
 };
 
 const errorOnlyDev = (...args: any[]) => {
   if (isDevelopment) {
+    // console.error(...args);
   }
 };
 
+// ✅ API الرئيسي للطلبات الداخلية (مع withCredentials)
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 
@@ -28,11 +30,20 @@ const api = axios.create({
   withCredentials: true, 
 });
 
+// ✅ API للطلبات الخارجية (بدون withCredentials)
+export const externalApi = axios.create({
+  baseURL: '',
+  headers: { 
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+  },
+  withCredentials: false, // 🔑 دي المفتاح عشان تختفي مشكلة CORS
+});
+
 // 🔧 متغير لتتبع حالة CSRF
 let csrfTokenRetrieved = false;
 
-
-// 🟢 Interceptor محسن للطلبات
+// 🟢 Interceptor محسن للطلبات - للـ api الرئيسي
 api.interceptors.request.use(async (config) => {
   const token = Cookies.get("token");
   const method = config.method?.toUpperCase();
@@ -50,7 +61,6 @@ api.interceptors.request.use(async (config) => {
   if (method && ["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
     logOnlyDev("🔄 CSRF Token required for", method, "request");
     
-    // إضافة X-XSRF-TOKEN header إذا كان موجود في الـ cookies
     const xsrfToken = Cookies.get("XSRF-TOKEN");
     if (xsrfToken) {
       config.headers["X-XSRF-TOKEN"] = xsrfToken;
@@ -91,13 +101,9 @@ api.interceptors.response.use(
     if (error.response?.status === 419) {
       logOnlyDev("🔄 419 CSRF Token Mismatch - Retrying with new token...");
       
-      // إعادة تعيين حالة CSRF
       csrfTokenRetrieved = false;
       
       try {
-        // الحصول على CSRF token جديد
-        
-        // إعادة الطلب الأصلي
         if (originalRequest) {
           logOnlyDev("🔄 Retrying original request with new CSRF token");
           return api(originalRequest);

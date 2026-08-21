@@ -416,6 +416,7 @@ seocounts:"socile-counts",
     totalEarnings: "Total earnings",
     linkdrive:"linkDrive",
     AttendancePage: "Attendance Page",
+    whatsappSetup: "WhatsApp Setup",
   },
   ar: {
     teacher: "المعلمون",
@@ -862,6 +863,7 @@ avgMarks: "متوسط الدرجات",
     confirmActivation: "تأكيد التفعيل",
     deactivatedSuccess: "تم إلغاء التفعيل بنجاح",
     AttendancePage: "صفحة الحضور",
+    whatsappSetup: "إعداد WhatsApp",
 
   },
 } as const;

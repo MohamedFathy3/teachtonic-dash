@@ -85,6 +85,38 @@ export default defineConfig(({ mode }) => {
             });
           },
         },
+        // ✅ Proxy لخدمة واتساب - wzila.com
+        "/whatsapp": {
+          target: "https://wzila.com",
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/whatsapp/, ''),
+          configure: (proxy, _options) => {
+            proxy.on("proxyReq", (proxyReq, req, _res) => {
+              console.log("🔄 WhatsApp Proxy Request:", req.method, req.url);
+              proxyReq.removeHeader('Origin');
+            });
+            proxy.on("proxyRes", (proxyRes, req, _res) => {
+              console.log("✅ WhatsApp Proxy Response:", proxyRes.statusCode, req.url);
+            });
+          },
+        },
+        // ✅ Proxy لخدمة apis.wzila.com
+        "/apis-whatsapp": {
+          target: "https://apis.wzila.com",
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/apis-whatsapp/, ''),
+          configure: (proxy, _options) => {
+            proxy.on("proxyReq", (proxyReq, req, _res) => {
+              console.log("🔄 APIs WhatsApp Proxy Request:", req.method, req.url);
+              proxyReq.removeHeader('Origin');
+            });
+            proxy.on("proxyRes", (proxyRes, req, _res) => {
+              console.log("✅ APIs WhatsApp Proxy Response:", proxyRes.statusCode, req.url);
+            });
+          },
+        },
       },
     },
     preview: {
@@ -98,12 +130,10 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
-    // Define env variables that will be available in client code
     define: {
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version),
       'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
     },
-    // أضف قسم build هنا - خارج server
     build: {
       outDir: 'dist',
       emptyOutDir: true,

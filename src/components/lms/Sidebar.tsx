@@ -25,6 +25,7 @@ import {
   BellIcon,
   Share2,
   UserCircle,
+  MessageSquare,
 } from "lucide-react";
 
 import { TranslationKey } from "@/i18n/translations";
@@ -69,6 +70,7 @@ const instructorNav: NavItem[] = [
   { to: "center-hours", labelKey: "centerhours", icon: TagIcon },
   { to: "books", labelKey: "books", icon: BookOpen },
   { to: "offers", labelKey: "offers", icon: TagIcon },
+  { to: "whatsapp-setup", labelKey: "whatsappSetup", icon: MessageSquare },
   { to: "Notifications", labelKey: "Notifications", icon: BellIcon },
   { to: "payment-codes", labelKey: "paymentCodes", icon: TagIcon },
   { to: "assignments", labelKey: "assignments", icon: FileEdit },
