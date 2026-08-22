@@ -4,33 +4,19 @@ import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { externalApi } from '@/lib/api';
 import api from '@/lib/api';
 import { Loader2, QrCode, CheckCircle, XCircle, RefreshCw, Copy, Save, AlertCircle } from 'lucide-react';
 
-// 🔧 دالة مساعدة: تستخرج أول كائن JSON صالح من أي نص،
-// حتى لو السيرفر طبع قبله PHP Warning/Notice أو أي HTML زيادة.
-// السبب: بعض الـ endpoints بتاعت wzila.com بترجّع warning زي:
-// "<br /><b>Warning</b>: ... on line 65<br />{"status":"success",...}"
-// فلو حاولنا نعمل JSON.parse للرد كامل، هيفشل. الحل إننا نجيب الرد كنص خام
-// (responseType: 'text') وبعدين نستخرج منه أول { ... } ونعمل parse له بس.
-const extractJson = (raw: any): any => {
-  // لو axios قدر يعمل parse لوحده (رد نضيف)، استخدمه زي ما هو
-  if (raw && typeof raw === 'object') return raw;
-
-  const str = String(raw ?? '');
-  const match = str.match(/\{[\s\S]*\}/);
-
-  if (!match) {
-    throw new Error('لم يتم العثور على بيانات JSON صالحة في رد السيرفر');
-  }
-
-  try {
-    return JSON.parse(match[0]);
-  } catch {
-    throw new Error('تعذر تحليل رد السيرفر (JSON غير صالح)');
-  }
-};
+// ✅ بعد كده كل الطلبات رايحة على الباك اند بتاعنا فقط ({{api}}/whatsapp/connect)
+// مفيش أي اتصال مباشر بـ wzila.com من الفرونت إند تاني.
+// شكل الرد الفعلي من /whatsapp/connect (POST):
+// {
+//   status: "pending" | "error",
+//   message: "...",
+//   instance_id: "xxxxx",
+//   qr_code: "data:image/png;base64,....",
+//   expires_in: 300
+// }
 
 const WhatsAppSetup: React.FC = () => {
   const { instructorData, user, token } = useApp();
@@ -51,12 +37,11 @@ const WhatsAppSetup: React.FC = () => {
       if (saved) {
         setSavedInstanceId(saved);
         setInstanceId(saved);
-        console.log('📂 Loaded saved instance:', saved);
       }
     }
   }, [teacherId]);
 
-  // 🔹 دالة جلب QR Code - الخطوتين مع بعض
+  // 🔹 دالة جلب QR Code من الباك اند بتاعنا
   const generateQR = async () => {
     if (!token) {
       toast({
@@ -72,64 +57,38 @@ const WhatsAppSetup: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      console.log('🔄 1. جلب Instance ID جديد...');
-      console.log('🔑 Using token:', token);
+      const response = await api.post('/whatsapp/connect', {
+        teacherId,
+      });
 
-      // ✅ الخطوة 1: جلب Instance ID جديد
-      // ⚠️ responseType: 'text' مهم عشان مايحصلش فشل تلقائي في الـ parsing
-      // لو السيرفر طبع Warning قبل الـ JSON
-      const instanceResponse = await externalApi.get(
-        `https://wzila.com/whatsapp/api/get_instance_id_key.php?access_token=6a162117743d3`,
-        { responseType: 'text' }
-      );
+      const data = response.data;
 
-      console.log('✅ Instance Raw Response:', instanceResponse.data);
-
-      const instanceData = extractJson(instanceResponse.data);
-
-      console.log('✅ Instance Parsed Response:', instanceData);
-
-      // تحقق من نجاح العملية
-      if (instanceData.status !== 'success') {
-        throw new Error(instanceData.message || 'فشل في إنشاء معرف الجلسة');
+      // الباك اند بيرجع status: "pending" لما الـ QR يتظبط بنجاح
+      // (لسه محتاج مسح فعلي من الموبايل عشان يبقى "connected")
+      if (data.status === 'error') {
+        throw new Error(data.message || 'فشل في إنشاء رمز QR');
       }
 
-      // 🔑 استخراج الـ ID الجديد
-      const newInstanceId = instanceData.instance_id;
-      setInstanceId(newInstanceId);
-      console.log('✅ New Instance ID:', newInstanceId);
-
-      // ✅ الخطوة 2: استخدم الـ ID الجديد في الرابط التاني
-      console.log('🔄 2. جلب QR Code باستخدام ID:', newInstanceId);
-      const qrResponse = await externalApi.get(
-        `https://apis.wzila.com/get_qrcode?access_token=6a162117743d3&instance_id=${newInstanceId}`,
-        { responseType: 'text' }
-      );
-
-      console.log('✅ QR Raw Response:', qrResponse.data);
-
-      const qrData = extractJson(qrResponse.data);
-
-      console.log('✅ QR Parsed Response:', qrData);
-
-      // تحقق من نجاح جلب QR Code
-      if (qrData.status === 'success' && qrData.base64) {
-        setQrCode(qrData.base64);
-        setStatus('idle');
-        toast({
-          title: '✅ تم إنشاء رمز QR',
-          description: 'امسح الكود باستخدام واتساب لربط حسابك (ينتهي خلال 5 دقائق)',
-        });
-      } else {
-        throw new Error(qrData.message || 'فشل في جلب رمز QR');
+      if (!data.qr_code) {
+        throw new Error('لم يتم استلام رمز QR من الخادم');
       }
+
+      setQrCode(data.qr_code);
+      setInstanceId(data.instance_id);
+      setStatus('idle');
+
+      toast({
+        title: '✅ تم إنشاء رمز QR',
+        description: 'امسح الكود باستخدام واتساب لربط حسابك',
+      });
     } catch (error: any) {
       console.error('❌ Error generating QR:', error);
       setStatus('error');
-      setErrorMessage(error.message || 'حدث خطأ أثناء إنشاء الرمز');
+      const msg = error.response?.data?.message || error.message || 'حدث خطأ أثناء إنشاء الرمز';
+      setErrorMessage(msg);
       toast({
         title: '❌ خطأ',
-        description: error.message || 'حدث خطأ أثناء إنشاء الرمز',
+        description: msg,
         variant: 'destructive',
       });
     } finally {
@@ -137,7 +96,7 @@ const WhatsAppSetup: React.FC = () => {
     }
   };
 
-  // 🔹 دالة التحقق من الاتصال
+  // 🔹 دالة التحقق من الاتصال (عبر الباك اند بتاعنا)
   const checkConnection = async () => {
     if (!instanceId) {
       toast({
@@ -151,20 +110,10 @@ const WhatsAppSetup: React.FC = () => {
     setIsLoading(true);
 
     try {
-      console.log('🔄 Checking connection for:', instanceId);
+      const response = await api.get(`/whatsapp/status/${instanceId}`);
+      const data = response.data;
 
-      const response = await externalApi.get(
-        `https://apis.wzila.com/check_connection?access_token=6a162117743d3&instance_id=${instanceId}`,
-        { responseType: 'text' }
-      );
-
-      console.log('✅ Connection Check Raw:', response.data);
-
-      const connectionData = extractJson(response.data);
-
-      console.log('✅ Connection Check Parsed:', connectionData);
-
-      if (connectionData.status === 'connected') {
+      if (data.status === 'connected') {
         setStatus('connected');
         toast({
           title: '✅ متصل!',
@@ -180,9 +129,10 @@ const WhatsAppSetup: React.FC = () => {
       }
     } catch (error: any) {
       console.error('❌ Error checking connection:', error);
+      const msg = error.response?.data?.message || error.message || 'حدث خطأ أثناء التحقق';
       toast({
         title: '❌ خطأ',
-        description: error.message || 'حدث خطأ أثناء التحقق',
+        description: msg,
         variant: 'destructive',
       });
     } finally {
@@ -233,8 +183,6 @@ const WhatsAppSetup: React.FC = () => {
     setIsLoading(true);
 
     try {
-      console.log('🔄 Saving instance to server:', { teacherId, instanceId, status });
-
       const response = await api.post('/teacher/save-whatsapp-instance', {
         teacherId,
         instanceId,

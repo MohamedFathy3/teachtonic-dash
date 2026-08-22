@@ -24,7 +24,9 @@ import {
   RotateCcw,
   Edit,
   Trash2,
-  UserPlus
+  UserPlus,
+  MessageCircle, // ✅ أيقونة واتساب
+  Send, // ✅ أيقونة الإرسال
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
@@ -48,6 +50,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { RichTextEditor } from '@/components/ui/RichTextEditor'; // ✅ المستورد بتاعنا
 
 // ✅ Animations
 const containerVariants = {
@@ -147,6 +150,11 @@ export const InstructorStudents: React.FC = () => {
   const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
   const [deletingStudent, setDeletingStudent] = useState(false);
   
+  // ✅ State for WhatsApp Modal
+  const [whatsappStudent, setWhatsappStudent] = useState<Student | null>(null);
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+
   // ✅ Pagination
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -571,6 +579,49 @@ export const InstructorStudents: React.FC = () => {
       toast.error(error?.response?.data?.message || (lang === 'ar' ? 'فشل حذف الطالب' : 'Failed to delete student'));
     } finally {
       setDeletingStudent(false);
+    }
+  };
+
+  // ✅ Send WhatsApp Message
+  const handleSendWhatsApp = async () => {
+    if (!whatsappStudent) return;
+
+    // استخراج رقم الهاتف بدون علامات +
+    const phoneNumber = whatsappStudent.phone?.replace(/[^0-9]/g, '') || '';
+
+    if (!phoneNumber) {
+      toast.error(lang === 'ar' ? 'رقم الهاتف غير صالح' : 'Invalid phone number');
+      return;
+    }
+
+    if (!whatsappMessage || whatsappMessage.trim() === '') {
+      toast.error(lang === 'ar' ? 'الرجاء كتابة رسالة' : 'Please write a message');
+      return;
+    }
+
+    setSendingWhatsapp(true);
+
+    try {
+      const response = await api.post('/whatsapp/send', {
+        phone: phoneNumber,
+        message: whatsappMessage,
+      });
+
+      if (response.data?.status === true || response.status === 200) {
+        toast.success(lang === 'ar'
+          ? `✅ تم إرسال رسالة واتساب إلى ${whatsappStudent.name} بنجاح`
+          : `✅ WhatsApp message sent to ${whatsappStudent.name} successfully`
+        );
+        setWhatsappStudent(null);
+        setWhatsappMessage('');
+      } else {
+        throw new Error(response.data?.message || 'Failed to send message');
+      }
+    } catch (error: any) {
+      console.error('WhatsApp send error:', error);
+      toast.error(error?.response?.data?.message || (lang === 'ar' ? '❌ فشل إرسال رسالة واتساب' : '❌ Failed to send WhatsApp message'));
+    } finally {
+      setSendingWhatsapp(false);
     }
   };
 
@@ -1114,6 +1165,7 @@ export const InstructorStudents: React.FC = () => {
 
                       {/* Actions */}
                       <div className="mt-4 pt-3 border-t flex flex-wrap justify-end gap-2">
+                        {/* ✅ View Learning Button */}
                         <Button
                           size="sm"
                           variant="outline"
@@ -1127,6 +1179,23 @@ export const InstructorStudents: React.FC = () => {
                           {t('viewLearning') || 'عرض التعلم'}
                         </Button>
 
+                        {/* ✅ WhatsApp Button - NEW */}
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="gap-1 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-md hover:shadow-lg transition-all"
+                          onClick={() => {
+                            setWhatsappStudent(student);
+                            // رسالة افتراضية مع إيموجي
+                            const defaultMsg = `السلام عليكم 👋\nمعك الأستاذ/ة ${user?.name || 'المعلم'}.\nهذه رسالة من منصة التعلم.`;
+                            setWhatsappMessage(defaultMsg);
+                          }}
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          {lang === 'ar' ? 'واتساب' : 'WhatsApp'}
+                        </Button>
+
+                        {/* ✅ Change Password Button */}
                         <Button
                           size="sm"
                           variant="outline"
@@ -1164,6 +1233,7 @@ export const InstructorStudents: React.FC = () => {
                           {lang === 'ar' ? 'حذف' : 'Delete'}
                         </Button>
 
+                        {/* ✅ Toggle Active Button */}
                         <Button
                           size="sm"
                           variant={student.active ? "destructive" : "default"}
@@ -1183,6 +1253,7 @@ export const InstructorStudents: React.FC = () => {
                           )}
                         </Button>
 
+                        {/* ✅ Reset Device Button */}
                         {student.device_blocked && (
                           <Button
                             size="sm"
@@ -1695,6 +1766,65 @@ export const InstructorStudents: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ✅ WhatsApp Modal - NEW */}
+      <Dialog open={!!whatsappStudent} onOpenChange={(open) => !open && setWhatsappStudent(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-green-500" />
+              {lang === 'ar' ? 'إرسال رسالة واتساب' : 'Send WhatsApp Message'}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === 'ar'
+                ? `إرسال رسالة إلى ${whatsappStudent?.name} (${whatsappStudent?.phone})`
+                : `Send message to ${whatsappStudent?.name} (${whatsappStudent?.phone})`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* رقم الطالب */}
+            <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <Phone className="h-4 w-4 text-green-500" />
+              <span className="font-mono text-sm">{whatsappStudent?.phone}</span>
+            </div>
+
+            {/* Rich Text Editor للرسالة */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                {lang === 'ar' ? 'نص الرسالة' : 'Message'}
+                <span className="text-red-500">*</span>
+              </Label>
+              <RichTextEditor
+                content={whatsappMessage}
+                onChange={setWhatsappMessage}
+                placeholder={lang === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message...'}
+              />
+              <p className="text-xs text-muted-foreground">
+                💡 {lang === 'ar' ? 'يمكنك استخدام الإيموجي والتنسيق' : 'You can use emojis and formatting'}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setWhatsappStudent(null)}>
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </Button>
+            <Button
+              onClick={handleSendWhatsApp}
+              disabled={sendingWhatsapp || !whatsappMessage.trim()}
+              className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+            >
+              {sendingWhatsapp ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />{lang === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</>
+              ) : (
+                <><Send className="h-4 w-4" />{lang === 'ar' ? 'إرسال' : 'Send'}</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
