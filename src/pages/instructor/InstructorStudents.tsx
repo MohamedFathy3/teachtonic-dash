@@ -1791,22 +1791,23 @@ export const InstructorStudents: React.FC = () => {
 
             {/* Rich Text Editor للرسالة */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <MessageCircle className="h-4 w-4" />
-                {lang === 'ar' ? 'نص الرسالة' : 'Message'}
-                <span className="text-red-500">*</span>
-              </Label>
-              <RichTextEditor
-                content={whatsappMessage}
-                onChange={setWhatsappMessage}
-                placeholder={lang === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message...'}
-              />
-              <p className="text-xs text-muted-foreground">
-                💡 {lang === 'ar' ? 'يمكنك استخدام الإيموجي والتنسيق' : 'You can use emojis and formatting'}
-              </p>
-            </div>
-          </div>
-
+        <Label className="flex items-center gap-2">
+          <MessageCircle className="h-4 w-4" />
+          {lang === 'ar' ? 'نص الرسالة' : 'Message'}
+          <span className="text-red-500">*</span>
+        </Label>
+        <textarea
+          value={whatsappMessage}
+          onChange={(e) => setWhatsappMessage(e.target.value)}
+          placeholder={lang === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message...'}
+          className="w-full min-h-[150px] px-4 py-3 rounded-xl border bg-background resize-y focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+          rows={6}
+        />
+        <p className="text-xs text-muted-foreground">
+          💡 {lang === 'ar' ? 'يمكنك استخدام الإيموجي' : 'You can use emojis'}
+        </p>
+      </div>
+    </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setWhatsappStudent(null)}>
               {lang === 'ar' ? 'إلغاء' : 'Cancel'}
