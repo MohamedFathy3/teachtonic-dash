@@ -5,18 +5,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
-import { Loader2, QrCode, CheckCircle, XCircle, RefreshCw, Copy, Save, AlertCircle } from 'lucide-react';
+import { Loader2, QrCode, CheckCircle, XCircle, RefreshCw, Copy, Save, AlertCircle, Users } from 'lucide-react';
 
-// ✅ بعد كده كل الطلبات رايحة على الباك اند بتاعنا فقط ({{api}}/whatsapp/connect)
-// مفيش أي اتصال مباشر بـ wzila.com من الفرونت إند تاني.
+// ✅ كل الطلبات رايحة على الباك اند بتاعنا فقط ({{api}}/whatsapp/...)
+// مفيش أي اتصال مباشر بـ wzila.com من الفرونت إند.
+//
 // شكل الرد الفعلي من /whatsapp/connect (POST):
-// {
-//   status: "pending" | "error",
-//   message: "...",
-//   instance_id: "xxxxx",
-//   qr_code: "data:image/png;base64,....",
-//   expires_in: 300
-// }
+// { status: "pending" | "error", message, instance_id, qr_code, expires_in }
+//
+// -------- API جديدة خاصة بإعدادات المستقبِل (recipient) --------
+// GET  {{api}}/whatsapp/settings/:teacherId
+//   -> { recipientType: "student" | "parent" | "both" }
+//
+// POST {{api}}/whatsapp/settings
+//   body: { teacherId, recipientType: "student" | "parent" | "both" }
+//   -> { status: "success" | "error", message, recipientType }
+// -----------------------------------------------------------------
+
+type RecipientType = 'student' | 'parent' | 'both';
+
+const RECIPIENT_OPTIONS: { value: RecipientType; label: string }[] = [
+  { value: 'student', label: 'الطالب' },
+  { value: 'parent', label: 'ولي الأمر' },
+  { value: 'both', label: 'الاثنين معًا' },
+];
 
 const WhatsAppSetup: React.FC = () => {
   const { instructorData, user, token } = useApp();
@@ -26,6 +38,11 @@ const WhatsAppSetup: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [savedInstanceId, setSavedInstanceId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // 🔹 إعدادات مستقبل الرسائل
+  const [recipientType, setRecipientType] = useState<RecipientType>('both');
+  const [isSavingRecipient, setIsSavingRecipient] = useState(false);
+  const [isLoadingRecipient, setIsLoadingRecipient] = useState(false);
 
   const teacherId = instructorData?.id || user?.id;
   const teacherName = instructorData?.name || user?.name;
@@ -40,6 +57,64 @@ const WhatsAppSetup: React.FC = () => {
       }
     }
   }, [teacherId]);
+
+  // 🔹 تحميل إعداد المستقبل المحفوظ من الباك اند
+  useEffect(() => {
+    const loadRecipientSetting = async () => {
+      if (!teacherId || !token) return;
+      setIsLoadingRecipient(true);
+      try {
+        const response = await api.get(`/whatsapp/settings/${teacherId}`);
+        const data = response.data;
+        if (data?.recipientType) {
+          setRecipientType(data.recipientType as RecipientType);
+        }
+      } catch (error: any) {
+        // مفيش إعداد محفوظ لسه، مش مشكلة - بنستخدم الافتراضي "both"
+        console.warn('⚠️ لا يوجد إعداد مستقبل محفوظ بعد، سيتم استخدام الافتراضي.');
+      } finally {
+        setIsLoadingRecipient(false);
+      }
+    };
+    loadRecipientSetting();
+  }, [teacherId, token]);
+
+  // 🔹 حفظ إعداد المستقبل في الباك اند
+  const saveRecipientSetting = async (newValue: RecipientType) => {
+    if (!teacherId) return;
+
+    const previousValue = recipientType;
+    setRecipientType(newValue); // تحديث فوري في الواجهة (optimistic update)
+    setIsSavingRecipient(true);
+
+    try {
+      const response = await api.post('/whatsapp/settings', {
+        teacherId,
+        recipientType: newValue,
+      });
+
+      const data = response.data;
+      if (data.status === 'error') {
+        throw new Error(data.message || 'فشل في حفظ الإعداد');
+      }
+
+      toast({
+        title: '✅ تم الحفظ',
+        description: 'تم تحديث إعداد إرسال الرسائل بنجاح',
+      });
+    } catch (error: any) {
+      console.error('❌ Error saving recipient setting:', error);
+      setRecipientType(previousValue); // رجوع للقيمة القديمة لو فشل الحفظ
+      const msg = error.response?.data?.message || error.message || 'حدث خطأ أثناء حفظ الإعداد';
+      toast({
+        title: '❌ خطأ',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingRecipient(false);
+    }
+  };
 
   // 🔹 دالة جلب QR Code من الباك اند بتاعنا
   const generateQR = async () => {
@@ -63,8 +138,6 @@ const WhatsAppSetup: React.FC = () => {
 
       const data = response.data;
 
-      // الباك اند بيرجع status: "pending" لما الـ QR يتظبط بنجاح
-      // (لسه محتاج مسح فعلي من الموبايل عشان يبقى "connected")
       if (data.status === 'error') {
         throw new Error(data.message || 'فشل في إنشاء رمز QR');
       }
@@ -251,7 +324,7 @@ const WhatsAppSetup: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-3xl">
+    <div className="container mx-auto p-6 max-w-3xl space-y-6">
       <Card className="shadow-lg">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center justify-between flex-wrap gap-4">
@@ -384,6 +457,43 @@ const WhatsAppSetup: React.FC = () => {
                 احتفظ بالـ ID الخاص بك ولا تشاركه مع الآخرين.
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 🔹 كارت مستقل لإعدادات مستقبل الرسائل */}
+      <Card className="shadow-lg">
+        <CardHeader className="border-b">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Users className="h-5 w-5" />
+            نتيجة امتحان (الصفحة الرئيسية)
+          </CardTitle>
+          <p className="text-sm text-gray-500 mt-1">
+            اختر لمن يتم إرسال رسالة نتيجة الامتحان عبر واتساب
+          </p>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap items-center gap-6" dir="rtl">
+            {RECIPIENT_OPTIONS.map((option) => (
+              <label
+                key={option.value}
+                className="flex items-center gap-2 cursor-pointer select-none"
+              >
+                <input
+                  type="radio"
+                  name="recipientType"
+                  value={option.value}
+                  checked={recipientType === option.value}
+                  onChange={() => saveRecipientSetting(option.value)}
+                  disabled={isSavingRecipient || isLoadingRecipient}
+                  className="h-4 w-4 accent-primary cursor-pointer"
+                />
+                <span className="text-sm text-gray-700">{option.label}</span>
+              </label>
+            ))}
+            {(isSavingRecipient || isLoadingRecipient) && (
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            )}
           </div>
         </CardContent>
       </Card>
