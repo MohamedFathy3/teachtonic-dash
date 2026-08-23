@@ -3,7 +3,7 @@
 // src/components/courses/CourseDetails.tsx
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Clock, Users, DollarSign, BookOpen, GraduationCap, User, MapPin, Globe, ChevronLeft, Edit2, Heart, Share2, Eye, Award, Target, CheckCircle2, Plus, Trash2, Video, Link as LinkIcon, Loader2, Phone, Mail, Star, UserCheck, Lock, X, Filter, Search, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Users, DollarSign, BookOpen, GraduationCap, User, MapPin, Globe, ChevronLeft, Edit2, Heart, Share2, Eye, Award, Target, CheckCircle2, Plus, Trash2, Video, Link as LinkIcon, Loader2, Phone, Mail, Star, UserCheck, Lock, X, Filter, Search, AlertTriangle, AlertCircle, MessageCircle, CheckSquare, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,6 +26,9 @@ import { Switch } from '@/components/ui/switch';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
+import { Send } from 'lucide-react';
+import { Label } from '../ui/label';
 
 interface CourseDetailsProps {
   courseId: number;
@@ -194,6 +197,14 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const [isLiked, setIsLiked] = useState(false);
   const navigate = useNavigate();
 
+  // ✅ State for WhatsApp Bulk Send
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
+  const [whatsappMessage, setWhatsappMessage] = useState('');
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  
+  // ✅ State for selected students (Checkbox)
+  const [selectedStudents, setSelectedStudents] = useState<Set<number>>(new Set());
+
   // 🔥 State للدروس
   const [lessons, setLessons] = useState<CourseDetail[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(false);
@@ -272,6 +283,14 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       // ✅ تحديث القائمة
       const updatedStudents = (course as any)?.students?.filter((s: any) => s.id !== studentToRemove.id) || [];
       setCourse((prev: any) => ({ ...prev, students: updatedStudents }));
+      
+      // ✅ إزالة الطالب من المختارين
+      setSelectedStudents(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(studentToRemove.id);
+        return newSet;
+      });
+      
       setShowRemoveDialog(false);
       setStudentToRemove(null);
       
@@ -292,6 +311,8 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
     try {
       const response = await courseService.getCourse(courseId);
       setCourse(response);
+      // ✅ Reset selected students when course changes
+      setSelectedStudents(new Set());
     } catch (err: any) {
       console.error('Error fetching course:', err);
       setError(err.message || 'Failed to load course');
@@ -300,6 +321,81 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       setLoading(false);
     }
   };
+
+  // ✅ Send WhatsApp to Selected Students
+  const handleSendWhatsAppToSelected = async () => {
+    const students = (course as any)?.students || [];
+    const selectedIds = Array.from(selectedStudents);
+    
+    if (selectedIds.length === 0) {
+      toast.error(lang === 'ar' ? 'الرجاء اختيار طالب واحد على الأقل' : 'Please select at least one student');
+      return;
+    }
+
+    if (!whatsappMessage || whatsappMessage.trim() === '') {
+      toast.error(lang === 'ar' ? 'الرجاء كتابة رسالة' : 'Please write a message');
+      return;
+    }
+
+    setSendingWhatsapp(true);
+
+    try {
+      const response = await api.post('/whatsapp/send', {
+        student_id: selectedIds, // ✅ array of selected student IDs
+        message: whatsappMessage,
+      });
+
+      if (response.data?.status === true || response.status === 200) {
+        toast.success(
+          lang === 'ar'
+            ? `✅ تم إرسال رسالة واتساب إلى ${selectedIds.length} طالب بنجاح`
+            : `✅ WhatsApp message sent to ${selectedIds.length} students successfully`
+        );
+        setWhatsappModalOpen(false);
+        setWhatsappMessage('');
+        setSelectedStudents(new Set());
+      } else {
+        throw new Error(response.data?.message || 'Failed to send message');
+      }
+    } catch (error: any) {
+      console.error('WhatsApp send error:', error);
+      toast.error(
+        error?.response?.data?.message ||
+        (lang === 'ar' ? '❌ فشل إرسال رسالة واتساب' : '❌ Failed to send WhatsApp message')
+      );
+    } finally {
+      setSendingWhatsapp(false);
+    }
+  };
+
+  // ✅ Toggle select all students
+  const toggleSelectAll = () => {
+    const students = (course as any)?.students || [];
+    const filtered = filteredStudents;
+    
+    if (selectedStudents.size === filtered.length) {
+      setSelectedStudents(new Set());
+    } else {
+      const ids = filtered.map((s: any) => s.id);
+      setSelectedStudents(new Set(ids));
+    }
+  };
+
+  // ✅ Toggle single student
+  const toggleStudent = (studentId: number) => {
+    setSelectedStudents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(studentId)) {
+        newSet.delete(studentId);
+      } else {
+        newSet.add(studentId);
+      }
+      return newSet;
+    });
+  };
+
+  // ✅ Get selected students count
+  const selectedCount = selectedStudents.size;
 
   // 🔥 جلب الدروس
   const fetchLessons = async (page = 1) => {
@@ -924,9 +1020,50 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             <h3 className="font-semibold flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
               {lang === 'ar' ? 'الطلاب المسجلين في هذا الكورس' : 'Students Enrolled in This Course'} ({students.length})
+              {selectedCount > 0 && (
+                <Badge className="bg-green-500 text-white">
+                  {selectedCount} {lang === 'ar' ? 'مختار' : 'selected'}
+                </Badge>
+              )}
             </h3>
 
             <div className="flex gap-2 flex-wrap">
+              {/* ✅ زر واتساب */}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  if (selectedCount === 0) {
+                    toast.error(lang === 'ar' ? 'الرجاء اختيار طالب واحد على الأقل' : 'Please select at least one student');
+                    return;
+                  }
+                  setWhatsappModalOpen(true);
+                  const defaultMsg = `السلام عليكم 👋\nمعك الأستاذ/ة ${course?.teacher?.name || 'المعلم'}.\nهذه رسالة من كورس: ${title}`;
+                  setWhatsappMessage(defaultMsg);
+                }}
+                disabled={students.length === 0 || selectedCount === 0}
+                className="gap-1 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+              >
+                <MessageCircle className="h-4 w-4" />
+                {lang === 'ar' ? 'واتساب' : 'WhatsApp'} ({selectedCount})
+              </Button>
+
+              {/* ✅ زر اختيار الكل */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleSelectAll}
+                disabled={students.length === 0}
+                className="gap-1 rounded-xl"
+              >
+                {selectedCount === filteredStudents.length && filteredStudents.length > 0 ? (
+                  <CheckSquare className="h-4 w-4" />
+                ) : (
+                  <Square className="h-4 w-4" />
+                )}
+                {lang === 'ar' ? 'تحديد الكل' : 'Select All'}
+              </Button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -1093,8 +1230,24 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: idx * 0.05 }}
                   whileHover={{ y: -3 }}
-                  className="p-4 rounded-xl bg-gradient-to-r from-card to-muted/20 border shadow-sm group relative"
+                  className={`p-4 rounded-xl bg-gradient-to-r from-card to-muted/20 border shadow-sm group relative ${
+                    selectedStudents.has(student.id) ? 'ring-2 ring-green-500 ring-offset-2' : ''
+                  }`}
                 >
+                  {/* ✅ Checkbox */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 left-2 h-7 w-7 rounded-full hover:bg-green-100 dark:hover:bg-green-900/20 transition-colors"
+                    onClick={() => toggleStudent(student.id)}
+                  >
+                    {selectedStudents.has(student.id) ? (
+                      <CheckSquare className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <Square className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </Button>
+
                   {/* ✅ زر حذف الطالب من الكورس */}
                   <Button
                     variant="ghost"
@@ -1106,7 +1259,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                     <X className="h-4 w-4" />
                   </Button>
 
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 mt-4">
                     <Avatar className="h-12 w-12 border-2 border-primary/20">
                       {student.imageUrl || student.image?.fullUrl ? (
                         <AvatarImage src={student.imageUrl || student.image?.fullUrl} alt={student.name} />
@@ -1196,6 +1349,10 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3 w-3 text-green-500" />
                   {lang === 'ar' ? 'سنتر' : 'Center'}: {students.filter((s: any) => s.type_of_attendance === 'center').length}
+                </span>
+                <span className="flex items-center gap-1 text-green-600 font-medium">
+                  <CheckSquare className="h-3 w-3" />
+                  {lang === 'ar' ? 'مختار' : 'Selected'}: {selectedCount}
                 </span>
               </div>
             </div>
@@ -1596,6 +1753,115 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ✅ WhatsApp Bulk Send Modal */}
+      <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
+        <DialogContent className="sm:max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-green-500" />
+              {lang === 'ar' ? 'إرسال رسالة واتساب' : 'Send WhatsApp Message'}
+              <Badge className="bg-green-500 text-white ml-2">
+                {selectedCount} {lang === 'ar' ? 'طالب' : 'students'}
+              </Badge>
+            </DialogTitle>
+            <DialogDescription>
+              {lang === 'ar'
+                ? `سيتم إرسال الرسالة إلى ${selectedCount} طالب من ${students.length} طالب مسجل في هذا الكورس`
+                : `Message will be sent to ${selectedCount} out of ${students.length} students enrolled in this course`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* إحصائيات سريعة */}
+            <div className="flex flex-wrap gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-blue-500" />
+                <span className="text-sm font-medium">{selectedCount} / {students.length} {lang === 'ar' ? 'طالب' : 'students'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-green-500" />
+                <span className="text-sm">
+                  {students.filter((s: any) => s.phone).length} {lang === 'ar' ? 'لديهم أرقام' : 'have phone numbers'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-blue-500" />
+                <span className="text-sm">
+                  {students.filter((s: any) => s.type_of_attendance === 'online').length} {lang === 'ar' ? 'أونلاين' : 'Online'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-green-500" />
+                <span className="text-sm">
+                  {students.filter((s: any) => s.type_of_attendance === 'center').length} {lang === 'ar' ? 'سنتر' : 'Center'}
+                </span>
+              </div>
+            </div>
+
+            {/* قائمة مختصرة للطلاب المختارين */}
+            {selectedCount > 0 && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                <p className="text-xs text-muted-foreground mb-2">
+                  {lang === 'ar' ? '✅ الطلاب المختارون:' : '✅ Selected students:'}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {Array.from(selectedStudents).slice(0, 10).map(id => {
+                    const student = students.find((s: any) => s.id === id);
+                    return student ? (
+                      <Badge key={id} variant="secondary" className="text-xs">
+                        {student.name}
+                      </Badge>
+                    ) : null;
+                  })}
+                  {selectedCount > 10 && (
+                    <Badge variant="secondary" className="text-xs">
+                      +{selectedCount - 10} {lang === 'ar' ? 'أخرى' : 'more'}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Rich Text Editor */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                {lang === 'ar' ? 'نص الرسالة' : 'Message'}
+                <span className="text-red-500">*</span>
+              </Label>
+              <RichTextEditor
+                content={whatsappMessage}
+                onChange={setWhatsappMessage}
+                placeholder={lang === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message...'}
+              />
+              <p className="text-xs text-muted-foreground">
+                💡 {lang === 'ar' ? 'يمكنك استخدام الإيموجي والتنسيق' : 'You can use emojis and formatting'}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => {
+              setWhatsappModalOpen(false);
+              setSelectedStudents(new Set());
+            }} className="rounded-xl">
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </Button>
+            <Button
+              onClick={handleSendWhatsAppToSelected}
+              disabled={sendingWhatsapp || !whatsappMessage.trim() || selectedCount === 0}
+              className="gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+            >
+              {sendingWhatsapp ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />{lang === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</>
+              ) : (
+                <><Send className="h-4 w-4" />{lang === 'ar' ? 'إرسال للطلاب المختارين' : 'Send to Selected'}</>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
