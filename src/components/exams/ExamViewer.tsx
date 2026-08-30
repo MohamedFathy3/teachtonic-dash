@@ -12,7 +12,8 @@ import {
   Users, FileQuestion, CheckCircle, XCircle, AlertCircle,
   Edit3, Save, Loader2, Eye, Search, ChevronLeft,
   Trophy, Clock, Sparkles, TrendingUp, Star,
-  Download, X, Phone, User as UserIcon
+  Download, X, Phone, User as UserIcon,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -45,6 +46,49 @@ const statCardVariants = {
   hover: { scale: 1.05, y: -5, transition: { type: "spring", stiffness: 400, damping: 10 } }
 };
 
+// مكون عرض صورة الإجابة
+const AnswerImage: React.FC<{ imageUrl: string; alt?: string }> = ({ 
+  imageUrl, 
+  alt = 'Answer image' 
+}) => {
+  const { lang } = useApp();
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  if (!imageUrl) return null;
+
+  return (
+    <div className="mt-2">
+      {loading && (
+        <div className="animate-pulse bg-slate-200 dark:bg-slate-700 rounded-lg h-32 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      
+      {!error ? (
+        <img
+          src={imageUrl}
+          alt={alt}
+          className="max-h-48 rounded-lg object-contain bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700"
+          onLoad={() => setLoading(false)}
+          onError={() => {
+            setError(true);
+            setLoading(false);
+            console.error('Failed to load answer image:', imageUrl);
+          }}
+        />
+      ) : (
+        <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg text-center border border-amber-200 dark:border-amber-800">
+          <AlertCircle className="h-6 w-6 text-amber-500 mx-auto mb-1" />
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            {lang === 'ar' ? '⚠️ تعذر تحميل الصورة' : '⚠️ Failed to load image'}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Modal لتصحيح السؤال المقالي
 const GradeEssayModal: React.FC<{
   isOpen: boolean;
@@ -54,21 +98,55 @@ const GradeEssayModal: React.FC<{
   onGradeSubmit: (answerId: number, mark: number) => Promise<void>;
 }> = ({ isOpen, onClose, answer, question, onGradeSubmit }) => {
   const { lang } = useApp();
-  const [mark, setMark] = useState<number>(answer?.mark ? parseFloat(answer.mark) : 0);
+  const [mark, setMark] = useState<number>(() => {
+    if (answer?.mark !== undefined && answer?.mark !== null) {
+      return parseFloat(answer.mark);
+    }
+    return 0;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const maxMark = question ? parseFloat(question.mark) : 0;
 
+  const validateMark = (value: number) => {
+    if (value < 0) {
+      setError(lang === 'ar' ? '⚠️ الدرجة لا يمكن أن تكون سالبة' : '⚠️ Mark cannot be negative');
+      return false;
+    }
+    if (value > maxMark) {
+      setError(lang === 'ar' ? `⚠️ الدرجة لا يمكن أن تتجاوز ${maxMark}` : `⚠️ Mark cannot exceed ${maxMark}`);
+      return false;
+    }
+    setError('');
+    return true;
+  };
+
+  const handleMarkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value) || 0;
+    setMark(value);
+    validateMark(value);
+  };
+
   const handleSubmit = async () => {
+    if (!validateMark(mark)) {
+      return;
+    }
+
+    const confirmSave = window.confirm(
+      lang === 'ar'
+        ? `هل أنت متأكد من حفظ الدرجة ${mark} من ${maxMark}؟`
+        : `Are you sure you want to save grade ${mark} out of ${maxMark}?`
+    );
+
+    if (!confirmSave) return;
 
     setLoading(true);
     try {
       await onGradeSubmit(answer.id, mark);
-      toast.success(lang === 'ar' ? 'تم حفظ التصحيح' : 'Grade saved');
       onClose();
     } catch (error) {
-      toast.error(lang === 'ar' ? 'حدث خطأ' : 'Error');
+      // يتم التعامل مع الخطأ في الدالة الأم
     } finally {
       setLoading(false);
     }
@@ -88,28 +166,109 @@ const GradeEssayModal: React.FC<{
             <Label>{lang === 'ar' ? 'السؤال' : 'Question'}</Label>
             <div className="p-3 bg-muted/50 rounded-lg mt-1">
               <p className="text-sm">{question?.question}</p>
+              {question?.image && (
+                <img 
+                  src={question.image.fullUrl || question.image.previewUrl} 
+                  alt="Question" 
+                  className="max-h-32 rounded-lg mt-2"
+                />
+              )}
             </div>
           </div>
+
           <div>
-            <Label>{lang === 'ar' ? 'إجابة الطالب' : 'Answer'}</Label>
+            <Label>{lang === 'ar' ? 'إجابة الطالب' : 'Student Answer'}</Label>
             <div className="p-3 bg-muted/30 rounded-lg border mt-1">
               <p className="text-sm whitespace-pre-wrap">{answer?.answer || '-'}</p>
+              {answer?.image && (
+                <img 
+                  src={answer.image.fullUrl || answer.image.previewUrl || answer.image} 
+                  alt="Student answer" 
+                  className="max-h-32 rounded-lg mt-2"
+                />
+              )}
             </div>
           </div>
+
           <div>
-            <Label>{lang === 'ar' ? 'الدرجة' : 'Mark'} (Max: {maxMark})</Label>
+            <Label className="flex items-center gap-2">
+              {lang === 'ar' ? 'الدرجة' : 'Mark'} 
+              <span className="text-xs text-muted-foreground">
+                (Max: {maxMark})
+              </span>
+            </Label>
             <div className="flex items-center gap-3 mt-1">
-              <Input type="number" value={mark} onChange={(e) => setMark(parseFloat(e.target.value) || 0)} className="w-32" min={0} max={maxMark} step={0.5} />
+              <Input 
+                type="number" 
+                value={mark} 
+                onChange={handleMarkChange}
+                className="w-32" 
+                min={0} 
+                max={maxMark} 
+                step={0.5}
+                disabled={loading}
+              />
               <span className="text-sm text-muted-foreground">/ {maxMark}</span>
+              {answer?.mark !== undefined && answer?.mark !== null && (
+                <Badge variant="outline" className="text-xs">
+                  {lang === 'ar' ? 'الدرجة السابقة:' : 'Previous:'} {answer.mark}
+                </Badge>
+              )}
             </div>
-            {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+            {error && (
+              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {error}
+              </p>
+            )}
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">
+                {lang === 'ar' ? 'الدرجة القصوى:' : 'Max Mark:'}
+              </span>
+              <span className="font-bold">{maxMark}</span>
+            </div>
+            <div className="flex justify-between text-sm mt-1">
+              <span className="text-muted-foreground">
+                {lang === 'ar' ? 'النسبة المئوية:' : 'Percentage:'}
+              </span>
+              <span className="font-bold">
+                {maxMark > 0 ? ((mark / maxMark) * 100).toFixed(1) : 0}%
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-2 overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-300 ${
+                  mark >= maxMark * 0.5 ? 'bg-green-500' : 'bg-red-500'
+                }`}
+                style={{ width: `${maxMark > 0 ? (mark / maxMark) * 100 : 0}%` }}
+              />
+            </div>
           </div>
         </div>
+
         <div className="flex justify-end gap-2 mt-6">
-          <Button variant="outline" onClick={onClose}>{lang === 'ar' ? 'إلغاء' : 'Cancel'}</Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {lang === 'ar' ? 'حفظ' : 'Save'}
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={loading || !!error}
+            className="gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {lang === 'ar' ? 'جاري الحفظ...' : 'Saving...'}
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                {lang === 'ar' ? 'حفظ التصحيح' : 'Save Grade'}
+              </>
+            )}
           </Button>
         </div>
       </DialogContent>
@@ -124,12 +283,49 @@ const StudentAnswersModal: React.FC<{
   student: any;
   exam: any;
   questions: any[];
-  onGradeSubmit: (answerId: number, mark: number) => Promise<void>;
+  onGradeSubmit?: (answerId: number, mark: number) => Promise<void>;
   onViewProfile: (studentId: number) => void;
-}> = ({ isOpen, onClose, student, exam, questions, onGradeSubmit, onViewProfile }) => {
+  examId?: number;
+}> = ({ isOpen, onClose, student, exam, questions, onGradeSubmit, onViewProfile, examId }) => {
   const { lang } = useApp();
   const [gradingAnswer, setGradingAnswer] = useState<any>(null);
   const [gradingQuestion, setGradingQuestion] = useState<any>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // ✅ دالة التصحيح جوه المودال
+  const handleGradeEssay = async (answerId: number, mark: number) => {
+    try {
+      console.log('📤 Sending grade:', { answer_id: answerId, mark });
+      
+      const response = await api.post('/exam/grade-essay', { 
+        answer_id: answerId, 
+        mark: mark 
+      });
+      
+      console.log('📥 Grade response:', response.data);
+      
+      toast.success(
+        lang === 'ar' 
+          ? '✅ تم تصحيح الإجابة بنجاح!' 
+          : '✅ Answer graded successfully!'
+      );
+      
+      setRefreshKey(prev => prev + 1);
+      
+      // ✅ تحديث بيانات الطالب في الـ parent component
+      if (onGradeSubmit) {
+        await onGradeSubmit(answerId, mark);
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Grade error:', error);
+      toast.error(
+        lang === 'ar'
+          ? `❌ فشل التصحيح: ${error.response?.data?.message || error.message}`
+          : `❌ Failed to grade: ${error.response?.data?.message || error.message}`
+      );
+    }
+  };
 
   if (!student) return null;
 
@@ -239,26 +435,78 @@ const StudentAnswersModal: React.FC<{
                         <p className="font-medium mb-3">{q.question}</p>
                         {answer ? (
                           <div className={`p-3 rounded-lg ${isEssay ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200' : 'bg-muted/30'}`}>
-                            <p className="text-xs text-muted-foreground mb-1">{lang === 'ar' ? 'إجابة الطالب:' : 'Answer:'}</p>
-                            <p className="text-sm">{answer.answer || '-'}</p>
+                            <p className="text-xs text-muted-foreground mb-1">
+                              {lang === 'ar' ? 'إجابة الطالب:' : 'Answer:'}
+                            </p>
+                            
+                            {answer.answer && (
+                              <p className="text-sm whitespace-pre-wrap">{answer.answer}</p>
+                            )}
+                            
+                            {answer.image && (
+                              <AnswerImage 
+                                imageUrl={answer.image.fullUrl || answer.image.previewUrl || answer.image} 
+                                alt={`Answer image for question ${idx + 1}`}
+                              />
+                            )}
+                            
+                            {!answer.answer && answer.image && typeof answer.image === 'string' && (
+                              <AnswerImage imageUrl={answer.image} alt={`Answer image ${idx + 1}`} />
+                            )}
+                            
+                            {answer.answer && answer.image && (
+                              <div className="mt-2 text-xs text-muted-foreground">
+                                {lang === 'ar' ? '📎 مرفق صورة مع الإجابة' : '📎 Image attached with answer'}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                            <p className="text-sm text-muted-foreground">{lang === 'ar' ? 'لم يتم الإجابة' : 'Not answered'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {lang === 'ar' ? 'لم يتم الإجابة' : 'Not answered'}
+                            </p>
                           </div>
                         )}
-                        {isEssay && answer?.answer && (
-                          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                            <Button
-                              size="sm"
-                              variant={needsGrading ? "default" : "outline"}
-                              className="mt-3 gap-1"
-                              onClick={() => { setGradingAnswer(answer); setGradingQuestion(q); }}
-                            >
-                              {needsGrading ? <><Edit3 className="h-3 w-3" />{lang === 'ar' ? 'تصحيح' : 'Grade'}</> : <><Eye className="h-3 w-3" />{lang === 'ar' ? 'عرض' : 'View'}</>}
-                            </Button>
-                          </motion.div>
-                        )}
+                       {isEssay && answer && (
+  <div className="flex gap-2 mt-3">
+    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+      <Button
+        size="sm"
+        variant="default"
+        className="gap-1"
+        onClick={() => { setGradingAnswer(answer); setGradingQuestion(q); }}
+      >
+        <Edit3 className="h-3 w-3" />
+        {lang === 'ar' ? 'تصحيح' : 'Grade'}
+      </Button>
+    </motion.div>
+    
+    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+      <Button
+        size="sm"
+        variant="outline"
+        className="gap-1 text-green-600 border-green-200 hover:bg-green-50"
+        onClick={async () => {
+          if (window.confirm(
+            lang === 'ar'
+              ? `هل تريد منح الطالب الدرجة الكاملة (${q.mark})؟`
+              : `Give full mark (${q.mark})?`
+          )) {
+            await handleGradeEssay(answer.id, parseFloat(q.mark));
+            toast.success(
+              lang === 'ar' 
+                ? '✅ تم منح الدرجة الكاملة!' 
+                : '✅ Full mark given!'
+            );
+          }
+        }}
+      >
+        <Trophy className="h-3 w-3" />
+        {lang === 'ar' ? 'درجة كاملة' : 'Full Mark'}
+      </Button>
+    </motion.div>
+  </div>
+)}
                       </div>
                     </Card>
                   </motion.div>
@@ -269,7 +517,13 @@ const StudentAnswersModal: React.FC<{
         </DialogContent>
       </Dialog>
 
-      <GradeEssayModal isOpen={!!gradingAnswer} onClose={() => { setGradingAnswer(null); setGradingQuestion(null); }} answer={gradingAnswer} question={gradingQuestion} onGradeSubmit={onGradeSubmit} />
+      <GradeEssayModal 
+        isOpen={!!gradingAnswer} 
+        onClose={() => { setGradingAnswer(null); setGradingQuestion(null); }} 
+        answer={gradingAnswer} 
+        question={gradingQuestion} 
+        onGradeSubmit={handleGradeEssay} 
+      />
     </>
   );
 };
@@ -279,44 +533,8 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
   const navigate = useNavigate();
   const { examId: paramExamId } = useParams<{ examId: string }>();
   const examId = propExamId || (paramExamId ? parseInt(paramExamId) : null);
+  const [deletingQuestionId, setDeletingQuestionId] = useState<number | null>(null);
 
-
-const handleGradeEssay = async (answerId: number, mark: number) => {
-  await api.post('/exam/grade-essay', { answer_id: answerId, mark });
-  setRefreshKey(prev => prev + 1);
-};
-
-// 👇 هنا اكتب الفانكشن الجديدة
-const handlePassStudent = async (studentId: number, studentName: string) => {
-  if (!examId) return;
-  
-  const confirmPass = window.confirm(
-    lang === 'ar' 
-      ? `هل أنت متأكد من انجاح الطالب "${studentName}"؟`
-      : `Are you sure you want to pass "${studentName}"?`
-  );
-  
-  if (!confirmPass) return;
-  
-  try {
-    await api.post('/pass-student', {
-      exam_id: examId,
-      student_id: studentId
-    });
-    toast.success(
-      lang === 'ar' 
-        ? `✅ تم ${studentName} بنجاح!`
-        : `✅ ${studentName} passed successfully!`
-    );
-    setRefreshKey(prev => prev + 1);
-  } catch (error: any) {
-    toast.error(
-      lang === 'ar'
-        ? `❌ فشل الترقية: ${error.response?.data?.message || error.message}`
-        : `❌ Failed to pass student: ${error.response?.data?.message || error.message}`
-    );
-  }
-};
   // ✅ جميع الـ Hooks في البداية (قبل أي return)
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState<any>(null);
@@ -331,6 +549,100 @@ const handlePassStudent = async (studentId: number, studentName: string) => {
   const [studentSearchId, setStudentSearchId] = useState('');
   const [studentSearchPhone, setStudentSearchPhone] = useState('');
   const [filterTypeOfStudy, setFilterTypeOfStudy] = useState<string>('');
+
+  const handleGradeEssay = async (answerId: number, mark: number) => {
+    try {
+      console.log('📤 Sending grade:', { answer_id: answerId, mark });
+      
+      const response = await api.post('/exam/grade-essay', { 
+        answer_id: answerId, 
+        mark: mark 
+      });
+      
+      console.log('📥 Grade response:', response.data);
+      
+      toast.success(
+        lang === 'ar' 
+          ? '✅ تم تصحيح الإجابة بنجاح!' 
+          : '✅ Answer graded successfully!'
+      );
+      
+      setRefreshKey(prev => prev + 1);
+    } catch (error: any) {
+      console.error('❌ Grade error:', error);
+      toast.error(
+        lang === 'ar'
+          ? `❌ فشل التصحيح: ${error.response?.data?.message || error.message}`
+          : `❌ Failed to grade: ${error.response?.data?.message || error.message}`
+      );
+    }
+  };
+
+  // دالة حذف السؤال
+  const handleDeleteQuestion = async (questionId: number) => {
+    if (!examId) return;
+    
+    const confirmDelete = window.confirm(
+      lang === 'ar' 
+        ? `هل أنت متأكد من حذف هذا السؤال؟`
+        : `Are you sure you want to delete this question?`
+    );
+    
+    if (!confirmDelete) return;
+    
+    setDeletingQuestionId(questionId);
+    
+    try {
+      await api.delete(`/exam-questions/${questionId}`);
+      toast.success(
+        lang === 'ar' 
+          ? '✅ تم حذف السؤال بنجاح!'
+          : '✅ Question deleted successfully!'
+      );
+      setRefreshKey(prev => prev + 1);
+    } catch (error: any) {
+      toast.error(
+        lang === 'ar'
+          ? `❌ فشل حذف السؤال: ${error.response?.data?.message || error.message}`
+          : `❌ Failed to delete question: ${error.response?.data?.message || error.message}`
+      );
+    } finally {
+      setDeletingQuestionId(null);
+    }
+  };
+
+  // دالة ترقية الطالب
+  const handlePassStudent = async (studentId: number, studentName: string) => {
+    if (!examId) return;
+    
+    const confirmPass = window.confirm(
+      lang === 'ar' 
+        ? `هل أنت متأكد من انجاح الطالب "${studentName}"؟`
+        : `Are you sure you want to pass "${studentName}"?`
+    );
+    
+    if (!confirmPass) return;
+    
+    try {
+      await api.post('/pass-student', {
+        exam_id: examId,
+        student_id: studentId
+      });
+      toast.success(
+        lang === 'ar' 
+          ? `✅ تم ${studentName} بنجاح!`
+          : `✅ ${studentName} passed successfully!`
+      );
+      setRefreshKey(prev => prev + 1);
+    } catch (error: any) {
+      toast.error(
+        lang === 'ar'
+          ? `❌ فشل الترقية: ${error.response?.data?.message || error.message}`
+          : `❌ Failed to pass student: ${error.response?.data?.message || error.message}`
+      );
+    }
+  };
+
   // ✅ الـ useEffect
   useEffect(() => {
     if (examId) fetchExamData();
@@ -341,14 +653,13 @@ const handlePassStudent = async (studentId: number, studentName: string) => {
     try {
       const res = await api.get(`/exam/${examId}`);
       setExam(res.data.data);
+      console.log('Fetched exam data:', res.data.data);
     } catch (error) {
       toast.error(lang === 'ar' ? 'خطأ في التحميل' : 'Error');
     } finally {
       setLoading(false);
     }
   };
-
-
 
   const handleBack = () => {
     if (propOnBack) {
@@ -360,6 +671,7 @@ const handlePassStudent = async (studentId: number, studentName: string) => {
 
   // ✅ الـ useMemo بعد الـ Hooks وقبل أي return
   const questions = exam?.questions || [];
+  console.log('Questions:', questions);
   const students = exam?.students || [];
 
   const filteredStudents = useMemo(() => {
@@ -640,7 +952,7 @@ const handlePassStudent = async (studentId: number, studentName: string) => {
               </TabsTrigger>
             </TabsList>
 
-            {/* Questions Tab - نفس الكود السابق */}
+            {/* Questions Tab */}
             <TabsContent value="questions" className="mt-6 space-y-4">
               {questions.length === 0 ? (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
@@ -657,41 +969,73 @@ const handlePassStudent = async (studentId: number, studentName: string) => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
                   >
-                    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-l-4 border-l-indigo-500">
+                    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-l-4 border-l-indigo-500 relative">
                       <div className="p-5">
-                        <div className="flex items-center gap-3 mb-3 flex-wrap">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
-                            {idx + 1}
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            {getTypeLabel(q.question_type)}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs gap-1">
-                            <Star className="h-3 w-3" />
-                            {q.mark} {lang === 'ar' ? 'درجات' : 'marks'}
-                          </Badge>
-                        </div>
-                        <p className="font-medium mb-3">{q.question}</p>
-                        {q.image?.fullUrl && (
-                          <img src={q.image.fullUrl} alt="Question" className="max-h-48 rounded-lg mt-2 mb-3" />
-                        )}
-                        {q.correct_answer && (
-                          <div className="mt-2 text-sm bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 p-2 rounded-lg">
-                            <span className="font-medium">{lang === 'ar' ? '✓ الإجابة الصحيحة:' : '✓ Correct:'}</span> {q.correct_answer === 'true' ? (lang === 'ar' ? 'صحيح' : 'True') : q.correct_answer === 'false' ? (lang === 'ar' ? 'خطأ' : 'False') : q.correct_answer}
-                          </div>
-                        )}
-                        {q.options && (
-                          <div className="mt-2">
-                            <p className="text-xs text-muted-foreground mb-2">{lang === 'ar' ? 'الخيارات:' : 'Options:'}</p>
-                            <div className="flex flex-wrap gap-2">
-                              {JSON.parse(q.options).map((opt: string, i: number) => (
-                                <Badge key={i} variant={opt === q.correct_answer ? "default" : "outline"} className="cursor-pointer">
-                                  {opt}
-                                </Badge>
-                              ))}
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3 flex-wrap">
+                              <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
+                                {idx + 1}
+                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                {getTypeLabel(q.question_type)}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs gap-1">
+                                <Star className="h-3 w-3" />
+                                {q.mark} {lang === 'ar' ? 'درجات' : 'marks'}
+                              </Badge>
                             </div>
+                            <p className="font-medium mb-3">{q.question}</p>
+                            {q.image && (
+                              <div className="mt-2 mb-3">
+                                <img 
+                                  src={q.image.fullUrl || q.image.previewUrl} 
+                                  alt="Question" 
+                                  className="max-h-48 rounded-lg object-contain bg-slate-50 dark:bg-slate-800/50"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {q.correct_answer && (
+                              <div className="mt-2 text-sm bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 p-2 rounded-lg">
+                                <span className="font-medium">{lang === 'ar' ? '✓ الإجابة الصحيحة:' : '✓ Correct:'}</span> {q.correct_answer === 'true' ? (lang === 'ar' ? 'صحيح' : 'True') : q.correct_answer === 'false' ? (lang === 'ar' ? 'خطأ' : 'False') : q.correct_answer}
+                              </div>
+                            )}
+                            {q.options && (
+                              <div className="mt-2">
+                                <p className="text-xs text-muted-foreground mb-2">{lang === 'ar' ? 'الخيارات:' : 'Options:'}</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {JSON.parse(q.options).map((opt: string, i: number) => (
+                                    <Badge key={i} variant={opt === q.correct_answer ? "default" : "outline"} className="cursor-pointer">
+                                      {opt}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        )}
+                          
+                          {/* زر حذف السؤال */}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="ml-4 shrink-0 gap-1 hover:scale-105 transition-all duration-200"
+                            onClick={() => handleDeleteQuestion(q.id)}
+                            disabled={deletingQuestionId === q.id}
+                          >
+                            {deletingQuestionId === q.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                            <span className="hidden sm:inline">
+                              {lang === 'ar' ? 'حذف' : 'Delete'}
+                            </span>
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   </motion.div>
@@ -811,27 +1155,26 @@ const handlePassStudent = async (studentId: number, studentName: string) => {
                                 {student.name?.charAt(0)?.toUpperCase() || 'S'}
                               </div>
                             </div>
-                          <div className="absolute top-3 right-3 flex gap-2">
-  {/* زر الترقية الجديد */}
-  <Button
-    size="sm"
-    className="bg-green-500 hover:bg-green-600 text-white shadow-lg gap-1"
-    onClick={(e) => {
-      e.stopPropagation();
-      handlePassStudent(student.id, student.name);
-    }}
-  >
-    <Trophy className="h-3.5 w-3.5" />
-    {lang === 'ar' ? 'تنجيح الطالب' : 'Pass'}
-  </Button>
-  
-  {hasPending && (
-    <Badge className="bg-amber-500 text-white gap-1">
-      <AlertCircle className="h-3 w-3" />
-      {lang === 'ar' ? 'بانتظار' : 'Pending'}
-    </Badge>
-  )}
-</div>
+                            <div className="absolute top-3 right-3 flex gap-2">
+                              <Button
+                                size="sm"
+                                className="bg-green-500 hover:bg-green-600 text-white shadow-lg gap-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePassStudent(student.id, student.name);
+                                }}
+                              >
+                                <Trophy className="h-3.5 w-3.5" />
+                                {lang === 'ar' ? 'تنجيح الطالب' : 'Pass'}
+                              </Button>
+                              
+                              {hasPending && (
+                                <Badge className="bg-amber-500 text-white gap-1">
+                                  <AlertCircle className="h-3 w-3" />
+                                  {lang === 'ar' ? 'بانتظار' : 'Pending'}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <div className="p-4 pt-10">
                             <h3 className="font-bold text-lg text-gray-800 dark:text-white">{student.name}</h3>
@@ -876,7 +1219,15 @@ const handlePassStudent = async (studentId: number, studentName: string) => {
         </motion.div>
       </div>
 
-      <StudentAnswersModal isOpen={studentModalOpen} onClose={() => { setStudentModalOpen(false); setSelectedStudent(null); }} student={selectedStudent} exam={exam} questions={questions} onGradeSubmit={handleGradeEssay} onViewProfile={(id) => { setStudentModalOpen(false); setViewingProfile(id); }} />
+      <StudentAnswersModal 
+        isOpen={studentModalOpen} 
+        onClose={() => { setStudentModalOpen(false); setSelectedStudent(null); }} 
+        student={selectedStudent} 
+        exam={exam} 
+        questions={questions} 
+        onGradeSubmit={handleGradeEssay} 
+        onViewProfile={(id) => { setStudentModalOpen(false); setViewingProfile(id); }} 
+      />
     </motion.div>
   );
 };

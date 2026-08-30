@@ -246,7 +246,7 @@ async createExam(data: CreateExamDTO): Promise<Exam> {
   // ============================================================
   // ✅ UPDATE EXAM
   // ============================================================
-  async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {
+ async updateExam(id: number, data: UpdateExamDTO): Promise<Exam> {
     try {
       const payload: any = {
         title: data.title,
@@ -277,6 +277,24 @@ async createExam(data: CreateExamDTO): Promise<Exam> {
       // ✅ استخراج الـ exam من الـ Response
       let updatedExam: Exam | null = null;
       
+      // 🔥 الحل الجديد: نرجع البيانات القديمة المحدثة يدوياً
+      if (response.data?.result === 'Success' && response.data?.message) {
+        // نجاح العملية ولكن data = null
+        toast({
+          title: "Success",
+          description: response.data.message || "Exam updated successfully",
+        });
+        
+        // ✅ نرجع الـ data المحدثة مع الـ ID
+        updatedExam = {
+          ...data,  // البيانات الجديدة
+          id: id,   // الـ ID
+        } as Exam;
+        
+        return updatedExam;
+      }
+      
+      // الحالة القديمة (إذا كان الـ data موجود)
       if (response.data?.data && typeof response.data.data === 'object') {
         updatedExam = response.data.data;
       } else if (response.data && typeof response.data === 'object' && response.data.id) {
@@ -289,6 +307,20 @@ async createExam(data: CreateExamDTO): Promise<Exam> {
           description: "Exam updated successfully",
         });
         return updatedExam;
+      }
+
+      // ✅ في حالة نجاح العملية ولكن data = null
+      if (response.status === 200 || response.status === 201) {
+        // نرجع البيانات المحدثة مع الـ ID
+        toast({
+          title: "Success",
+          description: response.data?.message || "Exam updated successfully",
+        });
+        
+        return {
+          ...data,
+          id: id,
+        } as Exam;
       }
 
       throw new Error('Failed to retrieve updated exam');
@@ -315,7 +347,7 @@ async createExam(data: CreateExamDTO): Promise<Exam> {
       }
       throw error;
     }
-  }
+}
 
   // ============================================================
   // ✅ DELETE EXAM (soft delete)
