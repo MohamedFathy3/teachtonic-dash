@@ -50,7 +50,7 @@ class CourseDetailService extends BaseService<CourseDetail> {
       filters: filters,
       orderBy: 'lession_date',
       orderByDirection: 'desc',
-      perPage: params?.perPage || 10,
+      perPage: params?.perPage || 200,
       page: params?.page || 1,
       paginate: true,
     };

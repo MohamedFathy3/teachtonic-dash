@@ -46,6 +46,7 @@ export interface TeacherWebsite {
 export interface Teacher {
   id: number;
   name: string;
+  expire_date?: string | null;
   email: string;
   sub_domain: string;
   phone: string;
@@ -77,6 +78,7 @@ export interface TeacherFormData {
   email: string;
   sub_domain: string;
   phone: string;
+  expire_date?: string | null;
   password: string;
   stage: TeacherStagePayload[];   // للـ API
   subject: TeacherSubjectPayload[]; // للـ API

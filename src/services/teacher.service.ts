@@ -77,6 +77,7 @@ class TeacherService extends BaseService<Teacher> {
         name: data.name,
         email: data.email,
         sub_domain: data.sub_domain,
+        expiry_date: data.expiry_date || null,
         phone: data.phone,
         password: data.password,
         stage: data.stage || [],
@@ -113,6 +114,7 @@ class TeacherService extends BaseService<Teacher> {
       const payload: any = {};
 
       if (data.name !== undefined) payload.name = data.name;
+      if (data.expire_date !== undefined) payload.expire_date = data.expire_date;
       if (data.email !== undefined) payload.email = data.email;
       if (data.sub_domain !== undefined) payload.sub_domain = data.sub_domain;
       if (data.phone !== undefined) payload.phone = data.phone;

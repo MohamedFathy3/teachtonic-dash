@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/admin/teachers/TeacherForm.tsx
 
 import { useState, useEffect } from 'react';
@@ -25,6 +24,7 @@ import {
   FolderTree,
   BookMarked,
   Plus,
+  Calendar, // ✅ إضافة أيقونة التقويم
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StagesSubjectsModal } from './StagesSubjectsModal';
@@ -50,6 +50,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
     stage: [],
     subject: [],
     image: undefined,
+    expire_date: null, // ✅ إضافة القيمة الافتراضية
   });
   
   const [fetchingTeacher, setFetchingTeacher] = useState(false);
@@ -120,7 +121,8 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
         setFormData({
           ...convertedData,
           sub_domain: convertedData.sub_domain || 'default',
-          subject: subjectsWithStage // ✅ المواد مع stage_id
+          subject: subjectsWithStage, // ✅ المواد مع stage_id
+          expire_date: convertedData.expire_date || null, // ✅ تعيين تاريخ الانتهاء
         });
         
         if (teacher.imageUrl) {
@@ -178,6 +180,7 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
         stage: [],
         subject: [],
         image: undefined,
+        expire_date: null, // ✅ إعادة تعيين
       });
       setCurrentImageUrl(null);
       setImagePreview(null);
@@ -396,6 +399,26 @@ export function TeacherForm({ open, onClose, onSubmit, teacherId, loading }: Pro
                 />
               </div>
               
+              {/* ✅ حقل تاريخ الانتهاء */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  Expiry Date
+                </Label>
+                <Input
+                  type="date"
+                  value={formData.expire_date || ''}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    expire_date: e.target.value || null 
+                  }))}
+                  className="h-11"
+                />
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  Leave empty for no expiry date
+                </p>
+              </div>
+
               <div className="space-y-1.5 md:col-span-2">
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   <Key className="w-4 h-4 text-gray-400" />

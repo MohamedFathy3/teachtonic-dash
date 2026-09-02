@@ -26,6 +26,8 @@ import {
   GraduationCap,
   Sparkles,
   ChevronDown,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -33,9 +35,16 @@ import { AvatarBadge } from "@/components/lms/AvatarBadge";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
 
 interface TopbarProps {
   onToggleSidebar: () => void;
+}
+
+interface ExpiryData {
+  expire_date: string | null;
+  show_expire_message: boolean;
 }
 
 export function Topbar({ onToggleSidebar }: TopbarProps) {
@@ -51,6 +60,35 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
   } = useApp();
 
   const navigate = useNavigate();
+  
+  // ✅ State لتاريخ الانتهاء
+  const [expiryData, setExpiryData] = useState<ExpiryData | null>(null);
+  const [loadingExpiry, setLoadingExpiry] = useState(false);
+
+  // ✅ جلب تاريخ الانتهاء
+  useEffect(() => {
+    const fetchExpiryData = async () => {
+      // فقط للمعلمين
+      if (role !== 'teacher') return;
+      
+      setLoadingExpiry(true);
+      try {
+        const response = await api.get('/admin/check-auth');
+        if (response.data?.data) {
+          setExpiryData({
+            expire_date: response.data.data.expire_date || null,
+            show_expire_message: response.data.data.show_expire_message || false,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch expiry data:', error);
+      } finally {
+        setLoadingExpiry(false);
+      }
+    };
+
+    fetchExpiryData();
+  }, [role]);
 
   const handleLogout = () => {
     logout();
@@ -61,7 +99,6 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
     if (role === "admin") {
       return <Shield className="h-3.5 w-3.5" />;
     }
-
     return <GraduationCap className="h-3.5 w-3.5" />;
   };
 
@@ -74,7 +111,6 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
         border-purple-500/20
       `;
     }
-
     return `
       from-blue-500/20
       to-cyan-500/20
@@ -82,6 +118,82 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
       border-cyan-500/20
     `;
   };
+
+  // ✅ تنسيق التاريخ
+  const formatExpiryDate = (dateStr: string | null): string => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      if (lang === 'ar') {
+        return date.toLocaleDateString('ar-EG', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // ✅ حساب الأيام المتبقية
+  const getDaysRemaining = (dateStr: string | null): number | null => {
+    if (!dateStr) return null;
+    try {
+      const expireDate = new Date(dateStr);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const diffTime = expireDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    } catch {
+      return null;
+    }
+  };
+
+  const daysRemaining = expiryData?.expire_date ? getDaysRemaining(expiryData.expire_date) : null;
+  const isExpired = daysRemaining !== null && daysRemaining < 0;
+  const isNearExpiry = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 7;
+
+  // ✅ تحديد لون الخلفية حسب الحالة
+  const getExpiryBadgeClass = () => {
+    if (isExpired) {
+      return "bg-red-500/20 border-red-500/40 text-red-400";
+    }
+    if (isNearExpiry) {
+      return "bg-orange-500/20 border-orange-500/40 text-orange-400";
+    }
+    return "bg-yellow-500/10 border-yellow-500/20 text-yellow-400";
+  };
+
+  // ✅ تحديد أيقونة حسب الحالة
+  const getExpiryIcon = () => {
+    if (isExpired) {
+      return <AlertTriangle className="h-4 w-4" />;
+    }
+    if (isNearExpiry) {
+      return <AlertTriangle className="h-4 w-4" />;
+    }
+    return <Clock className="h-4 w-4" />;
+  };
+
+  // ✅ نص الحالة
+  const getExpiryStatusText = () => {
+    if (isExpired) {
+      return lang === 'ar' ? 'منتهي' : 'Expired';
+    }
+    if (isNearExpiry) {
+      return lang === 'ar' ? 'ينتهي قريباً' : 'Expiring soon';
+    }
+    return lang === 'ar' ? 'ينتهي في' : 'Expires on';
+  };
+
+  const shouldShowExpiry = role === 'teacher' && expiryData?.show_expire_message && expiryData?.expire_date;
 
   return (
     <header
@@ -190,6 +302,84 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
 
         {/* RIGHT SIDE */}
         <div className="flex items-center gap-2">
+          {/* ✅ EXPIRY BADGE - فقط للمعلمين */}
+          {shouldShowExpiry && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className={cn(
+                `
+                  flex items-center gap-2
+                  rounded-2xl
+                  border
+                  px-3 py-1.5
+                  backdrop-blur-xl
+                  relative
+                  overflow-hidden
+                `,
+                getExpiryBadgeClass()
+              )}
+            >
+              {/* ✅ تأثير الوميض (blink) */}
+              <AnimatePresence>
+                {(isExpired || isNearExpiry) && (
+                  <motion.div
+                    initial={{ opacity: 0.3 }}
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="
+                      absolute inset-0
+                      bg-gradient-to-r
+                      from-transparent
+                      via-white/10
+                      to-transparent
+                      -skew-x-12
+                    "
+                  />
+                )}
+              </AnimatePresence>
+
+              {/* ✅ أيقونة */}
+              <div className="relative z-10">
+                {getExpiryIcon()}
+              </div>
+
+              {/* ✅ النص */}
+              <div className="relative z-10 flex flex-col leading-tight">
+                <span className="text-[10px] uppercase tracking-widest opacity-70">
+                  {getExpiryStatusText()}
+                </span>
+                <span className="text-xs font-semibold">
+                  {formatExpiryDate(expiryData.expire_date)}
+                </span>
+              </div>
+
+              {/* ✅ عرض الأيام المتبقية */}
+              {daysRemaining !== null && !isExpired && (
+                <div className="relative z-10 flex items-center gap-1 bg-black/20 rounded-full px-2 py-0.5">
+                  <span className="text-[10px] font-bold">
+                    {daysRemaining}
+                  </span>
+                  <span className="text-[8px] uppercase opacity-60">
+                    {lang === 'ar' ? 'يوم' : 'days'}
+                  </span>
+                </div>
+              )}
+
+              {/* ✅ عرض "منتهي" إذا انتهى */}
+              {isExpired && (
+                <div className="relative z-10 flex items-center gap-1 bg-red-500/20 rounded-full px-2 py-0.5">
+                  <span className="text-[10px] font-bold uppercase">
+                    {lang === 'ar' ? 'منتهي' : 'Expired'}
+                  </span>
+                </div>
+              )}
+            </motion.div>
+          )}
 
           {/* ROLE BADGE */}
           <motion.div
