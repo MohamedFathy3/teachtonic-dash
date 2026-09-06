@@ -7,20 +7,6 @@ import { toast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 import { Loader2, QrCode, CheckCircle, XCircle, RefreshCw, Copy, Save, AlertCircle, Users } from 'lucide-react';
 
-// ✅ كل الطلبات رايحة على الباك اند بتاعنا فقط ({{api}}/whatsapp/...)
-// مفيش أي اتصال مباشر بـ wzila.com من الفرونت إند.
-//
-// شكل الرد الفعلي من /whatsapp/connect (POST):
-// { status: "pending" | "error", message, instance_id, qr_code, expires_in }
-//
-// -------- API جديدة خاصة بإعدادات المستقبِل (recipient) --------
-// GET  {{api}}/whatsapp/settings/:teacherId
-//   -> { recipientType: "student" | "parent" | "both" }
-//
-// POST {{api}}/whatsapp/settings
-//   body: { teacherId, recipientType: "student" | "parent" | "both" }
-//   -> { status: "success" | "error", message, recipientType }
-// -----------------------------------------------------------------
 
 type RecipientType = 'student' | 'parent' | 'both';
 
@@ -115,7 +101,53 @@ const WhatsAppSetup: React.FC = () => {
       setIsSavingRecipient(false);
     }
   };
+// أضف هذه الدالة في ملف WhatsAppSetup.tsx
 
+const deleteWhatsAppInstance = async () => {
+  if (!teacherId) {
+    toast({
+      title: 'خطأ',
+      description: 'معلم غير محدد',
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  // تأكيد الحذف من المستخدم
+  const confirmDelete = window.confirm(
+    '⚠️ هل أنت متأكد من حذف اتصال واتساب؟\n' +
+    'سيتم إلغاء ربط الحساب ولن تتمكن من إرسال رسائل.'
+  );
+
+  if (!confirmDelete) return;
+
+  setIsLoading(true);
+
+  try {
+    const response = await api.delete(`/teachers/${teacherId}/whatsapp-instance`);
+    
+    // تنظيف البيانات المحلية
+    localStorage.removeItem(`whatsapp_instance_${teacherId}`);
+    setInstanceId(null);
+    setQrCode(null);
+    setStatus('idle');
+    setSavedInstanceId(null);
+
+    toast({
+      title: '✅ تم الحذف',
+      description: 'تم إلغاء ربط حساب واتساب بنجاح',
+    });
+  } catch (error: any) {
+    console.error('❌ Error deleting instance:', error);
+    toast({
+      title: '❌ خطأ في الحذف',
+      description: error.response?.data?.message || 'حدث خطأ أثناء حذف البيانات',
+      variant: 'destructive',
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
   // 🔹 دالة جلب QR Code من الباك اند بتاعنا
   const generateQR = async () => {
     if (!token) {
@@ -368,26 +400,46 @@ const WhatsAppSetup: React.FC = () => {
               {isLoading ? 'جاري الإنشاء...' : 'إنشاء رمز QR جديد'}
             </Button>
 
-            {instanceId && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={checkConnection}
-                  className="min-w-[100px]"
-                  disabled={isLoading}
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                  تحقق
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={copyInstanceId}
-                  className="min-w-[80px]"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </>
-            )}
+
+{instanceId && (
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <Button
+      onClick={saveLocalInstance}
+      variant="secondary"
+      className="flex-1"
+      disabled={isLoading}
+    >
+      <Save className="h-4 w-4 mr-2" />
+      حفظ محلياً
+    </Button>
+
+    <Button
+      onClick={saveInstanceToServer}
+      variant="default"
+      className="flex-1"
+      disabled={isLoading || status !== 'connected'}
+    >
+      <Save className="h-4 w-4 mr-2" />
+      حفظ في الخادم
+      {status !== 'connected' && ' (انتظر الاتصال)'}
+    </Button>
+
+    {/* 🔹 زر الحذف الجديد */}
+    <Button
+      onClick={deleteWhatsAppInstance}
+      variant="destructive"
+      className="flex-1"
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+      ) : (
+        <XCircle className="h-4 w-4 mr-2" />
+      )}
+      حذف الاتصال
+    </Button>
+  </div>
+)}
           </div>
 
           {qrCode && (
