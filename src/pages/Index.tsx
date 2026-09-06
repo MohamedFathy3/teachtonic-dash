@@ -40,20 +40,33 @@ import { CenterHoursPage } from "@/components/admin/center-hours/CenterHoursPage
 import { BooksPage } from "@/components/admin/books/BooksPage";
 import { InstructorRedeemRequests } from "@/components/redeem-requests/RedeemRequestsPage";
 import { SemestersPage } from "@/components/admin/SemestersPage";
-import api from "@/lib/api"; // ✅ استيراد الـ api
-import { useFavicon } from "@/hooks/useFavicon"; // ✅ استيراد الـ Hook
+import api from "@/lib/api";
+import { useFavicon } from "@/hooks/useFavicon";
 
 function LMSApp() {
   const { role, isLoading, isAuthenticated, user, instructorData } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const [active, setActive] = useState("dashboard");
- useFavicon();
+  useFavicon();
+
+  // إعادة التوجيه إذا كان المسار هو '/'
+  useEffect(() => {
+    if (location.pathname === '/') {
+      if (role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (role === 'instructor') {
+        navigate('/instructor/dashboard', { replace: true });
+      } else {
+        navigate('/login', { replace: true });
+      }
+    }
+  }, [location.pathname, role, navigate]);
+
   // تحديث الـ active بناءً على المسار الحالي
   useEffect(() => {
     const path = location.pathname;
     if (path.includes("/instructor/exam")) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActive("exams");
     } else if (path.includes("/instructor/assignment")) {
       setActive("assignments");
@@ -81,10 +94,7 @@ function LMSApp() {
       setActive("assistants");
     } else if (path.includes("/instructor/website")) {
       setActive("website");
-    // } else if (path.includes("/instructor/payment-codes")) {
-    //   setActive("payment-codes");
-    } 
-    else if (path.includes("/instructor/books")) {
+    } else if (path.includes("/instructor/books")) {
       setActive("books");
     } else if (path.includes("/instructor/redeem-requests")) {
       setActive("redeem-requests");
