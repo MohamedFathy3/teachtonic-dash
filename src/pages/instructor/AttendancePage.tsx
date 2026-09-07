@@ -137,8 +137,10 @@ interface Course {
 
 interface CourseDetail {
   id: number;
-  title: string;
-  title_ar: string;
+  title?: string;
+  title_ar?: string;
+  titles?: string[];
+  titles_ar?: string[];
   course_id: number;
 }
 
@@ -1097,8 +1099,8 @@ const handleDeleteAttendance = async (attendance: AttendanceRecord) => {
                           {courseDetails.map((detail) => (
                             <SelectItem key={detail.id} value={detail.id.toString()}>
                               {isRTL
-                                ? detail.title_ar || detail.title || `درس ${detail.id}`
-                                : detail.title || detail.title_ar || `Lesson ${detail.id}`}
+                                ? detail.titles_ar?.filter(Boolean).join(' - ') || detail.title_ar || detail.titles?.filter(Boolean).join(' - ') || detail.title || `درس ${detail.id}`
+                                : detail.titles?.filter(Boolean).join(' - ') || detail.title || detail.titles_ar?.filter(Boolean).join(' - ') || detail.title_ar || `Lesson ${detail.id}`}
                             </SelectItem>
                           ))}
                         </SelectContent>

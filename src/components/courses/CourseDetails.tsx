@@ -210,7 +210,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
   const [lessonsLoading, setLessonsLoading] = useState(false);
   const [lessonsPagination, setLessonsPagination] = useState({
     currentPage: 1,
-    perPage: 10,
+    perPage: 12,
     total: 0,
     lastPage: 1
   });
@@ -408,17 +408,23 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
         perPage: lessonsPagination.perPage
       });
 
-      const lessonsData = response?.data || [];
+      const lessonsData = Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response?.data?.data)
+          ? response.data.data
+          : [];
       setLessons(lessonsData);
 
-      if (response?.pagination) {
-        setLessonsPagination({
-          currentPage: response.pagination.currentPage || page,
-          perPage: response.pagination.perPage || 10,
-          total: response.pagination.total || 0,
-          lastPage: response.pagination.lastPage || 1
-        });
-      }
+      const pagination = response?.meta
+        || response?.pagination
+        || response?.data?.meta
+        || response?.data?.pagination;
+      setLessonsPagination({
+        currentPage: pagination?.current_page ?? pagination?.currentPage ?? page,
+        perPage: pagination?.per_page ?? pagination?.perPage ?? lessonsPagination.perPage,
+        total: pagination?.total ?? lessonsData.length,
+        lastPage: pagination?.last_page ?? pagination?.lastPage ?? 1
+      });
     } catch (error) {
       console.error('Error fetching lessons:', error);
       toast.error(lang === 'ar' ? 'حدث خطأ في تحميل الدروس' : 'Error loading lessons');
@@ -556,7 +562,6 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
       description: lessonForm.description,
       link_drive: lessonForm.link_drive,
       description_ar: lessonForm.description_ar,
-      content_link: lessonForm.content_link,
       lession_date: lessonForm.lession_date,
       lession_time: lessonForm.lession_time,
       price: lessonForm.price,
@@ -1651,16 +1656,7 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
             />
 
             <div>
-              <label className="block text-sm font-medium mb-1">{t('contentLink') || 'رابط المحتوى'}</label>
-              <Input
-                value={lessonForm.content_link}
-                onChange={(e) => setLessonForm({ ...lessonForm, content_link: e.target.value })}
-                placeholder="http://example.com"
-                className="rounded-xl"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">{t('linkdrive') || 'رابط المحتوى'}</label>
+              <label className="block text-sm font-medium mb-1">رابط الدرايف</label>
               <Input
                 value={lessonForm.link_drive}
                 onChange={(e) => setLessonForm({ ...lessonForm, link_drive: e.target.value })}
@@ -1749,7 +1745,9 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
                 {t('cancel') || 'إلغاء'}
               </Button>
               <Button onClick={handleSaveLesson} className="rounded-xl bg-gradient-to-r from-primary to-secondary">
-                {editingLesson ? (t('update') || 'تحديث') : (t('add') || 'إضافة')}
+                {editingLesson
+                  ? (lang === 'ar' ? 'تحديث الدرس' : 'Update Lesson')
+                  : (t('add') || 'إضافة')}
               </Button>
             </div>
           </div>

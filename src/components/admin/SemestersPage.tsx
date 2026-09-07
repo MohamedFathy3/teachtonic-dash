@@ -56,7 +56,7 @@ export const SemestersPage: React.FC = () => {
 const navigate = useNavigate();
 
   const { subjects, offers } = useTeacherMeta(teacherId);
-
+console.log(subjects, offers, 'subjects, offers');
   // State
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [loading, setLoading] = useState(false);
@@ -547,6 +547,7 @@ const navigate = useNavigate();
                       {subjects?.map((sub: any) => (
                         <option key={sub.id} value={sub.id}>
                           {isRTL ? sub.name_ar : sub.name}
+                          {sub.stage && ` (${isRTL ? (sub.stage.name_ar || sub.stage.name) : sub.stage.name})`}
                         </option>
                       ))}
                     </select>
@@ -894,6 +895,7 @@ const navigate = useNavigate();
                     {subjects?.map((sub: any) => (
                       <option key={sub.id} value={sub.id}>
                         {isRTL ? sub.name_ar : sub.name}
+                        {sub.stage && ` (${isRTL ? (sub.stage.name_ar || sub.stage.name) : sub.stage.name})`}
                       </option>
                     ))}
                   </select>
