@@ -26,7 +26,6 @@ import { Switch } from '@/components/ui/switch';
 import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
-import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { Send } from 'lucide-react';
 import { Label } from '../ui/label';
 
@@ -1823,21 +1822,20 @@ export const CourseDetails: React.FC<CourseDetailsProps> = ({ courseId, onBack, 
               </div>
             )}
 
-            {/* Rich Text Editor */}
+            {/* Message input */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" />
                 {lang === 'ar' ? 'نص الرسالة' : 'Message'}
                 <span className="text-red-500">*</span>
               </Label>
-              <RichTextEditor
-                content={whatsappMessage}
-                onChange={setWhatsappMessage}
+              <Textarea
+                value={whatsappMessage}
+                onChange={(event) => setWhatsappMessage(event.target.value)}
                 placeholder={lang === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message...'}
+                dir={isRTL ? 'rtl' : 'ltr'}
+                rows={5}
               />
-              <p className="text-xs text-muted-foreground">
-                💡 {lang === 'ar' ? 'يمكنك استخدام الإيموجي والتنسيق' : 'You can use emojis and formatting'}
-              </p>
             </div>
           </div>
 

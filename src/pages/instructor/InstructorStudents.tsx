@@ -10,6 +10,7 @@ import { studentService, Student } from '@/services/student.service';
 import { StudentLearningPage } from './StudentLearningPage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -50,7 +51,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { RichTextEditor } from '@/components/ui/RichTextEditor';
 
 // ✅ Animations
 const containerVariants = {
@@ -1789,21 +1789,20 @@ export const InstructorStudents: React.FC = () => {
               </Badge>
             </div>
 
-            {/* Rich Text Editor للرسالة */}
+            {/* Message input */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" />
                 {lang === 'ar' ? 'نص الرسالة' : 'Message'}
                 <span className="text-red-500">*</span>
               </Label>
-              <RichTextEditor
-                content={whatsappMessage}
-                onChange={setWhatsappMessage}
+              <Textarea
+                value={whatsappMessage}
+                onChange={(event) => setWhatsappMessage(event.target.value)}
                 placeholder={lang === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message...'}
+                dir={isRTL ? 'rtl' : 'ltr'}
+                rows={5}
               />
-              <p className="text-xs text-muted-foreground">
-                💡 {lang === 'ar' ? 'يمكنك استخدام الإيموجي والتنسيق' : 'You can use emojis and formatting'}
-              </p>
             </div>
           </div>
 
