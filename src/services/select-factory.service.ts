@@ -50,7 +50,8 @@ class SelectFactoryService {
       search?: string;
       extraFilters?: Record<string, any>; // 🔥 أضفنا extraFilters
     }): Promise<{ data: AsyncSelectOption[]; meta: any }> => {
-      const filters = this.buildFilters(config, params.search, params.extraFilters);
+      const { search: _search, ...extraFilters } = params.extraFilters || {};
+      const filters = this.buildFilters(config, params.search, extraFilters);
 
       const payload: Record<string, any> = {
         filters,
