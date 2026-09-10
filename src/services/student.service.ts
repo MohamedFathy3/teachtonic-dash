@@ -100,7 +100,6 @@ class StudentService extends BaseService<Student> {
         if (isNumber) {
           singleFilter = {
             teacher_id: teacherId,
-            id: Number(value),
             phone: value,
           };
         } else {
