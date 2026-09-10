@@ -693,8 +693,22 @@ export const InstructorStudents: React.FC = () => {
           <ExportExcelButton
             data={students}
             fileName="students-list"
-            label={lang === 'ar' ? 'تصدير' : 'Export'}
+            label={lang === 'ar' ? 'تصدير كل الطلاب' : 'Export all students'}
             disabled={loading || students.length === 0}
+            getData={async () => {
+              if (!user?.id) return [];
+              const filters: any = {};
+              if (filterStageId) filters.stage_id = filterStageId;
+              if (filterAttendance) filters.type_of_attendance = filterAttendance;
+              if (filterStatus !== '') filters.active = filterStatus === 'active';
+              if (filterTypeOfStudy) filters.type_of_study = filterTypeOfStudy;
+              if (filterRegion) filters.region = filterRegion;
+              if (filterId.trim() && !Number.isNaN(Number(filterId))) filters.id = Number(filterId);
+              if (filterPhone) filters.phone = filterPhone;
+              if (filterCodeParent) filters.code_parent = filterCodeParent;
+              if (filterCenterHourId) filters.center_hour_id = Number(filterCenterHourId);
+              return studentService.getAllTeacherStudents(user.id, filters, debouncedSearch);
+            }}
           />
         </motion.div>
 

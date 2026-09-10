@@ -11,6 +11,7 @@ interface ExportExcelButtonProps<T> {
     className?: string;
     icon?: React.ReactNode;
     onBeforeExport?: () => Promise<void>;
+    getData?: () => Promise<T[]>;
 }
 
 export function ExportExcelButton<T>({
@@ -21,13 +22,16 @@ export function ExportExcelButton<T>({
     className,
     icon,
     onBeforeExport,
+    getData,
 }: ExportExcelButtonProps<T>) {
 
-    const handleExport = () => {
-        if (!data || data.length === 0) return;
+    const handleExport = async () => {
+        await onBeforeExport?.();
+        const exportData = getData ? await getData() : data;
+        if (!exportData || exportData.length === 0) return;
 
         // تحويل البيانات إلى Sheet
-        const worksheet = XLSX.utils.json_to_sheet(data);
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
 
         // إنشاء Workbook
         const workbook = XLSX.utils.book_new();
