@@ -100,7 +100,6 @@ class StudentService extends BaseService<Student> {
         if (isNumber) {
           singleFilter = {
             teacher_id: teacherId,
-            id: Number(value),
             phone: value,
           };
         } else {
@@ -196,6 +195,23 @@ class StudentService extends BaseService<Student> {
 
 
 
+
+  async getAllTeacherStudents(
+    teacherId: number,
+    filters?: StudentFilters,
+    search?: string,
+  ): Promise<Student[]> {
+    const response = await api.post(`/${this.endpoint}/index`, {
+      filters: { teacher_id: teacherId, ...(filters || {}) },
+      orderBy: 'id',
+      orderByDirection: 'desc',
+      paginate: false,
+      delete: false,
+      ...(search?.trim() ? { search: search.trim() } : {}),
+    });
+
+    return response.data?.data || [];
+  }
 
   // جلب تفاصيل طالب واحد مع محتواه التعليمي (الكورسات والترم والدروس والامتحانات والواجبات)
   async getStudentLearning(studentId: number): Promise<StudentLearningData> {
