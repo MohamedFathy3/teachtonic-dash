@@ -174,6 +174,13 @@ const normalizeAttendanceRecord = (record: any): AttendanceRecord => ({
   center_hour_id: record.center_hour_id ?? record.centerHour?.id ?? null,
 });
 
+const getAttendanceRecords = (payload: any): any[] => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+};
+
 // Student interface for marking attendance
 interface Student {
   id: number;
@@ -328,17 +335,18 @@ export const AttendancePage: React.FC = () => {
 
         console.log('📥 Attendance response:', response.data);
 
-        const data = (response.data?.data || []).map(normalizeAttendanceRecord);
+        const records = getAttendanceRecords(response.data);
+        const data = records.map(normalizeAttendanceRecord);
         const meta = response.data?.meta || response.data?.pagination || {};
 
         setAttendanceRecords(data);
         setPagination({
           current_page: meta.current_page || 1,
           last_page: meta.last_page || 1,
-          total: meta.total || 0,
-          per_page: meta.per_page || 10,
-          from: meta.from || 0,
-          to: meta.to || 0,
+          total: meta.total ?? data.length,
+          per_page: meta.per_page ?? pagination.per_page,
+          from: meta.from ?? (data.length > 0 ? 1 : 0),
+          to: meta.to ?? data.length,
         });
       } catch (err: any) {
         console.error('❌ Error fetching attendance:', err);
