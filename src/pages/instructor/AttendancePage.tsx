@@ -337,7 +337,7 @@ export const AttendancePage: React.FC = () => {
 
         const records = getAttendanceRecords(response.data);
         const data = records.map(normalizeAttendanceRecord);
-        const meta = response.data?.meta || response.data?.pagination || {};
+        const meta = response.data?.meta || response.data?.pagination || response.data || {};
 
         setAttendanceRecords(data);
         setPagination({
