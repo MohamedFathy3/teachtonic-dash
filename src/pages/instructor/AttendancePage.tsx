@@ -76,6 +76,11 @@ interface AttendanceRecord {
   attended: boolean;
   attended_at: string | null;
   center_hour_id?: number | null;
+  attendance?: {
+    attended: boolean;
+    attended_at: string | null;
+  } | null;
+  centerHour?: CenterHour | null;
   stage?: {
     id: number;
     name: string;
@@ -161,6 +166,13 @@ interface CenterHour {
   stage: string;
   createdAt: string;
 }
+
+const normalizeAttendanceRecord = (record: any): AttendanceRecord => ({
+  ...record,
+  attended: record.attendance?.attended ?? record.attended ?? false,
+  attended_at: record.attendance?.attended_at ?? record.attended_at ?? null,
+  center_hour_id: record.center_hour_id ?? record.centerHour?.id ?? null,
+});
 
 // Student interface for marking attendance
 interface Student {
@@ -316,7 +328,7 @@ export const AttendancePage: React.FC = () => {
 
         console.log('📥 Attendance response:', response.data);
 
-        const data = response.data?.data || [];
+        const data = (response.data?.data || []).map(normalizeAttendanceRecord);
         const meta = response.data?.meta || response.data?.pagination || {};
 
         setAttendanceRecords(data);

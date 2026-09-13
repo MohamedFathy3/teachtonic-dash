@@ -77,7 +77,7 @@ class TeacherService extends BaseService<Teacher> {
         name: data.name,
         email: data.email,
         sub_domain: data.sub_domain,
-        expiry_date: data.expiry_date || null,
+        expire_date: data.expire_date || null,
         phone: data.phone,
         password: data.password,
         stage: data.stage || [],

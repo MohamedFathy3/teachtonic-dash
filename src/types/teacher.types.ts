@@ -112,6 +112,7 @@ export function teacherToFormData(teacher: Teacher): TeacherFormData {
     email: teacher.email,
     sub_domain: teacher.sub_domain,
     phone: teacher.phone,
+    expire_date: teacher.expire_date || null,
     password: '', // الباسورد بيتعبى لوحده لو فيه تغيير
     stage: teacher.website.stages.map(stage => ({ 
       stage_id: stage.id, 
