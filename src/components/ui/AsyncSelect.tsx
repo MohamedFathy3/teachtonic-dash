@@ -152,7 +152,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
         setOptions(cached.data);
         if (cached.meta) {
           setTotal(cached.meta.total);
-          setLastPage(cached.meta.lastPage);
+          setLastPage(cached.meta.lastPage ?? cached.meta.last_page ?? 1);
         }
         setInitialLoaded(true);
         return;
@@ -167,20 +167,8 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       try {
         const searchFilters = { ...extraFilters };
         if (searchTerm && searchTerm.trim()) {
-          if (configKey === 'courses') {
-            searchFilters.title = searchTerm.trim();
-            searchFilters.title_ar = searchTerm.trim();
-          } else if (configKey === 'lessons' || configKey === 'courseLessons') {
-            searchFilters.titles = searchTerm.trim();
-            searchFilters.titles_ar = searchTerm.trim();
-            searchFilters.description = searchTerm.trim();
-            searchFilters.description_ar = searchTerm.trim();
-          } else if (configKey === 'stages' || configKey === 'subjects') {
-            searchFilters.name = searchTerm.trim();
-          } else if (configKey === 'semesters') {
-            searchFilters.name = searchTerm.trim();
-          } else {
-            searchFilters.search = searchTerm.trim();
+          if (configKey === 'lessons' || configKey === 'courseLessons') {
+            searchFilters.searchFields = [lang === 'ar' ? 'titles_ar' : 'titles'];
           }
         }
 
@@ -205,7 +193,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
 
         if (meta) {
           setTotal(meta.total);
-          setLastPage(meta.lastPage);
+          setLastPage(meta.lastPage ?? meta.last_page ?? 1);
         }
       } catch (error) {
         console.error('Failed to fetch options:', error);
@@ -214,7 +202,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
         setFetchingMore(false);
         setInitialLoaded(true);
       }
-    }, [fetchFn, cacheData, getCacheKey, extraFilters, configKey]);
+    }, [fetchFn, cacheData, getCacheKey, extraFilters, configKey, lang]);
 
     // Debounce search
     useEffect(() => {
@@ -260,14 +248,6 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       }
     }, [page, open, enableInfiniteScroll]);
 
-    // Per page change
-    useEffect(() => {
-      if (open && initialLoaded) {
-        setPage(1);
-        fetchOptions(1, perPage, searchDebounced, false);
-      }
-    }, [perPage]);
-
     // Extra filters change
     useEffect(() => {
       const currentFilters = JSON.stringify(extraFilters || {});
@@ -296,7 +276,13 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
     const handlePerPageChange = (newPerPage: number) => {
       setPerPage(newPerPage);
       setPage(1);
-      setInitialLoaded(false);
+      cacheRef.current.clear();
+      fetchOptions(1, newPerPage, searchDebounced, false);
+    };
+
+    const handlePageChange = (newPage: number) => {
+      setPage(newPage);
+      fetchOptions(newPage, perPage, searchDebounced, false);
     };
 
     const getOptionName = (option: AsyncSelectOption) => {
@@ -474,7 +460,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => setPage(p => Math.max(1, p - 1))}
+                          onClick={() => handlePageChange(Math.max(1, page - 1))}
                           disabled={page === 1}
                           className="h-7 px-2 text-xs"
                         >
@@ -488,7 +474,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => setPage(p => Math.min(lastPage, p + 1))}
+                          onClick={() => handlePageChange(Math.min(lastPage, page + 1))}
                           disabled={page === lastPage}
                           className="h-7 px-2 text-xs"
                         >

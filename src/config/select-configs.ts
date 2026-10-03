@@ -131,7 +131,7 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
       // 🔥 البحث في الدروس
       if (params.search) {
         requestBody.search = params.search;
-        requestBody.searchFields = ['titles', 'titles_ar', 'description', 'description_ar'];
+        requestBody.searchFields = params.extraFilters?.searchFields || ['titles_ar'];
       }
 
      ('📤 CourseLessons Request:', requestBody);
@@ -272,7 +272,7 @@ courses: {
 
       if (params.search) {
         requestBody.search = params.search;
-        requestBody.searchFields = ['titles', 'titles_ar', 'description', 'description_ar'];
+        requestBody.searchFields = params.extraFilters?.searchFields || ['titles_ar'];
       }
 
       const response = await api.post('/course-detail/index', requestBody);
