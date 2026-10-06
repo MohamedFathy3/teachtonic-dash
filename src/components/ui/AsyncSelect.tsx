@@ -35,6 +35,7 @@ interface FetchParams {
   page: number;
   perPage: number;
   search?: string;
+  searchFields?: string[];
   extraFilters?: Record<string, any>;
 }
 
@@ -133,8 +134,8 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       throw new Error('AsyncSelect requires either configKey or fetchFn prop');
     }
 
-    const getCacheKey = useCallback((pageNum: number, perPageNum: number, searchTerm: string, filters: any) => {
-      return `${configKey || 'custom'}:${pageNum}:${perPageNum}:${searchTerm}:${JSON.stringify(filters)}`;
+    const getCacheKey = useCallback((pageNum: number, perPageNum: number, searchTerm: string, filters: any, searchFields?: string[]) => {
+      return `${configKey || 'custom'}:${pageNum}:${perPageNum}:${searchTerm}:${JSON.stringify(filters)}:${JSON.stringify(searchFields)}`;
     }, [configKey]);
 
     const fetchOptions = useCallback(async (
@@ -145,7 +146,10 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
     ) => {
       if (!fetchFn) return;
 
-      const cacheKey = getCacheKey(pageNum, perPageNum, searchTerm, extraFilters);
+      const searchFields = searchTerm.trim() && (configKey === 'lessons' || configKey === 'courseLessons')
+        ? [lang === 'ar' ? 'titles_ar' : 'titles']
+        : undefined;
+      const cacheKey = getCacheKey(pageNum, perPageNum, searchTerm, extraFilters, searchFields);
 
       if (cacheData && cacheRef.current.has(cacheKey) && !append) {
         const cached = cacheRef.current.get(cacheKey)!;
@@ -165,18 +169,12 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
       }
 
       try {
-        const searchFilters = { ...extraFilters };
-        if (searchTerm && searchTerm.trim()) {
-          if (configKey === 'lessons' || configKey === 'courseLessons') {
-            searchFilters.searchFields = [lang === 'ar' ? 'titles_ar' : 'titles'];
-          }
-        }
-
         const response = await fetchFn({
           page: pageNum,
           perPage: perPageNum,
           search: searchTerm || undefined,
-          extraFilters: searchFilters,
+          searchFields,
+          extraFilters,
         });
 
         const newOptions = response.data || [];
@@ -324,7 +322,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
     };
 
     return (
-      <div className={cn('space-y-2', className)}>
+      <div className={cn('min-w-0 space-y-2', className)}>
         {label && (
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             {label}
@@ -339,7 +337,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
               type="button"
               disabled={disabled}
               className={cn(
-                'flex h-10 w-full items-center justify-between rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                'flex h-10 w-full min-w-0 items-center justify-between rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
                 className
               )}
             >
@@ -369,13 +367,13 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
           </PopoverTrigger>
 
           <PopoverContent
-            className="w-[--radix-popover-trigger-width] p-0"
+            className="w-[--radix-popover-trigger-width] max-w-[calc(100vw-1rem)] p-0"
             align="start"
             sideOffset={4}
           >
             <div className="flex flex-col">
-              <div className="flex items-center gap-2 border-b p-2">
-                <div className="relative flex-1">
+              <div className="flex flex-wrap items-center gap-2 border-b p-2">
+                <div className="relative min-w-0 flex-1">
                   <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
                     value={search}
@@ -399,7 +397,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
                   <select
                     value={perPage}
                     onChange={(e) => handlePerPageChange(Number(e.target.value))}
-                    className="h-8 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 text-sm"
+                    className="h-8 shrink-0 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 text-sm"
                   >
                     {perPageOptions.map(opt => (
                       <option key={opt} value={opt}>{opt}</option>
@@ -455,19 +453,19 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
                     )}
 
                     {showPagination && !enableInfiniteScroll && !fetchingMore && lastPage > 1 && (
-                      <div className="flex items-center justify-between border-t p-2">
+                      <div className="flex min-w-0 items-center justify-center gap-1 border-t p-2">
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => handlePageChange(Math.max(1, page - 1))}
                           disabled={page === 1}
-                          className="h-7 px-2 text-xs"
+                          className="h-7 shrink-0 px-2 text-xs"
                         >
                           <ChevronLeft className={cn('h-3 w-3', dir === 'rtl' && 'rotate-180')} />
                           Previous
                         </Button>
-                        <span className="text-xs text-gray-500">
+                        <span className="shrink-0 text-xs text-gray-500">
                           {page} / {lastPage} ({total})
                         </span>
                         <Button
@@ -476,7 +474,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
                           size="sm"
                           onClick={() => handlePageChange(Math.min(lastPage, page + 1))}
                           disabled={page === lastPage}
-                          className="h-7 px-2 text-xs"
+                          className="h-7 shrink-0 px-2 text-xs"
                         >
                           Next
                           <ChevronRight className={cn('h-3 w-3', dir === 'rtl' && 'rotate-180')} />

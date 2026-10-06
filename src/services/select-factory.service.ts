@@ -36,6 +36,7 @@ class SelectFactoryService {
         page: number;
         perPage: number;
         search?: string;
+        searchFields?: string[];
         extraFilters?: Record<string, any>; // 🔥 أضفنا extraFilters
       }): Promise<{ data: AsyncSelectOption[]; meta: any }> => {
         console.log('🔍 Using custom fetcher for:', configKey, params.extraFilters);
@@ -48,6 +49,7 @@ class SelectFactoryService {
       page: number;
       perPage: number;
       search?: string;
+      searchFields?: string[];
       extraFilters?: Record<string, any>; // 🔥 أضفنا extraFilters
     }): Promise<{ data: AsyncSelectOption[]; meta: any }> => {
       const { search: _search, ...extraFilters } = params.extraFilters || {};
@@ -96,7 +98,7 @@ class SelectFactoryService {
 
   async fetchSelectData(
     configKey: keyof typeof SELECT_CONFIGS,
-    params: { page: number; perPage: number; search?: string; extraFilters?: Record<string, any> }
+    params: { page: number; perPage: number; search?: string; searchFields?: string[]; extraFilters?: Record<string, any> }
   ): Promise<{ data: AsyncSelectOption[]; meta: any }> {
     const fetcher = this.createSelectFetcher(configKey);
     return fetcher(params);

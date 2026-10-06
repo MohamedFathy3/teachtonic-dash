@@ -19,6 +19,7 @@ export interface SelectConfig {
     page: number;
     perPage: number;
     search?: string;
+    searchFields?: string[];
     extraFilters?: Record<string, any>;
   }) => Promise<{ data: AsyncSelectOption[]; meta: any }>;
 }
@@ -119,6 +120,10 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
         filters.stage_id = params.extraFilters.stage_id;
       }
 
+      if (params.search?.trim()) {
+        filters.titles_ar = params.search.trim();
+      }
+
       const requestBody: any = {
         filters,
         orderBy: 'id',
@@ -127,12 +132,6 @@ export const SELECT_CONFIGS: Record<string, SelectConfig> = {
         page: params.page,
         paginate: true,
       };
-
-      // 🔥 البحث في الدروس
-      if (params.search) {
-        requestBody.search = params.search;
-        requestBody.searchFields = params.extraFilters?.searchFields || ['titles_ar'];
-      }
 
      ('📤 CourseLessons Request:', requestBody);
 
@@ -261,6 +260,10 @@ courses: {
         filters.course_id = params.extraFilters.course_id;
       }
 
+      if (params.search?.trim()) {
+        filters.titles_ar = params.search.trim();
+      }
+
       const requestBody: any = {
         filters,
         orderBy: 'id',
@@ -269,11 +272,6 @@ courses: {
         page: params.page,
         paginate: true,
       };
-
-      if (params.search) {
-        requestBody.search = params.search;
-        requestBody.searchFields = params.extraFilters?.searchFields || ['titles_ar'];
-      }
 
       const response = await api.post('/course-detail/index', requestBody);
 
