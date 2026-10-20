@@ -212,7 +212,6 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
   const [gradeModalOpen, setGradeModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<ExamQuestion | null>(null);
   const [selectedExamTitle, setSelectedExamTitle] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // دالة الرجوع
   const handleBack = () => {
@@ -227,7 +226,7 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
     if (studentId) {
       fetchData();
     }
-  }, [studentId, refreshKey]);
+  }, [studentId]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -248,7 +247,25 @@ export const StudentLearningPage: React.FC<StudentLearningPageProps> = ({ studen
         answer_id: answerId,
         mark: mark
       });
-      setRefreshKey(prev => prev + 1);
+      setData((currentData) => {
+        if (!currentData) return currentData;
+
+        const updateQuestions = (exams: StudentExam[]) =>
+          exams.map((exam) => ({
+            ...exam,
+            questions: exam.questions.map((question) =>
+              question.id === answerId
+                ? { ...question, mark_obtained: String(mark), is_correct: null }
+                : question
+            ),
+          }));
+
+        return {
+          ...currentData,
+          exams: updateQuestions(currentData.exams),
+          assignments: updateQuestions(currentData.assignments),
+        };
+      });
     } catch (error) {
       console.error('Grade essay error:', error);
       throw error;

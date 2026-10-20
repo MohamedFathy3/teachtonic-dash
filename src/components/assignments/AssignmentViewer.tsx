@@ -334,7 +334,6 @@ export const AssignmentViewer: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [viewingProfile, setViewingProfile] = useState<number | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // ✅ فلاتر بحث الطلاب
   const [searchQuery, setSearchQuery] = useState('');
@@ -345,7 +344,7 @@ export const AssignmentViewer: React.FC = () => {
     if (assignmentId) {
       fetchAssignment();
     }
-  }, [assignmentId, refreshKey]);
+  }, [assignmentId]);
 
   const fetchAssignment = async () => {
     setLoading(true);
@@ -362,7 +361,20 @@ export const AssignmentViewer: React.FC = () => {
 
   const handleGradeEssay = async (answerId: number, mark: number) => {
     await api.post('/exam/grade-essay', { answer_id: answerId, mark });
-    setRefreshKey(prev => prev + 1);
+    const updateAnswers = (student: any) => ({
+      ...student,
+      answers: student.answers?.map((answer: any) =>
+        answer.id === answerId ? { ...answer, mark } : answer
+      ),
+    });
+
+    setSelectedStudent((student: any) => student ? updateAnswers(student) : student);
+    setAssignment((currentAssignment: any) => currentAssignment ? {
+      ...currentAssignment,
+      students: currentAssignment.students?.map((student: any) =>
+        updateAnswers(student)
+      ),
+    } : currentAssignment);
   };
 
   const handleBack = () => {

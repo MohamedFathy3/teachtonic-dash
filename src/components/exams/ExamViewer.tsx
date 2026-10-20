@@ -290,41 +290,9 @@ const StudentAnswersModal: React.FC<{
   const { lang } = useApp();
   const [gradingAnswer, setGradingAnswer] = useState<any>(null);
   const [gradingQuestion, setGradingQuestion] = useState<any>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  // ✅ دالة التصحيح جوه المودال
   const handleGradeEssay = async (answerId: number, mark: number) => {
-    try {
-      console.log('📤 Sending grade:', { answer_id: answerId, mark });
-      
-      const response = await api.post('/exam/grade-essay', { 
-        answer_id: answerId, 
-        mark: mark 
-      });
-      
-      console.log('📥 Grade response:', response.data);
-      
-      toast.success(
-        lang === 'ar' 
-          ? '✅ تم تصحيح الإجابة بنجاح!' 
-          : '✅ Answer graded successfully!'
-      );
-      
-      setRefreshKey(prev => prev + 1);
-      
-      // ✅ تحديث بيانات الطالب في الـ parent component
-      if (onGradeSubmit) {
-        await onGradeSubmit(answerId, mark);
-      }
-      
-    } catch (error: any) {
-      console.error('❌ Grade error:', error);
-      toast.error(
-        lang === 'ar'
-          ? `❌ فشل التصحيح: ${error.response?.data?.message || error.message}`
-          : `❌ Failed to grade: ${error.response?.data?.message || error.message}`
-      );
-    }
+    if (onGradeSubmit) await onGradeSubmit(answerId, mark);
   };
 
   if (!student) return null;
@@ -552,22 +520,27 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
 
   const handleGradeEssay = async (answerId: number, mark: number) => {
     try {
-      console.log('📤 Sending grade:', { answer_id: answerId, mark });
-      
-      const response = await api.post('/exam/grade-essay', { 
-        answer_id: answerId, 
-        mark: mark 
+      await api.post('/exam/grade-essay', { answer_id: answerId, mark });
+
+      const updateAnswers = (student: any) => ({
+        ...student,
+        answers: student.answers?.map((answer: any) =>
+          answer.id === answerId ? { ...answer, mark } : answer
+        ),
       });
-      
-      console.log('📥 Grade response:', response.data);
-      
+
+      setSelectedStudent((student: any) => student ? updateAnswers(student) : student);
+      setExam((currentExam: any) => currentExam ? {
+        ...currentExam,
+        students: currentExam.students?.map(updateAnswers),
+      } : currentExam);
+
       toast.success(
         lang === 'ar' 
           ? '✅ تم تصحيح الإجابة بنجاح!' 
           : '✅ Answer graded successfully!'
       );
-      
-      setRefreshKey(prev => prev + 1);
+
     } catch (error: any) {
       console.error('❌ Grade error:', error);
       toast.error(
@@ -575,6 +548,7 @@ export const ExamViewer: React.FC<ExamViewerProps> = ({ examId: propExamId, onBa
           ? `❌ فشل التصحيح: ${error.response?.data?.message || error.message}`
           : `❌ Failed to grade: ${error.response?.data?.message || error.message}`
       );
+      throw error;
     }
   };
 
