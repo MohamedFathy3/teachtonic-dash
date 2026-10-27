@@ -44,7 +44,15 @@ class AssistantTeacherService extends BaseService<AssistantTeacher> {
       }
 
       const response = await this.getAll(params);
-      return response;
+      return {
+        data: response.data,
+        meta: {
+          currentPage: response.meta.current_page,
+          lastPage: response.meta.last_page,
+          perPage: response.meta.per_page,
+          total: response.meta.total,
+        },
+      };
     } catch (error: any) {
       console.error('API Error:', error);
       toast({
