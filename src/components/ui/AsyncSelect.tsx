@@ -407,7 +407,7 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
               </div>
 
               <ScrollArea
-                className="max-h-64 overflow-y-auto"
+                className="max-h-64 min-w-0 overflow-y-auto"
                 onScrollCapture={enableInfiniteScroll ? handleScroll : undefined}
                 ref={scrollRef}
               >
@@ -451,45 +451,45 @@ export const AsyncSelect = forwardRef<HTMLButtonElement, AsyncSelectProps>(
                         <span className="ml-2 text-xs text-gray-400">Loading more...</span>
                       </div>
                     )}
-
-                    {showPagination && !enableInfiniteScroll && !fetchingMore && lastPage > 1 && (
-                      <div className="flex min-w-0 items-center justify-center gap-1 border-t p-2">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handlePageChange(Math.max(1, page - 1))}
-                          disabled={page === 1}
-                          className="h-7 shrink-0 px-2 text-xs"
-                        >
-                          <ChevronLeft className={cn('h-3 w-3', dir === 'rtl' && 'rotate-180')} />
-                          Previous
-                        </Button>
-                        <span className="shrink-0 text-xs text-gray-500">
-                          {page} / {lastPage} ({total})
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handlePageChange(Math.min(lastPage, page + 1))}
-                          disabled={page === lastPage}
-                          className="h-7 shrink-0 px-2 text-xs"
-                        >
-                          Next
-                          <ChevronRight className={cn('h-3 w-3', dir === 'rtl' && 'rotate-180')} />
-                        </Button>
-                      </div>
-                    )}
-
-                    {showPagination && !enableInfiniteScroll && total > perPage && (
-                      <div className="border-t px-3 py-1.5 text-center text-xs text-gray-400">
-                        {total} total items
-                      </div>
-                    )}
                   </>
                 )}
               </ScrollArea>
+
+              {options.length > 0 && showPagination && !enableInfiniteScroll && !fetchingMore && lastPage > 1 && (
+                <div className="flex min-w-0 items-center justify-between gap-1 border-t p-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handlePageChange(Math.max(1, page - 1))}
+                    disabled={page === 1}
+                    className="h-7 shrink-0 px-1 text-xs"
+                  >
+                    <ChevronLeft className={cn('h-3 w-3', dir === 'rtl' && 'rotate-180')} />
+                    Previous
+                  </Button>
+                  <span className="shrink-0 text-xs text-gray-500">
+                    {page} / {lastPage} ({total})
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handlePageChange(Math.min(lastPage, page + 1))}
+                    disabled={page === lastPage}
+                    className="h-7 shrink-0 px-1 text-xs"
+                  >
+                    Next
+                    <ChevronRight className={cn('h-3 w-3', dir === 'rtl' && 'rotate-180')} />
+                  </Button>
+                </div>
+              )}
+
+              {options.length > 0 && showPagination && !enableInfiniteScroll && total > perPage && (
+                <div className="border-t px-3 py-1.5 text-center text-xs text-gray-400">
+                  {total} total items
+                </div>
+              )}
             </div>
           </PopoverContent>
         </Popover>
