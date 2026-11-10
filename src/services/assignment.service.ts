@@ -16,13 +16,17 @@ class AssignmentService extends BaseService<Exam> {
     perPage: number = 12,
     page: number = 1,
     search?: string,
-    showDeleted: boolean = false
+    showDeleted: boolean = false,
+    teacherId?: number
   ): Promise<PaginatedResponse<Exam>> {
     try {
       const baseFilters: Record<string, any> = { 
         ...(filters || {}),
         type: 'assignment'
-      };      
+      };
+      if (teacherId !== undefined) {
+        baseFilters.teacher_id = teacherId;
+      }
       if (search && search.trim()) {
         baseFilters.title = search.trim();
       }

@@ -26,7 +26,7 @@ export const useAssignments = (teacherId: number, perPage: number = 12) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await assignmentService.getAllAssignments(filters, perPage, page, search);
+      const response = await assignmentService.getAllAssignments(filters, perPage, page, search, false, teacherId);
       setAssignments(response.data);
       setPagination({
         currentPage: response.meta.current_page,
@@ -40,7 +40,7 @@ export const useAssignments = (teacherId: number, perPage: number = 12) => {
     } finally {
       setLoading(false);
     }
-  }, [perPage, lang]);
+  }, [perPage, lang, teacherId]);
 
   const deleteAssignment = async (id: number) => {
     try {
