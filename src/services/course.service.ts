@@ -67,7 +67,7 @@ async getAllCourses(
 
     console.log('📤 Request Body:', requestBody);
 
-    const response = await api.post(`/${this.endpoint}/index`, requestBody);
+    const response = await api.post(`course-dashboard/index`, requestBody);
 
     return {
       data: response.data?.data || [],
