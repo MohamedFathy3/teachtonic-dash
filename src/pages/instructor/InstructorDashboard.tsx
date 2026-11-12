@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/instructor/InstructorDashboard.tsx
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, type ComponentProps, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useApp } from "@/contexts/AppContext";
 import { useNavigate } from 'react-router-dom';
 import { Card } from "@/components/ui/card";
@@ -21,7 +22,7 @@ import {
   CircleDollarSign, CalendarDays, ChartNoAxesCombined, ListChecks
 } from "lucide-react";
 import { 
-  Area, AreaChart, CartesianGrid, ResponsiveContainer, 
+  Area, AreaChart, CartesianGrid, ResponsiveContainer as RechartsResponsiveContainer, 
   Tooltip, XAxis, YAxis, Cell, Pie, PieChart, Legend,
   BarChart, Bar, LineChart, Line, Radar, RadarChart, 
   PolarGrid, PolarAngleAxis, PolarRadiusAxis, ComposedChart
@@ -59,6 +60,72 @@ interface InstructorReport {
   students_by_stage?: Array<{ id: number; name: string; total: number; media?: any[] }>;
   last_month_subscriptions?: { course: number; semester: number; lesson: number };
 }
+
+interface CachedInstructorReport {
+  report: InstructorReport;
+  savedAt: number;
+}
+
+const reportCacheKey = (teacherId: number) => `instructor-report:${teacherId}`;
+
+const readCachedInstructorReport = (teacherId: number): CachedInstructorReport | undefined => {
+  try {
+    const cached = sessionStorage.getItem(reportCacheKey(teacherId));
+    if (!cached) return undefined;
+
+    const parsed = JSON.parse(cached) as CachedInstructorReport;
+    if (
+      Number.isFinite(parsed.savedAt) &&
+      parsed.report &&
+      typeof parsed.report === 'object'
+    ) {
+      return parsed;
+    }
+    sessionStorage.removeItem(reportCacheKey(teacherId));
+  } catch (error) {
+    console.warn('Unable to restore cached instructor report:', error);
+  }
+  return undefined;
+};
+
+const ChartContainer = ({
+  children,
+  ...props
+}: ComponentProps<typeof RechartsResponsiveContainer> & { children: ReactNode }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isNearViewport, setIsNearViewport] = useState(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsNearViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsNearViewport(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '200px' });
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="h-full w-full">
+      {isNearViewport ? (
+        <RechartsResponsiveContainer {...props}>{children}</RechartsResponsiveContainer>
+      ) : (
+        <div aria-hidden="true" className="h-full w-full animate-pulse rounded-lg bg-slate-100/70 dark:bg-slate-800/40" />
+      )}
+    </div>
+  );
+};
+
+const ResponsiveContainer = ChartContainer;
 
 // ترجمة المحافظات الكاملة
 const governorateNames: Record<string, { ar: string; en: string }> = {
@@ -133,7 +200,7 @@ const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'
 
 export function InstructorDashboard() {
   // ✅ استخدم isAssistantTeacher من الـ Context
-  const { t: tOriginal, user, dir, lang, isAssistantTeacher, instructorData } = useApp();
+  const { t: tOriginal, user, dir, lang, isAssistantTeacher, instructorData, isLoadingInstructor } = useApp();
   const navigate = useNavigate();
   
   // دالة الترجمة
@@ -329,9 +396,6 @@ export function InstructorDashboard() {
     return translations[langCode][key] || tOriginal(key) || key;
   };
   
-  const [report, setReport] = useState<InstructorReport | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [fromDate, setFromDate] = useState(() => {
     const date = new Date();
@@ -342,8 +406,6 @@ export function InstructorDashboard() {
   const [downloading, setDownloading] = useState(false);
   const [greeting, setGreeting] = useState("");
   
-  const fetchedRef = useRef(false);
-
   useEffect(() => {
     const hour = new Date().getHours();
     if (lang === 'ar') {
@@ -357,34 +419,50 @@ export function InstructorDashboard() {
     }
   }, [lang]);
 
-  // ✅ استخدم teacher_id بدلاً من user.id
-  const fetchInstructorReport = useCallback(async () => {
-    try {
-      setLoading(true);
-      // ✅ استخدم teacher_id من user أو instructorData
-      const teacherId = user?.teacher_id || instructorData?.id;
+  const teacherId = user?.teacher_id || instructorData?.id;
+  const cachedReport = useMemo(
+    () => teacherId ? readCachedInstructorReport(teacherId) : undefined,
+    [teacherId],
+  );
+  const reportQuery = useQuery({
+    queryKey: ['instructor-report', teacherId],
+    queryFn: async () => {
       if (!teacherId) {
-        console.error('❌ No teacher_id found. user:', user, 'instructorData:', instructorData);
-        toast.error(t("error") + ": Teacher ID not found");
-        return;
+        throw new Error('Teacher ID not found');
       }
-      console.log('🔄 Fetching report for teacher_id:', teacherId);
       const response = await api.get(`/teachers/${teacherId}/report`);
-      setReport(response.data?.data);
-    } catch (error: any) {
-      console.error('❌ Error fetching report:', error);
-      toast.error(t("error") + ": " + (error.message || t("tryAgain")));
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.teacher_id, instructorData?.id, t]);
+      return response.data?.data as InstructorReport;
+    },
+    enabled: Boolean(teacherId),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    initialData: cachedReport?.report,
+    initialDataUpdatedAt: cachedReport?.savedAt,
+  });
+  const report = reportQuery.data;
+  const loading = reportQuery.isLoading || (!teacherId && isLoadingInstructor);
 
   useEffect(() => {
-    if (!fetchedRef.current && (user?.teacher_id || instructorData?.id)) {
-      fetchedRef.current = true;
-      fetchInstructorReport();
+    if (!teacherId || !report || reportQuery.isPlaceholderData) return;
+    try {
+      sessionStorage.setItem(reportCacheKey(teacherId), JSON.stringify({
+        report,
+        savedAt: reportQuery.dataUpdatedAt,
+      }));
+    } catch (error) {
+      console.warn('Unable to cache instructor report:', error);
     }
-  }, [user?.teacher_id, instructorData?.id, fetchInstructorReport]);
+  }, [teacherId, report, reportQuery.dataUpdatedAt, reportQuery.isPlaceholderData]);
+
+  useEffect(() => {
+    if (reportQuery.isError) {
+      const errorLabel = lang === 'ar' ? 'خطأ' : 'Error';
+      const retryLabel = lang === 'ar' ? 'حاول مرة أخرى' : 'Try again';
+      toast.error(`${errorLabel}: ${reportQuery.error.message || retryLabel}`);
+    }
+  }, [reportQuery.isError, reportQuery.error, lang]);
 
   const handleDownloadReport = async () => {
     const teacherId = user?.teacher_id || instructorData?.id;
@@ -511,10 +589,10 @@ export function InstructorDashboard() {
   const totalRegionStudents = regionData.reduce((sum, r) => sum + r.value, 0);
   
   // بيانات المراحل الدراسية
-  const stageData = report?.students_by_stage?.map(s => ({
+  const stageData = report?.students_by_stage?.map((s, index) => ({
     name: s.name,
     value: s.total,
-    color: `hsl(${Math.random() * 360}, 70%, 50%)`
+    color: `hsl(${(index * 47) % 360}, 70%, 50%)`
   })) || [];
 
   // QUICK ACTIONS
@@ -565,23 +643,43 @@ export function InstructorDashboard() {
     { label: "الكوبونات", value: report?.used_coupons || 0, icon: Gift, gradient: "from-pink-500 to-fuchsia-500", trend: "+3%", trendUp: true },
   ];
 
+  const isRTL = dir === 'rtl' || lang === 'ar';
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-        <div className="text-center space-y-6">
-          <div className="relative">
-            <div className="h-24 w-24 rounded-full border-4 border-primary/20 border-t-primary animate-spin mx-auto" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-            </div>
+      <div
+        aria-busy="true"
+        aria-label={t("loading")}
+        className={`min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 ${isRTL ? 'font-arabic' : ''}`}
+      >
+        <div className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+          <div className="min-h-44 animate-pulse rounded-3xl bg-gradient-to-r from-indigo-600/70 via-purple-600/70 to-pink-600/70 p-8">
+            <div className="h-4 w-28 rounded bg-white/30" />
+            <div className="mt-4 h-9 w-56 rounded bg-white/30" />
+            <div className="mt-3 h-4 w-72 max-w-full rounded bg-white/20" />
           </div>
-          <p className="text-muted-foreground animate-pulse text-lg">{t("loading")}</p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            {Array.from({ length: 6 }, (_, index) => (
+              <div key={index} className="h-24 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="h-72 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
-  const isRTL = dir === 'rtl' || lang === 'ar';
+  if (!teacherId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">{t("error")}: Teacher ID not found</p>
+      </div>
+    );
+  }
 
   // ✅ تحديد نوع المعلم للعرض
   const teacherType = isAssistantTeacher ? t("assistantTeacher") : t("teacher");
@@ -613,8 +711,8 @@ export function InstructorDashboard() {
           transition={{ duration: 0.6 }}
           className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-8 shadow-2xl"
         >
-          <div className="absolute top-0 right-0 -mt-32 -mr-32 h-64 w-64 rounded-full bg-white/20 blur-3xl animate-pulse" />
-          <div className="absolute bottom-0 left-0 -mb-32 -ml-32 h-64 w-64 rounded-full bg-white/10 blur-3xl animate-pulse" />
+          <div className="absolute top-0 right-0 -mt-32 -mr-32 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
+          <div className="absolute bottom-0 left-0 -mb-32 -ml-32 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
           
           <div className={`relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
             <div className="space-y-2">
@@ -652,10 +750,11 @@ export function InstructorDashboard() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={fetchInstructorReport} 
+                  onClick={() => reportQuery.refetch()}
+                  disabled={reportQuery.isFetching}
                   className="gap-2 rounded-xl bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 hover:border-white/30 transition-all"
                 >
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className={`h-4 w-4 ${reportQuery.isFetching ? 'animate-spin' : ''}`} />
                   {t("refresh")}
                 </Button>
               </motion.div>
@@ -717,7 +816,7 @@ export function InstructorDashboard() {
         </div>
         
         {/* Main Tabs Section */}
-        <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
+        <Tabs defaultValue="overview" className="w-full">
           <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
             <TabsList className="grid w-full max-w-md grid-cols-3 rounded-xl bg-muted/50 p-1">
               <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-pink-500 data-[state=active]:text-white text-sm transition-all">
@@ -779,9 +878,6 @@ export function InstructorDashboard() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {/* Revenue Chart */}
               <motion.div
-                initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
                 className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
               >
                 <div className="p-5">
@@ -805,8 +901,8 @@ export function InstructorDashboard() {
                         <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ borderRadius: "16px", border: "none" }} />
-                        <Line type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} name={t("earnings")} dot={{ r: 4, fill: "#6366f1" }} />
-                        <Line type="monotone" dataKey="students" stroke="#10b981" strokeWidth={2.5} name={t("students")} dot={{ r: 4, fill: "#10b981" }} />
+                        <Line isAnimationActive={false} type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} name={t("earnings")} dot={{ r: 4, fill: "#6366f1" }} />
+                        <Line isAnimationActive={false} type="monotone" dataKey="students" stroke="#10b981" strokeWidth={2.5} name={t("students")} dot={{ r: 4, fill: "#10b981" }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -815,9 +911,6 @@ export function InstructorDashboard() {
 
               {/* Course Distribution */}
               <motion.div
-                initial={{ opacity: 0, x: isRTL ? -20 : 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
                 className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
               >
                 <div className="p-5">
@@ -828,7 +921,7 @@ export function InstructorDashboard() {
                   <div className="h-52">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={courseDistribution} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} label>
+                        <Pie isAnimationActive={false} data={courseDistribution} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} label>
                           {courseDistribution.map((entry, idx) => (
                             <Cell key={idx} fill={entry.color} stroke="none" />
                           ))}
@@ -859,9 +952,6 @@ export function InstructorDashboard() {
             {/* Student Growth & Gender Section */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
                 className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
               >
                 <div className="p-5">
@@ -887,7 +977,7 @@ export function InstructorDashboard() {
                         <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ borderRadius: "16px", border: "none" }} />
-                        <Area type="monotone" dataKey="students" name={t("students")} stroke="#10b981" strokeWidth={2.5} fill="url(#studentGrad)" />
+                        <Area isAnimationActive={false} type="monotone" dataKey="students" name={t("students")} stroke="#10b981" strokeWidth={2.5} fill="url(#studentGrad)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -896,9 +986,6 @@ export function InstructorDashboard() {
 
               {/* Gender Distribution */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
                 className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
               >
                 <div className="p-5">
@@ -910,7 +997,7 @@ export function InstructorDashboard() {
                     {genderData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={genderData} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} label>
+                          <Pie isAnimationActive={false} data={genderData} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} label>
                             {genderData.map((entry, idx) => (
                               <Cell key={idx} fill={entry.color} stroke="none" />
                             ))}
@@ -945,9 +1032,6 @@ export function InstructorDashboard() {
             {/* ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
             {hasGovernorateData && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55 }}
                 className="overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500/5 to-teal-500/5 dark:from-emerald-950/20 dark:to-teal-950/20 shadow-lg border border-emerald-200/50 dark:border-emerald-800/50"
               >
                 <div className="p-5">
@@ -1001,11 +1085,10 @@ export function InstructorDashboard() {
                             cursor={{ fill: "rgba(16, 185, 129, 0.1)" }}
                           />
                           <Bar 
+                            isAnimationActive={false}
                             dataKey="value" 
                             name={lang === 'ar' ? 'الطلاب' : 'Students'} 
                             radius={[0, 8, 8, 0]}
-                            animationDuration={1000}
-                            animationBegin={300}
                           >
                             {governorateData.map((entry, idx) => (
                               <Cell 
@@ -1081,12 +1164,12 @@ export function InstructorDashboard() {
                               <div className="flex items-center gap-3">
                                 <span className="text-sm font-bold text-emerald-600">{gov.value}</span>
                                 <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                  <motion.div 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${(gov.value / totalGovernorateStudents) * 100}%` }}
-                                    transition={{ delay: 0.6 + idx * 0.03, duration: 0.5 }}
-                                    className="h-full rounded-full" 
-                                    style={{ backgroundColor: `hsl(${140 + (idx * 8)}, 70%, 55%)` }}
+                                  <div 
+                                    className="h-full rounded-full"
+                                    style={{
+                                      width: `${(gov.value / totalGovernorateStudents) * 100}%`,
+                                      backgroundColor: `hsl(${140 + (idx * 8)}, 70%, 55%)`,
+                                    }}
                                   />
                                 </div>
                                 <span className="text-xs text-muted-foreground w-10">
@@ -1127,9 +1210,6 @@ export function InstructorDashboard() {
             {/* ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
             {hasRegionData && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
                 className="overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-950/20 dark:to-indigo-950/20 shadow-lg border border-blue-200/50 dark:border-blue-800/50"
               >
                 <div className="p-5">
@@ -1160,6 +1240,7 @@ export function InstructorDashboard() {
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie 
+                            isAnimationActive={false}
                             data={regionData} 
                             dataKey="value" 
                             nameKey="name"
@@ -1249,12 +1330,12 @@ export function InstructorDashboard() {
                               <div className="flex items-center gap-3">
                                 <span className="text-sm font-bold text-blue-600">{region.value}</span>
                                 <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                  <motion.div 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${(region.value / totalRegionStudents) * 100}%` }}
-                                    transition={{ delay: 0.6 + idx * 0.03, duration: 0.5 }}
-                                    className="h-full rounded-full" 
-                                    style={{ backgroundColor: `hsl(${200 + (idx * 15)}, 70%, 55%)` }}
+                                  <div 
+                                    className="h-full rounded-full"
+                                    style={{
+                                      width: `${(region.value / totalRegionStudents) * 100}%`,
+                                      backgroundColor: `hsl(${200 + (idx * 15)}, 70%, 55%)`,
+                                    }}
                                   />
                                 </div>
                                 <span className="text-xs text-muted-foreground w-10">
@@ -1314,11 +1395,9 @@ export function InstructorDashboard() {
                     </div>
                   </div>
                   <div className="mt-3 h-1 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, item.value * 10)}%` }}
-                      transition={{ delay: 0.8, duration: 0.8 }}
+                    <div
                       className={`h-full rounded-full ${item.text.replace('text', 'bg')}`}
+                      style={{ width: `${Math.min(100, item.value * 10)}%` }}
                     />
                   </div>
                 </motion.div>
@@ -1332,9 +1411,6 @@ export function InstructorDashboard() {
           <TabsContent value="analytics" className="space-y-6 mt-0">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 }}
                 className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
               >
                 <div className="p-5">
@@ -1349,7 +1425,7 @@ export function InstructorDashboard() {
                         <PolarGrid stroke="hsl(var(--border))" />
                         <PolarAngleAxis dataKey="subject" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} />
                         <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" fontSize={9} domain={[0, 100]} />
-                        <Radar name={t("performance")} dataKey="A" stroke="#6366f1" fill="#6366f1" fillOpacity={0.4} strokeWidth={2} />
+                        <Radar isAnimationActive={false} name={t("performance")} dataKey="A" stroke="#6366f1" fill="#6366f1" fillOpacity={0.4} strokeWidth={2} />
                         <Tooltip contentStyle={{ borderRadius: "12px", border: "none" }} />
                       </RadarChart>
                     </ResponsiveContainer>
@@ -1400,9 +1476,6 @@ export function InstructorDashboard() {
             </div>
 
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
               className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-lg border border-slate-200/50 dark:border-slate-800/50"
             >
               <div className="p-5">
@@ -1417,7 +1490,7 @@ export function InstructorDashboard() {
                       <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                       <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                       <Tooltip contentStyle={{ borderRadius: "16px", border: "none" }} />
-                      <Line type="monotone" dataKey="students" stroke="#10b981" strokeWidth={2.5} name={t("students")} dot={{ r: 4, fill: "#10b981" }} />
+                      <Line isAnimationActive={false} type="monotone" dataKey="students" stroke="#10b981" strokeWidth={2.5} name={t("students")} dot={{ r: 4, fill: "#10b981" }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -1448,6 +1521,7 @@ export function InstructorDashboard() {
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie 
+                            isAnimationActive={false}
                             data={governorateData} 
                             dataKey="value" 
                             nameKey="name"
@@ -1487,12 +1561,12 @@ export function InstructorDashboard() {
                             <div className="flex items-center gap-3">
                               <span className="text-sm font-semibold text-purple-600">{gov.value}</span>
                               <div className="w-20 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${(gov.value / totalGovernorateStudents) * 100}%` }}
-                                  transition={{ delay: 0.5 + idx * 0.05, duration: 0.5 }}
-                                  className="h-full rounded-full" 
-                                  style={{ backgroundColor: `hsl(${140 + (idx * 8)}, 70%, 55%)` }}
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: `${(gov.value / totalGovernorateStudents) * 100}%`,
+                                    backgroundColor: `hsl(${140 + (idx * 8)}, 70%, 55%)`,
+                                  }}
                                 />
                               </div>
                               <span className="text-xs text-muted-foreground w-12">
@@ -1532,6 +1606,7 @@ export function InstructorDashboard() {
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie 
+                            isAnimationActive={false}
                             data={regionData} 
                             dataKey="value" 
                             nameKey="name"
@@ -1571,12 +1646,12 @@ export function InstructorDashboard() {
                             <div className="flex items-center gap-3">
                               <span className="text-sm font-semibold text-cyan-600">{region.value}</span>
                               <div className="w-20 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${(region.value / totalRegionStudents) * 100}%` }}
-                                  transition={{ delay: 0.5 + idx * 0.05, duration: 0.5 }}
-                                  className="h-full rounded-full" 
-                                  style={{ backgroundColor: `hsl(${200 + (idx * 15)}, 70%, 55%)` }}
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: `${(region.value / totalRegionStudents) * 100}%`,
+                                    backgroundColor: `hsl(${200 + (idx * 15)}, 70%, 55%)`,
+                                  }}
                                 />
                               </div>
                               <span className="text-xs text-muted-foreground w-12">
@@ -1611,7 +1686,7 @@ export function InstructorDashboard() {
                         <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{ borderRadius: "16px", border: "none" }} />
-                        <Bar dataKey="value" name={t("students")} fill="#06b6d4" radius={[6, 6, 0, 0]} />
+                        <Bar isAnimationActive={false} dataKey="value" name={t("students")} fill="#06b6d4" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1748,11 +1823,9 @@ export function InstructorDashboard() {
                     <p className="text-xs text-muted-foreground mb-1">{t("efficiencyScore")}</p>
                     <p className="text-2xl font-bold text-indigo-600">{completionRate}%</p>
                     <div className="mt-2 h-1.5 rounded-full bg-indigo-200 dark:bg-indigo-900">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${completionRate}%` }}
-                        transition={{ delay: 0.5, duration: 0.8 }}
+                      <div
                         className="h-full rounded-full bg-indigo-500"
+                        style={{ width: `${completionRate}%` }}
                       />
                     </div>
                   </div>
@@ -1760,11 +1833,9 @@ export function InstructorDashboard() {
                     <p className="text-xs text-muted-foreground mb-1">{t("studentGrowth2")}</p>
                     <p className="text-2xl font-bold text-emerald-600">+{report?.students_count || 0}</p>
                     <div className="mt-2 h-1.5 rounded-full bg-emerald-200 dark:bg-emerald-900">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(100, (report?.students_count || 0))}%` }}
-                        transition={{ delay: 0.5, duration: 0.8 }}
+                      <div
                         className="h-full rounded-full bg-emerald-500"
+                        style={{ width: `${Math.min(100, (report?.students_count || 0))}%` }}
                       />
                     </div>
                   </div>
@@ -1772,11 +1843,9 @@ export function InstructorDashboard() {
                     <p className="text-xs text-muted-foreground mb-1">{t("engagementRate")}</p>
                     <p className="text-2xl font-bold text-amber-600">{engagementRate}%</p>
                     <div className="mt-2 h-1.5 rounded-full bg-amber-200 dark:bg-amber-900">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${engagementRate}%` }}
-                        transition={{ delay: 0.5, duration: 0.8 }}
+                      <div
                         className="h-full rounded-full bg-amber-500"
+                        style={{ width: `${engagementRate}%` }}
                       />
                     </div>
                   </div>

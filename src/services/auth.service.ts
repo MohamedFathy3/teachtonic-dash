@@ -10,6 +10,7 @@ export interface User {
   name: string;
   email: string;
   role: 'admin' | 'instructor' | 'student';
+  teacher_id?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -29,6 +30,7 @@ class AuthService {
           name: userData.name,
           email: userData.email,
           role: userRole,
+          teacher_id: userData.teacher_id,
           created_at: userData.created_at,
           updated_at: userData.updated_at
         };

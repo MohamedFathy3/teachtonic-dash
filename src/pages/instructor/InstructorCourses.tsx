@@ -7,14 +7,11 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import api from '@/lib/api';
 import { useTeacherMeta } from "@/hooks/useTeacherMeta";
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { courseService } from '@/services/course.service';
 import { CourseCard } from '@/components/courses/CourseCard';
-import { CourseForm } from '@/components/courses/CourseForm';
-import { CourseDetails } from '@/components/courses/CourseDetails';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,6 +32,12 @@ import { ExportExcelButton } from '@/components/common/ExportExcelButton';
 import { Select } from '@/components/ui/select';
 import { toast } from "sonner";
 
+const CourseForm = lazy(() =>
+  import('@/components/courses/CourseForm').then(({ CourseForm }) => ({ default: CourseForm }))
+);
+const CourseDetails = lazy(() =>
+  import('@/components/courses/CourseDetails').then(({ CourseDetails }) => ({ default: CourseDetails }))
+);
 
 
 // ✅ أنيميشن متقدمة
@@ -70,9 +73,43 @@ const statsCardVariants = {
   hover: { scale: 1.03, y: -3, transition: { type: "spring", stiffness: 400 } },
 };
 
+interface CachedCoursePage {
+  courses: Course[];
+  pagination: {
+    currentPage: number;
+    lastPage: number;
+    total: number;
+    perPage: number;
+  };
+  savedAt: number;
+}
+
+const coursePageCacheKey = (teacherId: number, tab: string) =>
+  `instructor-courses:${teacherId}:${tab}`;
+
+const readCoursePageCache = (teacherId: number, tab: string): CachedCoursePage | undefined => {
+  try {
+    const cached = sessionStorage.getItem(coursePageCacheKey(teacherId, tab));
+    if (!cached) return undefined;
+    const parsed = JSON.parse(cached) as CachedCoursePage;
+    if (
+      Array.isArray(parsed.courses) &&
+      Number.isFinite(parsed.savedAt) &&
+      parsed.pagination &&
+      Number.isFinite(parsed.pagination.currentPage)
+    ) {
+      return parsed;
+    }
+    sessionStorage.removeItem(coursePageCacheKey(teacherId, tab));
+  } catch (error) {
+    console.warn('Unable to restore cached courses:', error);
+  }
+  return undefined;
+};
+
 export const InstructorCourses: React.FC = () => {
   const { t, lang, user } = useApp();
-  const { stages, subjects } = useTeacherMeta(user?.id);
+  const { stages, subjects } = useTeacherMeta(user?.id, { includeOffers: false });
   const isRTL = lang === 'ar';
 
   // ✅ State
@@ -81,6 +118,8 @@ export const InstructorCourses: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const requestId = useRef(0);
   const [activeTab, setActiveTab] = useState('active');
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
@@ -94,6 +133,15 @@ export const InstructorCourses: React.FC = () => {
   const [filterStageId, setFilterStageId] = useState<number | null>(null);
   const [filterSubjectId, setFilterSubjectId] = useState<number | null>(null);
   const [filterSemesterId, setFilterSemesterId] = useState<number | null>(null);
+  const [appliedFilters, setAppliedFilters] = useState({
+    stageId: null as number | null,
+    subjectId: null as number | null,
+    semesterId: null as number | null,
+    price: null as number | null,
+    courseType: '' as 'online' | 'center' | '',
+    startDate: null as string | null,
+    endDate: null as string | null,
+  });
 
   // ✅ Pagination
   const [pagination, setPagination] = useState({
@@ -118,45 +166,54 @@ export const InstructorCourses: React.FC = () => {
   const [courseType, setCourseType] = useState<'online' | 'center' | ''>('');
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-
-
-
-const fetchCourses = useCallback(async (page = 1) => {
+const fetchCourses = useCallback(async (page = 1, forceRefresh = false) => {
   if (!activeTab) return;
 
-  setLoading(false);
+  const currentRequestId = ++requestId.current;
   setError(null);
 
   const filters: Record<string, any> = {
     teacher_id: user?.id,
-    stage_id: filterStageId,
-    subject_id: filterSubjectId,
-    semester_id: filterSemesterId,
-    price: price ?? undefined,
-    type: courseType || undefined,
-    start_date: startDate,
-    end_date: endDate,
+    stage_id: appliedFilters.stageId,
+    subject_id: appliedFilters.subjectId,
+    semester_id: appliedFilters.semesterId,
+    price: appliedFilters.price ?? undefined,
+    type: appliedFilters.courseType || undefined,
+    start_date: appliedFilters.startDate,
+    end_date: appliedFilters.endDate,
   };
 
   // 🔥 البحث الذكي حسب اللغة
-  let searchField = searchQuery;
-  let searchType = 'default';
-  
-  if (searchQuery?.trim()) {
+  if (debouncedSearchQuery?.trim()) {
     if (lang === 'ar') {
-      // في الوضع العربي - بحث في title_ar
-      filters.title_ar = searchQuery.trim();
-      searchField = searchQuery.trim();
-      searchType = 'arabic';
+      filters.title_ar = debouncedSearchQuery.trim();
     } else {
-      // في الوضع الإنجليزي - بحث في title
-      filters.title = searchQuery.trim();
-      searchField = searchQuery.trim();
-      searchType = 'english';
+      filters.title = debouncedSearchQuery.trim();
     }
   }
 
+  const canUsePageCache = page === 1 &&
+    !debouncedSearchQuery.trim() &&
+    Object.values(appliedFilters).every(value => value === null || value === '');
+  const pageCache = user?.id && canUsePageCache
+    ? readCoursePageCache(user.id, activeTab)
+    : undefined;
+
+  if (pageCache) {
+    if (activeTab === 'active') {
+      setCourses(pageCache.courses);
+    } else {
+      setDeletedCourses(pageCache.courses);
+    }
+    setPagination(pageCache.pagination);
+
+    if (!forceRefresh && Date.now() - pageCache.savedAt < 5 * 60 * 1000) {
+      setLoading(false);
+      return;
+    }
+  }
+
+  setLoading(true);
 
   try {
     const response = await courseService.getAllCourses(
@@ -167,37 +224,54 @@ const fetchCourses = useCallback(async (page = 1) => {
       activeTab === 'deleted'
     );
 
+    if (currentRequestId !== requestId.current) return;
+
+    const nextPagination = {
+      currentPage: response.meta?.current_page || 1,
+      lastPage: response.meta?.last_page || 1,
+      total: response.meta?.total || 0,
+      perPage: response.meta?.per_page || 12,
+    };
+
     if (activeTab === 'active') {
       setCourses(response.data || []);
     } else {
       setDeletedCourses(response.data || []);
     }
 
-    setPagination({
-      currentPage: response.meta?.current_page || 1,
-      lastPage: response.meta?.last_page || 1,
-      total: response.meta?.total || 0,
-      perPage: response.meta?.per_page || 12,
-    });
+    setPagination(nextPagination);
+    if (user?.id && canUsePageCache) {
+      try {
+        sessionStorage.setItem(coursePageCacheKey(user.id, activeTab), JSON.stringify({
+          courses: response.data || [],
+          pagination: nextPagination,
+          savedAt: Date.now(),
+        }));
+      } catch (cacheError) {
+        console.warn('Unable to cache courses:', cacheError);
+      }
+    }
   } catch (err: any) {
-    setError(err.message || 'Failed to fetch courses');
+    if (currentRequestId === requestId.current) {
+      setError(err.message || 'Failed to fetch courses');
+    }
   } finally {
-    setLoading(false);
+    if (currentRequestId === requestId.current) {
+      setLoading(false);
+    }
   }
 }, [
   activeTab,
-  searchQuery,
-  lang, // 🔥 أضف lang للـ dependencies
-  filterStageId,
-  filterSubjectId,
-  filterSemesterId,
-  price,
-  courseType,
-  startDate,
-  endDate,
+  debouncedSearchQuery,
+  lang,
+  appliedFilters,
   user?.id
 ]);
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery]);
 
 
 
@@ -215,23 +289,42 @@ const fetchCourses = useCallback(async (page = 1) => {
     setFilterStageId(null);
     setFilterSubjectId(null);
     setFilterSemesterId(null);
+    setPrice(null);
+    setCourseType('');
+    setStartDate(null);
+    setEndDate(null);
+    setAppliedFilters({
+      stageId: null,
+      subjectId: null,
+      semesterId: null,
+      price: null,
+      courseType: '',
+      startDate: null,
+      endDate: null,
+    });
     setShowFilters(false);
   };
 
 
 
   const applyFilters = () => {
-    fetchCourses(1);
-    setPage(1);
+    setAppliedFilters({
+      stageId: filterStageId,
+      subjectId: filterSubjectId,
+      semesterId: filterSemesterId,
+      price,
+      courseType,
+      startDate,
+      endDate,
+    });
     setSelectedIds(new Set());
   };
   const refreshCourses = async () => {
-    await fetchCourses(pagination.currentPage);
+      await fetchCourses(pagination.currentPage, true);
   };
   // ✅ Handlers
   const handleToggleActive = async (course: Course) => {
     await courseService.toggleCourseActive(course.id);
-    await fetchCourses(pagination.currentPage);
     await refreshCourses();
   };
 const handleToggleStar = async (course: Course) => {
@@ -251,21 +344,18 @@ const handleToggleStar = async (course: Course) => {
 
   const handleDelete = async (course: Course) => {
     await courseService.deleteCourse(course.id);
-    await fetchCourses(pagination.currentPage);
     setDeletingCourse(null);
     await refreshCourses();
   };
 
   const handleRestore = async (course: Course) => {
     await courseService.restoreCourse(course.id);
-    await fetchCourses(pagination.currentPage);
     setRestoringCourse(null);
     await refreshCourses();
   };
 
   const handleForceDelete = async (course: Course) => {
     await courseService.forceDeleteCourse(course.id);
-    await fetchCourses(pagination.currentPage);
     setForceDeletingCourse(null);
     await refreshCourses();
   };
@@ -285,7 +375,7 @@ const handleToggleStar = async (course: Course) => {
   const handleFormSuccess = () => {
     setShowForm(false);
     setCourseToEdit(null);
-    fetchCourses(pagination.currentPage);
+    fetchCourses(pagination.currentPage, true);
   };
 
   const currentList = activeTab === 'active' ? courses : deletedCourses;
@@ -302,33 +392,37 @@ const handleToggleStar = async (course: Course) => {
   // ✅ Render Details
   if (showDetails && selectedCourse) {
     return (
-      <CourseDetails
-        courseId={selectedCourseId!}
-        onBack={() => {
-          setShowDetails(false);
-          setSelectedCourse(null);
-          setSelectedCourseId(null);
-        }}
-        onEdit={() => {
-          setShowDetails(false);
-          setCourseToEdit(selectedCourse);
-          setShowForm(true);
-        }}
-      />
+      <Suspense fallback={<div className="min-h-screen animate-pulse bg-muted/30" />}>
+        <CourseDetails
+          courseId={selectedCourseId!}
+          onBack={() => {
+            setShowDetails(false);
+            setSelectedCourse(null);
+            setSelectedCourseId(null);
+          }}
+          onEdit={() => {
+            setShowDetails(false);
+            setCourseToEdit(selectedCourse);
+            setShowForm(true);
+          }}
+        />
+      </Suspense>
     );
   }
 
   // ✅ Render Form
   if (showForm) {
     return (
-      <CourseForm
-        course={courseToEdit || undefined}
-        onSuccess={handleFormSuccess}
-        onCancel={() => {
-          setShowForm(false);
-          setCourseToEdit(null);
-        }}
-      />
+      <Suspense fallback={<div className="min-h-screen animate-pulse bg-muted/30" />}>
+        <CourseForm
+          course={courseToEdit || undefined}
+          onSuccess={handleFormSuccess}
+          onCancel={() => {
+            setShowForm(false);
+            setCourseToEdit(null);
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -642,7 +736,7 @@ const handleToggleStar = async (course: Course) => {
             </AnimatePresence>
             {/* ✅ Content */}
             <TabsContent value={activeTab} className="mt-6">
-              {loading && (
+              {loading && currentList.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20">
                   <Loader2 className="h-12 w-12 animate-spin text-primary" />
                   <p className="text-muted-foreground mt-4">{t('loadingCourses')}</p>
@@ -678,7 +772,7 @@ const handleToggleStar = async (course: Course) => {
               )}
 
               {/* ✅ Grid View */}
-              {!loading && !error && currentList.length > 0 && viewMode === 'grid' && (
+              {(!loading || currentList.length > 0) && !error && currentList.length > 0 && viewMode === 'grid' && (
                 <>
                   <motion.div
                     variants={containerVariants}
@@ -693,8 +787,8 @@ const handleToggleStar = async (course: Course) => {
                         custom={idx}
                       >
                         <CourseCard
-                        
                           course={course}
+                          prioritizeImage={idx === 0 && !isDeletedTab}
                           onView={handleViewCourse}
                           onEdit={handleEditCourse}
                           onDelete={() => setDeletingCourse(course)}
@@ -761,7 +855,7 @@ const handleToggleStar = async (course: Course) => {
               )}
 
               {/* ✅ Table View - Simplified with better design */}
-              {!loading && !error && currentList.length > 0 && viewMode === 'table' && (
+              {(!loading || currentList.length > 0) && !error && currentList.length > 0 && viewMode === 'table' && (
                 <Card className="rounded-3xl overflow-hidden border bg-background/80 backdrop-blur-md shadow-2xl">
                   <div className="overflow-x-auto">
                     <table className="w-full">
@@ -820,8 +914,12 @@ const handleToggleStar = async (course: Course) => {
                                 >
                                   {course.image?.fullUrl ? (
                                     <img
-                                      src={course.image.fullUrl}
+                                      src={course.image.previewUrl || course.image.fullUrl}
                                       alt=""
+                                      width={56}
+                                      height={56}
+                                      loading="lazy"
+                                      decoding="async"
                                       className="w-full h-full object-cover"
                                     />
                                   ) : (

@@ -35,6 +35,7 @@ interface AppContextType {
   role: UserRole | null;
   token: string | null;
   isLoading: boolean;
+  isLoadingInstructor: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isInstructor: boolean;
@@ -51,6 +52,8 @@ interface AppContextType {
   dir: "ltr" | "rtl";
   t: (key: TranslationKey) => string;
 }
+
+const instructorCacheKey = (userId: number) => `instructor-data:${userId}`;
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -89,10 +92,32 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   
   const dir = lang === "ar" ? "rtl" : "ltr";
 
+  useEffect(() => {
+    if (
+      !user?.id ||
+      (role !== 'teacher' && role !== 'instructor' && role !== 'assistant_teacher')
+    ) return;
+
+    const cacheKey = instructorCacheKey(user.id);
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (!cached) return;
+
+      const data = JSON.parse(cached) as InstructorData;
+      if (Number.isFinite(data.id) && typeof data.name === 'string') {
+        setInstructorData(data);
+      } else {
+        sessionStorage.removeItem(cacheKey);
+      }
+    } catch (error) {
+      console.warn('Unable to restore cached instructor data:', error);
+    }
+  }, [user?.id, role]);
+
   // دالة لجلب بيانات المعلم من الـ API
   const fetchInstructorData = async () => {
-    if (!isAuthenticated || !token) {
-      console.log('⏭️ Skipping instructor fetch: Not authenticated');
+    if (!isAuthenticated || !token || !user?.id) {
+      console.log('⏭️ Skipping instructor fetch: Missing authentication data');
       return;
     }
 
@@ -113,7 +138,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       if (response.data?.result === 'Success' && response.data?.data) {
         const data = response.data.data;
         
-        setInstructorData({
+        const instructor = {
           id: data.id,
           name: data.name,
           type: data.type,
@@ -121,7 +146,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           imageUrl: data.imageUrl || data.image?.fullUrl,
           image: data.image,
           email: data.email,
-        });
+        };
+        setInstructorData(instructor);
+        try {
+          sessionStorage.setItem(instructorCacheKey(user.id), JSON.stringify(instructor));
+        } catch (error) {
+          console.warn('Unable to cache instructor data:', error);
+        }
         
         console.log('✅ Instructor data set successfully:', instructorData);
       } else {
@@ -141,14 +172,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     } else {
       setInstructorData(null);
     }
-  }, [isAuthenticated, token, role]);
-
-  // جلب البيانات مرة أخرى عند تغيير الـ UI role
-  useEffect(() => {
-    if (uiRole === 'teacher' || uiRole === 'instructor' || uiRole === 'assistant_teacher') {
-      fetchInstructorData();
-    }
-  }, [uiRole]);
+  }, [isAuthenticated, token, role, user?.id]);
 
   // Save UI role to localStorage
   useEffect(() => {
@@ -206,7 +230,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     instructorData,
     role,
     token,
-    isLoading: isLoading || isLoadingInstructor,
+    isLoading,
+    isLoadingInstructor,
     isAuthenticated,
     isAdmin,
     isInstructor,

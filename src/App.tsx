@@ -1,6 +1,7 @@
 // src/App.tsx
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -40,8 +41,6 @@ import { InstructorAnalytics } from "./pages/instructor/InstructorAnalytics";
 import { InstructorAssistants } from "./pages/instructor/InstructorAssistants";
 import InstructorBankQuestions from "./pages/instructor/InstructorBankQuestions";
 import { InstructorContent } from "./pages/instructor/InstructorContent";
-import { InstructorCourses } from "./pages/instructor/InstructorCourses";
-import { InstructorDashboard } from "./pages/instructor/InstructorDashboard";
 import { InstructorEarnings } from "./pages/instructor/InstructorEarnings";
 import InstructorStudents from "./pages/instructor/InstructorStudents";
 import { InstructorWebsite } from "./pages/instructor/InstructorWebsite";
@@ -55,6 +54,16 @@ import { SemesterDetailsPage } from '@/pages/instructor/SemesterDetailsPage';
 import { AttendancePage } from '@/pages/instructor/AttendancePage';
 import WhatsAppSetup  from '@/pages/instructor/WhatsAppSetup';
 
+const InstructorDashboard = lazy(() =>
+  import("./pages/instructor/InstructorDashboard").then(({ InstructorDashboard }) => ({
+    default: InstructorDashboard,
+  }))
+);
+const InstructorCourses = lazy(() =>
+  import("./pages/instructor/InstructorCourses").then(({ InstructorCourses }) => ({
+    default: InstructorCourses,
+  }))
+);
 
 const queryClient = new QueryClient();
 
@@ -66,7 +75,24 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
+            <Suspense fallback={
+              <div aria-busy="true" className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6">
+                <div className="mx-auto max-w-[1600px] space-y-6">
+                  <div className="h-44 animate-pulse rounded-3xl bg-gradient-to-r from-indigo-600/70 via-purple-600/70 to-pink-600/70" />
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                    {Array.from({ length: 6 }, (_, index) => (
+                      <div key={index} className="h-24 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    {Array.from({ length: 4 }, (_, index) => (
+                      <div key={index} className="h-72 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            }>
+              <Routes>
               {/* Login */}
               <Route path="/login" element={<AdminLoginPage />} />
 
@@ -130,7 +156,8 @@ const App = () => {
 
               {/* Fallback */}
               <Route path="*" element={<Index />} />
-            </Routes>
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </AppProvider>

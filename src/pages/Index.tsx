@@ -21,8 +21,6 @@ import { AboutsPage } from "./admin/AboutsPage";
 import { FootersPage } from "./admin/FootersPage";
 
 // Instructor Components
-import { InstructorDashboard } from "./instructor/InstructorDashboard";
-import { InstructorCourses } from "./instructor/InstructorCourses";
 import { InstructorStudents } from "./instructor/InstructorStudents";
 import { InstructorExams } from "./instructor/InstructorExams";
 import { InstructorAssignments } from "./instructor/InstructorAssignments";

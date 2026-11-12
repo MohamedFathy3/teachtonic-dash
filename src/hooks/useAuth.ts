@@ -61,6 +61,7 @@ export const useAuth = (): UseAuthReturn => {
         name: userData.name,
         email: userData.email,
         role: userRole,
+        teacher_id: userData.teacher_id,
         created_at: userData.created_at,
         updated_at: userData.updated_at
       };

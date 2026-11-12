@@ -29,6 +29,7 @@ interface CourseCardProps {
   handleactivecourese?: (course: Course) => void;
   showActions?: boolean;
   isDeleted?: boolean;
+  prioritizeImage?: boolean;
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
@@ -43,6 +44,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   handleactivecourese,
   showActions = true,
   isDeleted = false,
+  prioritizeImage = false,
 }) => {
   const { t, lang } = useApp();
   const isRTL = lang === 'ar';
@@ -53,6 +55,10 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   const subjectName = isRTL ? course.subject?.name_ar : course.subject?.name;
   const stageName = isRTL ? course.stage?.name_ar : course.stage?.name;
   const semesterName = isRTL ? course.semester?.name_ar : course.semester?.name;
+  const previewImageUrl = course.image?.previewUrl || course.image?.fullUrl || course.imageUrl;
+  const [failedImageUrls, setFailedImageUrls] = useState<string[]>([]);
+  const imageUrl = [previewImageUrl, course.image?.fullUrl, course.imageUrl]
+    .find((url): url is string => Boolean(url) && !failedImageUrls.includes(url));
 
   const isStarEnabled = course.star === 1;
   
@@ -85,10 +91,20 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         }`}>
         {/* Course Image */}
         <div className="relative aspect-[16/9] bg-gradient-to-br from-gray-900 to-gray-800">
-          {course.image?.fullUrl || course.imageUrl ? (
+          {imageUrl ? (
             <img
-              src={course.image?.fullUrl || course.imageUrl}
+              src={imageUrl}
               alt={title}
+              width={640}
+              height={360}
+              loading={prioritizeImage ? 'eager' : 'lazy'}
+              fetchPriority={prioritizeImage ? 'high' : 'auto'}
+              decoding="async"
+              onError={() => {
+                if (imageUrl) {
+                  setFailedImageUrls((failed) => [...failed, imageUrl]);
+                }
+              }}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (

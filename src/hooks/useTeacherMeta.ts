@@ -2,7 +2,11 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 
-export function useTeacherMeta(teacherId?: number) {
+export function useTeacherMeta(
+    teacherId?: number,
+    options: { includeOffers?: boolean } = {},
+) {
+    const { includeOffers = true } = options;
     const [stages, setStages] = useState<any[]>([]);
     const [subjects, setSubjects] = useState<any[]>([]);
     const [offers, setOffers] = useState<any[]>([]);
@@ -35,24 +39,27 @@ export function useTeacherMeta(teacherId?: number) {
                 setStages(stagesData);
                 setSubjects(subjectsData);
                 
-                // ✅ جلب العروض
-                try {
-                    const offersResponse = await api.post('/offer/index', {
-                        filters: {
-                            teacher_id: teacherId,
-                            type: 'offer',
-                            active: true,
-                        },
-                        orderByDirection: 'desc',
-                        perPage: 100,
-                        paginate: false,
-                    });
-                    
-                    console.log('🎁 Offers from API:', offersResponse.data);
-                    const offersData = offersResponse.data?.data || [];
-                    setOffers(offersData);
-                } catch (offerError) {
-                    console.error('Error fetching offers:', offerError);
+                if (includeOffers) {
+                    try {
+                        const offersResponse = await api.post('/offer/index', {
+                            filters: {
+                                teacher_id: teacherId,
+                                type: 'offer',
+                                active: true,
+                            },
+                            orderByDirection: 'desc',
+                            perPage: 100,
+                            paginate: false,
+                        });
+
+                        console.log('🎁 Offers from API:', offersResponse.data);
+                        const offersData = offersResponse.data?.data || [];
+                        setOffers(offersData);
+                    } catch (offerError) {
+                        console.error('Error fetching offers:', offerError);
+                        setOffers([]);
+                    }
+                } else {
                     setOffers([]);
                 }
                 
@@ -68,7 +75,7 @@ export function useTeacherMeta(teacherId?: number) {
         };
 
         fetchData();
-    }, [teacherId]);
+    }, [teacherId, includeOffers]);
 
     return { 
         stages, 
