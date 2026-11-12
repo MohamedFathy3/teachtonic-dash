@@ -1,5 +1,5 @@
-// src/App.tsx
-
+import { lazy, Suspense } from "react";
+import type { ComponentType } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
@@ -7,29 +7,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider } from "@/contexts/AppContext";
-import AdminLoginPage from "./pages/login";
-import Index from "./pages/Index";
-import { TeacherProfileView } from "./pages/admin/TeacherProfileView";
-import { AdminCourses } from "@/pages/admin/AdminCourses";
-import { CourseDetails } from "@/pages/admin/CourseDetails";
-import { ExamViewer } from "@/components/exams/ExamViewer";
-import { StudentLearningPage } from "@/pages/instructor/StudentLearningPage";
-import { InstructorExams } from "@/pages/instructor/InstructorExams";
-import { InstructorAssignments } from "@/pages/instructor/InstructorAssignments";
-import { AssignmentViewer } from "@/components/assignments/AssignmentViewer";
-import { AssistantTeachersPage } from "./pages/admin/AssistantTeachersPage";
-import { SubjectsPage } from "./pages/admin/SubjectsPage";
-import { StagesPage } from "./pages/admin/StagesPage";
-import { AdminUsers } from "./pages/admin/AdminUsers";
-import { AdminOverview } from "./pages/admin/AdminOverview";
-import { TeachersPage } from "./pages/admin/AdminInstructors";
-import { HeroesPage } from "./pages/admin/HeroesPage";
-import { AboutsPage } from "./pages/admin/AboutsPage";
-import { FootersPage } from "./pages/admin/FootersPage";
-import { FeaturesPage } from "./pages/admin/FeaturesPage";
-import { AdminReviews } from "./pages/admin/AdminReviews";
-import { SettingsPage } from "./pages/shared/SettingsPage";
 
+<<<<<<< HEAD
 import { SemestersPage } from "./components/admin/SemestersPage";
 import { BooksPage } from "./components/admin/books/BooksPage";
 import { OffersPage } from "@/components/offers/OffersPage";
@@ -64,9 +43,72 @@ const InstructorCourses = lazy(() =>
     default: InstructorCourses,
   }))
 );
+=======
+const lazyNamed = (loader: () => Promise<Record<string, unknown>>, name: string) =>
+  lazy(() => loader().then((module) => ({ default: module[name] as ComponentType })));
 
-const queryClient = new QueryClient();
+const AdminLoginPage = lazy(() => import("./pages/login"));
+const Index = lazy(() => import("./pages/Index"));
+const TeacherProfileView = lazyNamed(() => import("./pages/admin/TeacherProfileView"), "TeacherProfileView");
+const AdminCourses = lazyNamed(() => import("@/pages/admin/AdminCourses"), "AdminCourses");
+const CourseDetails = lazyNamed(() => import("@/pages/admin/CourseDetails"), "CourseDetails");
+const ExamViewer = lazyNamed(() => import("@/components/exams/ExamViewer"), "ExamViewer");
+const StudentLearningPage = lazyNamed(() => import("@/pages/instructor/StudentLearningPage"), "StudentLearningPage");
+const InstructorExams = lazyNamed(() => import("@/pages/instructor/InstructorExams"), "InstructorExams");
+const InstructorAssignments = lazyNamed(() => import("@/pages/instructor/InstructorAssignments"), "InstructorAssignments");
+const AssignmentViewer = lazyNamed(() => import("@/components/assignments/AssignmentViewer"), "AssignmentViewer");
+const AssistantTeachersPage = lazyNamed(() => import("./pages/admin/AssistantTeachersPage"), "AssistantTeachersPage");
+const SubjectsPage = lazyNamed(() => import("./pages/admin/SubjectsPage"), "SubjectsPage");
+const StagesPage = lazyNamed(() => import("./pages/admin/StagesPage"), "StagesPage");
+const AdminUsers = lazyNamed(() => import("./pages/admin/AdminUsers"), "AdminUsers");
+const AdminOverview = lazyNamed(() => import("./pages/admin/AdminOverview"), "AdminOverview");
+const TeachersPage = lazyNamed(() => import("./pages/admin/AdminInstructors"), "TeachersPage");
+const HeroesPage = lazyNamed(() => import("./pages/admin/HeroesPage"), "HeroesPage");
+const AboutsPage = lazyNamed(() => import("./pages/admin/AboutsPage"), "AboutsPage");
+const FootersPage = lazyNamed(() => import("./pages/admin/FootersPage"), "FootersPage");
+const FeaturesPage = lazyNamed(() => import("./pages/admin/FeaturesPage"), "FeaturesPage");
+const AdminReviews = lazyNamed(() => import("./pages/admin/AdminReviews"), "AdminReviews");
+const SettingsPage = lazyNamed(() => import("./pages/shared/SettingsPage"), "SettingsPage");
+const SemestersPage = lazyNamed(() => import("./components/admin/SemestersPage"), "SemestersPage");
+const BooksPage = lazyNamed(() => import("./components/admin/books/BooksPage"), "BooksPage");
+const OffersPage = lazyNamed(() => import("@/components/offers/OffersPage"), "OffersPage");
+const BannersPage = lazyNamed(() => import("@/components/offers/BannersPage"), "BannersPage");
+const CenterHoursPage = lazyNamed(() => import("./components/admin/center-hours/CenterHoursPage"), "CenterHoursPage");
+const PaymentCodesPage = lazyNamed(() => import("./components/admin/payment-codes/PaymentCodesPage"), "PaymentCodesPage");
+const InstructorRedeemRequests = lazyNamed(() => import("./components/redeem-requests/RedeemRequestsPage"), "InstructorRedeemRequests");
+const InstructorAnalytics = lazyNamed(() => import("./pages/instructor/InstructorAnalytics"), "InstructorAnalytics");
+const InstructorAssistants = lazyNamed(() => import("./pages/instructor/InstructorAssistants"), "InstructorAssistants");
+const InstructorBankQuestions = lazy(() => import("./pages/instructor/InstructorBankQuestions"));
+const InstructorContent = lazyNamed(() => import("./pages/instructor/InstructorContent"), "InstructorContent");
+const InstructorCourses = lazyNamed(() => import("./pages/instructor/InstructorCourses"), "InstructorCourses");
+const InstructorDashboard = lazyNamed(() => import("./pages/instructor/InstructorDashboard"), "InstructorDashboard");
+const InstructorEarnings = lazyNamed(() => import("./pages/instructor/InstructorEarnings"), "InstructorEarnings");
+const InstructorStudents = lazy(() => import("./pages/instructor/InstructorStudents"));
+const InstructorWebsite = lazyNamed(() => import("./pages/instructor/InstructorWebsite"), "InstructorWebsite");
+const LessonDetailsPage = lazyNamed(() => import("./pages/instructor/LessonDetailsPage"), "LessonDetailsPage");
+const BookDetailsPage = lazyNamed(() => import("./pages/instructor/BookDetailsPage"), "BookDetailsPage");
+const StudentAttendance = lazyNamed(() => import("./pages/instructor/StudentAttendance"), "StudentAttendance");
+const MyAssistantPage = lazyNamed(() => import("./pages/instructor/MyAssistantPage"), "MyAssistantPage");
+const SettingsPages = lazy(() => import("@/pages/instructor/SettingsPage"));
+const SeoCountsPage = lazy(() => import("@/pages/instructor/SeoCountsPage"));
+const SemesterDetailsPage = lazyNamed(() => import("@/pages/instructor/SemesterDetailsPage"), "SemesterDetailsPage");
+const AttendancePage = lazyNamed(() => import("@/pages/instructor/AttendancePage"), "AttendancePage");
+const WhatsAppSetup = lazy(() => import("@/pages/instructor/WhatsAppSetup"));
+>>>>>>> ac945d0b6e2066a2a703da515fe460d28ce03ef6
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      retry: 1,
+    },
+  },
+});
+
+<<<<<<< HEAD
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -94,9 +136,24 @@ const App = () => {
             }>
               <Routes>
               {/* Login */}
-              <Route path="/login" element={<AdminLoginPage />} />
+=======
+const PageLoader = () => (
+  <div className="flex min-h-[40vh] items-center justify-center" aria-label="Loading">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+  </div>
+);
 
-              {/* Admin Routes - داخل Layout */}
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AppProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+>>>>>>> ac945d0b6e2066a2a703da515fe460d28ce03ef6
+              <Route path="/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<Index />}>
                 <Route index element={<AdminOverview />} />
                 <Route path="dashboard" element={<AdminOverview />} />
@@ -115,10 +172,7 @@ const App = () => {
                 <Route path="teachers/profile" element={<TeacherProfileView />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="role" element={<SettingsPage />} />
-
               </Route>
-
-              {/* Instructor Routes - داخل Layout */}
               <Route path="/instructor" element={<Index />}>
                 <Route index element={<InstructorDashboard />} />
                 <Route path="dashboard" element={<InstructorDashboard />} />
@@ -127,7 +181,7 @@ const App = () => {
                 <Route path="exams" element={<InstructorExams />} />
                 <Route path="exam/:examId" element={<ExamViewer />} />
                 <Route path="assignments" element={<InstructorAssignments />} />
-                <Route path="/instructor/assignments/:assignmentId" element={<AssignmentViewer />} />
+                <Route path="assignments/:assignmentId" element={<AssignmentViewer />} />
                 <Route path="student/:studentId" element={<StudentLearningPage />} />
                 <Route path="bank-questions" element={<InstructorBankQuestions />} />
                 <Route path="content" element={<InstructorContent />} />
@@ -147,15 +201,13 @@ const App = () => {
                 <Route path="Notifications" element={<BannersPage />} />
                 <Route path="attens" element={<StudentAttendance />} />
                 <Route path="my-AssistantIns" element={<MyAssistantPage />} />
-                <Route path="settings" element={<SettingsPages  />} />
+                <Route path="settings" element={<SettingsPages />} />
                 <Route path="seo-counts" element={<SeoCountsPage />} />
                 <Route path="semesters/:id" element={<SemesterDetailsPage />} />
-<Route path="whatsapp-setup" element={<WhatsAppSetup />} />
-
+                <Route path="whatsapp-setup" element={<WhatsAppSetup />} />
               </Route>
-
-              {/* Fallback */}
               <Route path="*" element={<Index />} />
+<<<<<<< HEAD
               </Routes>
             </Suspense>
           </BrowserRouter>
@@ -164,5 +216,14 @@ const App = () => {
     </QueryClientProvider>
   );
 };
+=======
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AppProvider>
+  </QueryClientProvider>
+);
+>>>>>>> ac945d0b6e2066a2a703da515fe460d28ce03ef6
 
 export default App;
