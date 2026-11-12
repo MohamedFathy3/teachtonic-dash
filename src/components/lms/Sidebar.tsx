@@ -30,7 +30,7 @@ import {
 
 import { TranslationKey } from "@/i18n/translations";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "@/lib/static-motion";
 import Logo from "@/assets/1.png";
 
 interface NavItem {
@@ -119,7 +119,7 @@ export function Sidebar({ active, onNavigate, open, onClose }: SidebarProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-40 bg-black/60  lg:hidden"
             onClick={onClose}
           />
         )}
@@ -135,30 +135,15 @@ export function Sidebar({ active, onNavigate, open, onClose }: SidebarProps) {
           transition-all duration-300
           border-r border-white/10
           bg-white/80 dark:bg-[#07111f]/95
-          backdrop-blur-3xl
+
           shadow-[0_0_80px_rgba(255,140,0,0.05)]
           lg:sticky lg:translate-x-0
         `,
           open ? "translate-x-0" : "ltr:-translate-x-full rtl:translate-x-full"
         )}
       >
-        {/* BACKGROUND EFFECTS */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] bg-[length:22px_22px]" />
-          
-          <motion.div
-            animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
-            transition={{ duration: 12, repeat: Infinity }}
-            className="absolute -top-[200px] -left-[200px] w-[400px] h-[400px] rounded-full bg-orange-500/10 blur-[120px]"
-          />
-
-          <motion.div
-            animate={{ x: [0, -40, 0], y: [0, 40, 0] }}
-            transition={{ duration: 16, repeat: Infinity }}
-            className="absolute -bottom-[200px] -right-[200px] w-[450px] h-[450px] rounded-full bg-purple-500/10 blur-[140px]"
-          />
-        </div>
-
+        {/* Static sidebar background. */}
+        <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] bg-[length:22px_22px]" />
         {/* HEADER WITH LOGO OR INSTRUCTOR IMAGE */}
         <div className="relative z-10 border-b border-black/5 dark:border-white/10">
           {/* Logo/Image Section */}
@@ -344,10 +329,10 @@ export function Sidebar({ active, onNavigate, open, onClose }: SidebarProps) {
               </div>
               <div>
                 <p className="font-bold text-sm text-gray-900 dark:text-white">
-                  Teacher planet platform 
+                  Teacher planet platform
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                 اسهل واسرع منصة في مصر ليك يا مستر ومن الاخر هدافنا زيادة عدد طلابك مش شكل و خلاص 😎 
+                 اسهل واسرع منصة في مصر ليك يا مستر ومن الاخر هدافنا زيادة عدد طلابك مش شكل و خلاص 😎
 
                 </p>
               </div>

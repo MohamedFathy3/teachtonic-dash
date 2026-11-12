@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { AvatarBadge } from "@/components/lms/AvatarBadge";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "@/lib/static-motion";
 
 interface TopbarProps {
   onToggleSidebar: () => void;
@@ -59,7 +59,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
   } = useApp();
 
   const navigate = useNavigate();
-  
+
   const expiryData: ExpiryData | null = instructorData
     ? {
         expire_date: instructorData.expire_date || null,
@@ -178,30 +178,9 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
         sticky top-0 z-40
         border-b border-white/10
         bg-[#07111f]/70
-        backdrop-blur-2xl
+
       "
     >
-      {/* Glow */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <motion.div
-          animate={{
-            x: [0, 60, 0],
-            opacity: [0.3, 0.6, 0.3],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-          }}
-          className="
-            absolute top-[-100px] left-[10%]
-            w-[300px] h-[300px]
-            rounded-full
-            bg-orange-500/10
-            blur-[100px]
-          "
-        />
-      </div>
-
       <div
         className="
           relative z-10
@@ -251,7 +230,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
               ps-11
               text-white
               placeholder:text-gray-500
-              backdrop-blur-xl
+
 
               focus-visible:ring-2
               focus-visible:ring-orange-500
@@ -290,36 +269,13 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
                   rounded-2xl
                   border
                   px-3 py-1.5
-                  backdrop-blur-xl
+
                   relative
                   overflow-hidden
                 `,
                 getExpiryBadgeClass()
               )}
             >
-              {/* ✅ تأثير الوميض (blink) */}
-              <AnimatePresence>
-                {(isExpired || isNearExpiry) && (
-                  <motion.div
-                    initial={{ opacity: 0.3 }}
-                    animate={{ opacity: [0.3, 1, 0.3] }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                    className="
-                      absolute inset-0
-                      bg-gradient-to-r
-                      from-transparent
-                      via-white/10
-                      to-transparent
-                      -skew-x-12
-                    "
-                  />
-                )}
-              </AnimatePresence>
-
               {/* ✅ أيقونة */}
               <div className="relative z-10">
                 {getExpiryIcon()}
@@ -371,7 +327,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
                 border
                 px-4 py-2
                 bg-gradient-to-r
-                backdrop-blur-xl
+
               `,
               getRoleBadgeClass()
             )}
@@ -551,7 +507,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
                 w-[360px]
                 border border-white/10
                 bg-[#0b1525]/95
-                backdrop-blur-2xl
+
                 text-white
               "
             >
@@ -662,7 +618,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
                 w-64
                 border border-white/10
                 bg-[#0b1525]/95
-                backdrop-blur-2xl
+
                 text-white
               "
             >

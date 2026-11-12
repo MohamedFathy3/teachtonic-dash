@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import type { Course } from '@/types/course.types';
-import { motion } from 'framer-motion';
+import { motion } from '@/lib/static-motion';
 import { Switch } from '../ui/switch';
 import { Progress } from '@/components/ui/progress';
 
@@ -61,7 +61,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
     .find((url): url is string => Boolean(url) && !failedImageUrls.includes(url));
 
   const isStarEnabled = course.star === 1;
-  
+
   // ✅ استخدام القيم من الباك اند مباشرة
   const originalPrice = parseFloat(course.original_price as any || course.price);
   const finalPrice = parseFloat(course.price as any);
@@ -74,7 +74,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
   const hasVideo = !!course.link_video;
 
   // حساب نسبة الإكمال
-  const completionRate = course.details?.length > 0 
+  const completionRate = course.details?.length > 0
     ? Math.min(100, Math.floor((course.details.filter((d: any) => d.attended).length / course.details.length) * 100))
     : 0;
 
@@ -172,7 +172,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
 
           {/* ✅ Price Badge - Bottom Left */}
           <div className="absolute bottom-3 left-3">
-            <div className="bg-black/70 backdrop-blur-md rounded-xl px-3 py-1.5">
+            <div className="bg-black/70  rounded-xl px-3 py-1.5">
               {hasDiscount ? (
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-400 line-through">
@@ -192,7 +192,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
 
           {/* Type Badge - Bottom Right */}
           <div className="absolute bottom-3 right-3">
-            <Badge variant="outline" className="bg-black/50 text-white border-white/20 backdrop-blur-sm gap-1">
+            <Badge variant="outline" className="bg-black/50 text-white border-white/20  gap-1">
               {course.type === 'online' ? (
                 <>
                   <Zap className="h-3 w-3 text-blue-400" />
@@ -214,7 +214,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="h-8 w-8 rounded-lg bg-black/70 hover:bg-black/90 backdrop-blur-sm"
+                  className="h-8 w-8 rounded-lg bg-black/70 hover:bg-black/90 "
                   onClick={() => onView(course)}
                 >
                   <Eye className="h-4 w-4 text-white" />
@@ -224,7 +224,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="h-8 w-8 rounded-lg bg-black/70 hover:bg-black/90 backdrop-blur-sm"
+                  className="h-8 w-8 rounded-lg bg-black/70 hover:bg-black/90 "
                   onClick={() => onEdit(course)}
                 >
                   <Edit className="h-4 w-4 text-white" />
@@ -234,7 +234,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="h-8 w-8 rounded-lg bg-black/70 hover:bg-black/90 backdrop-blur-sm"
+                  className="h-8 w-8 rounded-lg bg-black/70 hover:bg-black/90 "
                   onClick={() => onToggleActive(course)}
                 >
                   {course.active === 1 ? (
@@ -245,7 +245,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
                 </Button>
               )}
               {!isDeleted && onToggleStar && (
-                <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-black/70 backdrop-blur-sm">
+                <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-black/70 ">
                   <Star className={`h-3 w-3 ${isStarEnabled ? 'text-yellow-400 fill-yellow-400' : 'text-gray-400'}`} />
                   <Switch
                     checked={isStarEnabled}
@@ -258,7 +258,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="h-8 w-8 rounded-lg bg-red-500/70 hover:bg-red-600/90 backdrop-blur-sm"
+                  className="h-8 w-8 rounded-lg bg-red-500/70 hover:bg-red-600/90 "
                   onClick={() => onDelete(course)}
                 >
                   <Trash2 className="h-4 w-4 text-white" />
@@ -268,7 +268,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="h-8 w-8 rounded-lg bg-green-500/70 hover:bg-green-600/90 backdrop-blur-sm"
+                  className="h-8 w-8 rounded-lg bg-green-500/70 hover:bg-green-600/90 "
                   onClick={() => onRestore(course)}
                 >
                   <RefreshCw className="h-4 w-4 text-white" />
@@ -278,7 +278,7 @@ export const CourseCard = React.memo<CourseCardProps>(({
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="h-8 w-8 rounded-lg bg-red-500/70 hover:bg-red-600/90 backdrop-blur-sm"
+                  className="h-8 w-8 rounded-lg bg-red-500/70 hover:bg-red-600/90 "
                   onClick={() => onForceDelete(course)}
                 >
                   <Trash2 className="h-4 w-4 text-white" />

@@ -9,11 +9,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  BookOpen, Users, DollarSign, Star, Sparkles, Loader2, 
-  TrendingUp, FileQuestion, FileText, Layers, Ticket, 
+import {
+  BookOpen, Users, DollarSign, Star, Sparkles, Loader2,
+  TrendingUp, FileQuestion, FileText, Layers, Ticket,
   BookMarked, Download, Calendar, RefreshCw, Trophy,
-  Award, Target, Zap, BarChart3, PieChart as PieChartIcon, 
+  Award, Target, Zap, BarChart3, PieChart as PieChartIcon,
   Activity, Globe, Crown, Gem, Medal, Flame, Gift,
   Wallet, School, MonitorPlay, ArrowUpRight, ArrowDownRight,
   ChartLine, ChartPie, Gauge, Database, BadgeDollarSign,
@@ -21,10 +21,10 @@ import {
   GraduationCap, MapPin, UsersRound, BarChart4, PieChart as PieChartIcon2,
   CircleDollarSign, CalendarDays, ChartNoAxesCombined, ListChecks
 } from "lucide-react";
-import { 
-  Area, AreaChart, CartesianGrid, ResponsiveContainer as RechartsResponsiveContainer, 
+import {
+  Area, AreaChart, CartesianGrid, ResponsiveContainer as RechartsResponsiveContainer,
   Tooltip, XAxis, YAxis, Cell, Pie, PieChart, Legend,
-  BarChart, Bar, LineChart, Line, Radar, RadarChart, 
+  BarChart, Bar, LineChart, Line, Radar, RadarChart,
   PolarGrid, PolarAngleAxis, PolarRadiusAxis, ComposedChart
 } from "recharts";
 import api from '@/lib/api';
@@ -40,7 +40,7 @@ import { teacherReportService } from '@/services/teacher-report.service';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { motion } from "framer-motion";
+import { motion } from "@/lib/static-motion";
 
 interface InstructorReport {
   online_courses: number;
@@ -119,7 +119,7 @@ const ChartContainer = ({
       {isNearViewport ? (
         <RechartsResponsiveContainer {...props}>{children}</RechartsResponsiveContainer>
       ) : (
-        <div aria-hidden="true" className="h-full w-full animate-pulse rounded-lg bg-slate-100/70 dark:bg-slate-800/40" />
+        <div aria-hidden="true" className="h-full w-full  rounded-lg bg-slate-100/70 dark:bg-slate-800/40" />
       )}
     </div>
   );
@@ -169,27 +169,27 @@ const regionNames: Record<string, { ar: string; en: string }> = {
   "Zamalek": { ar: "الزمالك", en: "Zamalek" },
   "Abbassia": { ar: "العباسية", en: "Abbassia" },
   "Shubra": { ar: "شبرا", en: "Shubra" },
-  
+
   // الجيزة
   "October": { ar: "السادس من أكتوبر", en: "October 6" },
   "Sheikh Zayed": { ar: "الشيخ زايد", en: "Sheikh Zayed" },
   "Dokki": { ar: "الدقي", en: "Dokki" },
   "Agouza": { ar: "العجوزة", en: "Agouza" },
   "Haram": { ar: "الهرم", en: "Haram" },
-  
+
   // الإسكندرية
   "Borg El Arab": { ar: "برج العرب", en: "Borg El Arab" },
   "Smouha": { ar: "سموحة", en: "Smouha" },
   "Alexandria": { ar: "الإسكندرية", en: "Alexandria" },
   "Montaza": { ar: "المنتزة", en: "Montaza" },
   "Sidi Gaber": { ar: "سيدي جابر", en: "Sidi Gaber" },
-  
+
   // الدقهلية
   "Mansoura": { ar: "المنصورة", en: "Mansoura" },
-  
+
   // الغربية
   "Tanta": { ar: "طنطا", en: "Tanta" },
-  
+
   // أخرى
   "Cairo": { ar: "القاهرة", en: "Cairo" },
   "Giza": { ar: "الجيزة", en: "Giza" },
@@ -202,7 +202,7 @@ export function InstructorDashboard() {
   // ✅ استخدم isAssistantTeacher من الـ Context
   const { t: tOriginal, user, dir, lang, isAssistantTeacher, instructorData, isLoadingInstructor } = useApp();
   const navigate = useNavigate();
-  
+
   // دالة الترجمة
   const t = (key: string): string => {
     const translations: Record<string, Record<string, string>> = {
@@ -391,11 +391,11 @@ export function InstructorDashboard() {
         assistantTeacher: "Assistant Teacher",
       }
     };
-    
+
     const langCode = lang === 'ar' ? 'ar' : 'en';
     return translations[langCode][key] || tOriginal(key) || key;
   };
-  
+
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [fromDate, setFromDate] = useState(() => {
     const date = new Date();
@@ -405,7 +405,7 @@ export function InstructorDashboard() {
   const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [downloading, setDownloading] = useState(false);
   const [greeting, setGreeting] = useState("");
-  
+
   useEffect(() => {
     const hour = new Date().getHours();
     if (lang === 'ar') {
@@ -485,11 +485,11 @@ export function InstructorDashboard() {
   // حساب البيانات الأساسية
   const totalCourses = (report?.online_courses || 0) + (report?.center_courses || 0);
   const totalRevenue = report?.profits || 0;
-  
-  const completionRate = report?.students_count && report?.students_count > 0 
+
+  const completionRate = report?.students_count && report?.students_count > 0
     ? Math.min(100, Math.round(((report?.exams_count || 0) / (report?.students_count || 1)) * 100))
     : 0;
-  
+
   const engagementRate = report?.students_count && report?.students_count > 0
     ? Math.min(100, Math.round((((report?.exams_count || 0) + (report?.assignments_count || 0)) / (report?.students_count || 1)) * 100))
     : 0;
@@ -499,7 +499,7 @@ export function InstructorDashboard() {
     const currentMonth = i + 1;
     const studentData = report?.students_per_month?.find(s => s.month === currentMonth);
     const studentValue = studentData?.total || 0;
-    
+
     return {
       month,
       students: studentValue,
@@ -546,13 +546,13 @@ export function InstructorDashboard() {
   // ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // ✅ معالجة بيانات المحافظات (GOVERNORATES)
   // ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  
+
   const governorateDataFromAPI = report?.students_by_governorate || [];
-  
+
   const governorateData = governorateDataFromAPI
     .filter(g => g.total > 0)
     .map(g => ({
-      name: lang === 'ar' 
+      name: lang === 'ar'
         ? (governorateNames[g.governorate.toLowerCase()]?.ar || g.governorate)
         : (governorateNames[g.governorate.toLowerCase()]?.en || g.governorate),
       value: g.total,
@@ -560,22 +560,22 @@ export function InstructorDashboard() {
       key: g.governorate,
     }))
     .sort((a, b) => b.value - a.value);
-  
+
   const hasGovernorateData = governorateData.length > 0;
   const totalGovernorateStudents = governorateData?.reduce((sum, g) => sum + g.value, 0);
-  
+
   // ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // ✅ معالجة بيانات المناطق (REGIONS)
   // ✅━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  
+
   const regionDataFromAPI = report?.students_by_region || [];
-  
+
   const regionData = regionDataFromAPI
     .filter(r => r.total > 0)
     .map(r => {
       const regionKey = r.region?.toLowerCase() || '';
       return {
-        name: lang === 'ar' 
+        name: lang === 'ar'
           ? (regionNames[regionKey]?.ar || r.region)
           : (regionNames[regionKey]?.en || r.region),
         value: r.total,
@@ -584,10 +584,10 @@ export function InstructorDashboard() {
       };
     })
     .sort((a, b) => b.value - a.value);
-  
+
   const hasRegionData = regionData.length > 0;
   const totalRegionStudents = regionData.reduce((sum, r) => sum + r.value, 0);
-  
+
   // بيانات المراحل الدراسية
   const stageData = report?.students_by_stage?.map((s, index) => ({
     name: s.name,
@@ -597,31 +597,31 @@ export function InstructorDashboard() {
 
   // QUICK ACTIONS
   const QUICK_ACTIONS = [
-    { 
-      icon: BookOpen, 
-      label: t("newCourse"), 
-      color: "from-blue-500 to-cyan-500", 
+    {
+      icon: BookOpen,
+      label: t("newCourse"),
+      color: "from-blue-500 to-cyan-500",
       bg: "bg-blue-50 dark:bg-blue-950/20",
       onClick: () => navigate('/instructor/my-courses')
     },
-    { 
-      icon: FileQuestion, 
-      label: t("createExam"), 
-      color: "from-red-500 to-rose-500", 
+    {
+      icon: FileQuestion,
+      label: t("createExam"),
+      color: "from-red-500 to-rose-500",
       bg: "bg-red-50 dark:bg-red-950/20",
       onClick: () => navigate('/instructor/exams')
     },
-    { 
-      icon: Users, 
-      label: t("inviteStudents"), 
-      color: "from-green-500 to-emerald-500", 
+    {
+      icon: Users,
+      label: t("inviteStudents"),
+      color: "from-green-500 to-emerald-500",
       bg: "bg-green-50 dark:bg-green-950/20",
       onClick: () => navigate('/instructor/students')
     },
-    { 
-      icon: Ticket, 
-      label: t("createCoupon"), 
-      color: "from-purple-500 to-pink-500", 
+    {
+      icon: Ticket,
+      label: t("createCoupon"),
+      color: "from-purple-500 to-pink-500",
       bg: "bg-purple-50 dark:bg-purple-950/20",
       onClick: () => navigate('/instructor/payment-codes')
     },
@@ -653,19 +653,19 @@ export function InstructorDashboard() {
         className={`min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 ${isRTL ? 'font-arabic' : ''}`}
       >
         <div className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
-          <div className="min-h-44 animate-pulse rounded-3xl bg-gradient-to-r from-indigo-600/70 via-purple-600/70 to-pink-600/70 p-8">
+          <div className="min-h-44  rounded-3xl bg-gradient-to-r from-indigo-600/70 via-purple-600/70 to-pink-600/70 p-8">
             <div className="h-4 w-28 rounded bg-white/30" />
             <div className="mt-4 h-9 w-56 rounded bg-white/30" />
             <div className="mt-3 h-4 w-72 max-w-full rounded bg-white/20" />
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {Array.from({ length: 6 }, (_, index) => (
-              <div key={index} className="h-24 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />
+              <div key={index} className="h-24  rounded-2xl bg-white dark:bg-slate-900" />
             ))}
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className="h-72 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />
+              <div key={index} className="h-72  rounded-2xl bg-white dark:bg-slate-900" />
             ))}
           </div>
         </div>
@@ -703,25 +703,25 @@ export function InstructorDashboard() {
         }
       `}</style>
       <div className={`mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8 ${isRTL ? 'text-right' : 'text-left'}`}>
-        
+
         {/* Hero Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-8 shadow-2xl"
         >
-          <div className="absolute top-0 right-0 -mt-32 -mr-32 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
-          <div className="absolute bottom-0 left-0 -mb-32 -ml-32 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-          
+          <div className="absolute top-0 right-0 -mt-32 -mr-32 h-64 w-64 rounded-full bg-white/20 " />
+          <div className="absolute bottom-0 left-0 -mb-32 -ml-32 h-64 w-64 rounded-full bg-white/10 " />
+
           <div className={`relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
             <div className="space-y-2">
               <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                <motion.div 
+                <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.2, type: "spring" }}
-                  className="rounded-2xl bg-white/20 backdrop-blur-sm p-3 shadow-lg"
+                  className="rounded-2xl bg-white/20  p-3 shadow-lg"
                 >
                   {isAssistantTeacher ? (
                     <Users className="h-6 w-6 text-white" />
@@ -747,20 +747,20 @@ export function InstructorDashboard() {
             </div>
             <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => reportQuery.refetch()}
                   disabled={reportQuery.isFetching}
-                  className="gap-2 rounded-xl bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 hover:border-white/30 transition-all"
+                  className="gap-2 rounded-xl bg-white/10  border-white/20 text-white hover:bg-white/20 hover:border-white/30 transition-all"
                 >
-                  <RefreshCw className={`h-4 w-4 ${reportQuery.isFetching ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 ${reportQuery.isFetching ? '' : ''}`} />
                   {t("refresh")}
                 </Button>
               </motion.div>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button 
-                  onClick={() => setReportDialogOpen(true)} 
+                <Button
+                  onClick={() => setReportDialogOpen(true)}
                   className="gap-2 rounded-xl bg-white text-indigo-600 hover:bg-white/90 shadow-lg hover:shadow-xl transition-all duration-300 font-medium"
                 >
                   <Download className="h-4 w-4" />
@@ -814,7 +814,7 @@ export function InstructorDashboard() {
             </motion.button>
           ))}
         </div>
-        
+
         {/* Main Tabs Section */}
         <Tabs defaultValue="overview" className="w-full">
           <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
@@ -829,7 +829,7 @@ export function InstructorDashboard() {
                 {t("performance")}
               </TabsTrigger>
             </TabsList>
-            
+
             <Badge variant="outline" className="gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-pink-500/10 border-indigo-200 dark:border-indigo-800">
               <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
               <span className="text-xs font-medium">{t("lastUpdated")}</span>
@@ -851,7 +851,7 @@ export function InstructorDashboard() {
                   whileHover={{ y: -4 }}
                   className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-lg transition-all duration-300 hover:shadow-xl border border-slate-200/50 dark:border-slate-800/50"
                 >
-                  <div className={`absolute top-0 ${isRTL ? 'left-0' : 'right-0'} h-24 w-24 rounded-full bg-gradient-to-r ${stat.gradient} opacity-10 blur-2xl -translate-y-1/2 ${isRTL ? '-translate-x-1/2' : 'translate-x-1/2'}`} />
+                  <div className={`absolute top-0 ${isRTL ? 'left-0' : 'right-0'} h-24 w-24 rounded-full bg-gradient-to-r ${stat.gradient} opacity-10  -translate-y-1/2 ${isRTL ? '-translate-x-1/2' : 'translate-x-1/2'}`} />
                   <div className={`flex items-start justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <div className={isRTL ? 'text-right' : 'text-left'}>
                       <p className="text-2xl font-bold">{typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}</p>
@@ -1055,44 +1055,44 @@ export function InstructorDashboard() {
                       </Badge>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Bar Chart Column */}
                     <div className="lg:col-span-2 h-96">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={governorateData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                          <XAxis 
-                            type="number" 
-                            stroke="hsl(var(--muted-foreground))" 
-                            fontSize={11} 
-                            tickLine={false} 
+                          <XAxis
+                            type="number"
+                            stroke="hsl(var(--muted-foreground))"
+                            fontSize={11}
+                            tickLine={false}
                             axisLine={false}
                             tickFormatter={(value) => `${value}`}
                           />
-                          <YAxis 
-                            type="category" 
-                            dataKey="name" 
-                            stroke="hsl(var(--muted-foreground))" 
-                            fontSize={11} 
-                            tickLine={false} 
-                            axisLine={false} 
+                          <YAxis
+                            type="category"
+                            dataKey="name"
+                            stroke="hsl(var(--muted-foreground))"
+                            fontSize={11}
+                            tickLine={false}
+                            axisLine={false}
                             width={100}
                           />
-                          <Tooltip 
+                          <Tooltip
                             contentStyle={{ borderRadius: "16px", border: "none", backgroundColor: "rgba(0,0,0,0.8)", color: "white" }}
                             formatter={(value: number) => [`${value} ${lang === 'ar' ? 'طالب' : 'students'}`, t("numberOfStudents")]}
                             cursor={{ fill: "rgba(16, 185, 129, 0.1)" }}
                           />
-                          <Bar 
+                          <Bar
                             isAnimationActive={false}
-                            dataKey="value" 
-                            name={lang === 'ar' ? 'الطلاب' : 'Students'} 
+                            dataKey="value"
+                            name={lang === 'ar' ? 'الطلاب' : 'Students'}
                             radius={[0, 8, 8, 0]}
                           >
                             {governorateData.map((entry, idx) => (
-                              <Cell 
-                                key={`cell-${idx}`} 
+                              <Cell
+                                key={`cell-${idx}`}
                                 fill={`hsl(${140 + (idx * 8)}, 70%, 55%)`}
                                 stroke={`hsl(${140 + (idx * 8)}, 70%, 45%)`}
                                 strokeWidth={1}
@@ -1102,7 +1102,7 @@ export function InstructorDashboard() {
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    
+
                     {/* Stats & Info Column */}
                     <div className="space-y-4">
                       {/* Top Governorate Card */}
@@ -1122,7 +1122,7 @@ export function InstructorDashboard() {
                           </Badge>
                         </div>
                       </div>
-                      
+
                       {/* Total Stats Card */}
                       <div className="rounded-xl bg-gradient-to-r from-emerald-500/5 to-teal-500/5 p-4 border border-emerald-200/50 dark:border-emerald-800/50">
                         <div className="grid grid-cols-2 gap-3">
@@ -1142,7 +1142,7 @@ export function InstructorDashboard() {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Governorate List Preview */}
                       <div className="rounded-xl bg-white/50 dark:bg-slate-900/50 p-4 border border-slate-200/50 dark:border-slate-800/50">
                         <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-2">
@@ -1153,8 +1153,8 @@ export function InstructorDashboard() {
                           {governorateData.map((gov, idx) => (
                             <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all duration-200 group">
                               <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-2 h-2 rounded-full" 
+                                <div
+                                  className="w-2 h-2 rounded-full"
                                   style={{ backgroundColor: `hsl(${140 + (idx * 8)}, 70%, 55%)` }}
                                 />
                                 <span className="text-sm font-medium group-hover:text-emerald-600 transition-colors">
@@ -1164,7 +1164,7 @@ export function InstructorDashboard() {
                               <div className="flex items-center gap-3">
                                 <span className="text-sm font-bold text-emerald-600">{gov.value}</span>
                                 <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                  <div 
+                                  <div
                                     className="h-full rounded-full"
                                     style={{
                                       width: `${(gov.value / totalGovernorateStudents) * 100}%`,
@@ -1182,7 +1182,7 @@ export function InstructorDashboard() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 pt-3 border-t border-emerald-200/50 dark:border-emerald-800/50">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -1233,20 +1233,20 @@ export function InstructorDashboard() {
                       </Badge>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Pie Chart */}
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie 
+                          <Pie
                             isAnimationActive={false}
-                            data={regionData} 
-                            dataKey="value" 
+                            data={regionData}
+                            dataKey="value"
                             nameKey="name"
-                            cx="50%" 
-                            cy="50%" 
-                            innerRadius={40} 
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={40}
                             outerRadius={90}
                             paddingAngle={2}
                             label={({ name, percent }) => percent > 0.05 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
@@ -1255,12 +1255,12 @@ export function InstructorDashboard() {
                               <Cell key={`cell-${idx}`} fill={`hsl(${200 + (idx * 15)}, 70%, 55%)`} />
                             ))}
                           </Pie>
-                          <Tooltip 
+                          <Tooltip
                             contentStyle={{ borderRadius: "16px", border: "none", backgroundColor: "rgba(0,0,0,0.8)", color: "white" }}
                             formatter={(value: number) => [`${value} ${lang === 'ar' ? 'طالب' : 'students'}`, t("numberOfStudentsInRegion")]}
                           />
-                          <Legend 
-                            layout="vertical" 
+                          <Legend
+                            layout="vertical"
                             align={isRTL ? "left" : "right"}
                             verticalAlign="middle"
                             wrapperStyle={{ fontSize: "11px" }}
@@ -1268,7 +1268,7 @@ export function InstructorDashboard() {
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
-                    
+
                     {/* Stats & Info Column for Regions */}
                     <div className="space-y-4">
                       {/* Top Region Card */}
@@ -1288,7 +1288,7 @@ export function InstructorDashboard() {
                           </Badge>
                         </div>
                       </div>
-                      
+
                       {/* Total Stats Card for Regions */}
                       <div className="rounded-xl bg-gradient-to-r from-blue-500/5 to-indigo-500/5 p-4 border border-blue-200/50 dark:border-blue-800/50">
                         <div className="grid grid-cols-2 gap-3">
@@ -1308,7 +1308,7 @@ export function InstructorDashboard() {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Region List Preview */}
                       <div className="rounded-xl bg-white/50 dark:bg-slate-900/50 p-4 border border-slate-200/50 dark:border-slate-800/50">
                         <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-2">
@@ -1319,8 +1319,8 @@ export function InstructorDashboard() {
                           {regionData.map((region, idx) => (
                             <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 group">
                               <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-2 h-2 rounded-full" 
+                                <div
+                                  className="w-2 h-2 rounded-full"
                                   style={{ backgroundColor: `hsl(${200 + (idx * 15)}, 70%, 55%)` }}
                                 />
                                 <span className="text-sm font-medium group-hover:text-blue-600 transition-colors">
@@ -1330,7 +1330,7 @@ export function InstructorDashboard() {
                               <div className="flex items-center gap-3">
                                 <span className="text-sm font-bold text-blue-600">{region.value}</span>
                                 <div className="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                  <div 
+                                  <div
                                     className="h-full rounded-full"
                                     style={{
                                       width: `${(region.value / totalRegionStudents) * 100}%`,
@@ -1348,7 +1348,7 @@ export function InstructorDashboard() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 pt-3 border-t border-blue-200/50 dark:border-blue-800/50">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -1382,7 +1382,7 @@ export function InstructorDashboard() {
                   whileHover={{ y: -4 }}
                   className="group relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 p-4 shadow-md transition-all duration-300 hover:shadow-xl border border-slate-200/50 dark:border-slate-800/50 cursor-pointer"
                 >
-                  <div className={`absolute top-0 ${isRTL ? 'left-0' : 'right-0'} h-20 w-20 rounded-full ${item.bg} blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+                  <div className={`absolute top-0 ${isRTL ? 'left-0' : 'right-0'} h-20 w-20 rounded-full ${item.bg}  opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                   <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <div className={`space-y-1 ${isRTL ? 'text-right' : 'text-left'}`}>
                       <p className="text-2xl font-bold">{item.value}</p>
@@ -1515,19 +1515,19 @@ export function InstructorDashboard() {
                       {totalGovernorateStudents} {t("students")}
                     </Badge>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie 
+                          <Pie
                             isAnimationActive={false}
-                            data={governorateData} 
-                            dataKey="value" 
+                            data={governorateData}
+                            dataKey="value"
                             nameKey="name"
-                            cx="50%" 
-                            cy="50%" 
-                            innerRadius={40} 
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={40}
                             outerRadius={90}
                             paddingAngle={2}
                             label={({ name, percent }) => percent > 0.05 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
@@ -1537,8 +1537,8 @@ export function InstructorDashboard() {
                             ))}
                           </Pie>
                           <Tooltip formatter={(value: number) => [`${value} ${lang === 'ar' ? 'طالب' : 'students'}`, t("numberOfStudents")]} />
-                          <Legend 
-                            layout="vertical" 
+                          <Legend
+                            layout="vertical"
                             align={isRTL ? "left" : "right"}
                             verticalAlign="middle"
                             wrapperStyle={{ fontSize: "11px" }}
@@ -1600,19 +1600,19 @@ export function InstructorDashboard() {
                       {totalRegionStudents} {t("students")}
                     </Badge>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie 
+                          <Pie
                             isAnimationActive={false}
-                            data={regionData} 
-                            dataKey="value" 
+                            data={regionData}
+                            dataKey="value"
                             nameKey="name"
-                            cx="50%" 
-                            cy="50%" 
-                            innerRadius={40} 
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={40}
                             outerRadius={90}
                             paddingAngle={2}
                             label={({ name, percent }) => percent > 0.05 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
@@ -1622,8 +1622,8 @@ export function InstructorDashboard() {
                             ))}
                           </Pie>
                           <Tooltip formatter={(value: number) => [`${value} ${lang === 'ar' ? 'طالب' : 'students'}`, t("numberOfStudentsInRegion")]} />
-                          <Legend 
-                            layout="vertical" 
+                          <Legend
+                            layout="vertical"
                             align={isRTL ? "left" : "right"}
                             verticalAlign="middle"
                             wrapperStyle={{ fontSize: "11px" }}
@@ -1883,7 +1883,7 @@ export function InstructorDashboard() {
             <DialogFooter className={`flex gap-2 ${isRTL ? 'sm:justify-start' : 'sm:justify-end'}`}>
               <Button variant="outline" onClick={() => setReportDialogOpen(false)} className="rounded-xl">{t("cancel")}</Button>
               <Button onClick={handleDownloadReport} disabled={downloading} className="gap-2 rounded-xl">
-                {downloading ? <><Loader2 className="h-4 w-4 animate-spin" />{t("downloading")}</> : <><Download className="h-4 w-4" />{t("downloadPDF")}</>}
+                {downloading ? <><Loader2 className="h-4 w-4 " />{t("downloading")}</> : <><Download className="h-4 w-4" />{t("downloadPDF")}</>}
               </Button>
             </DialogFooter>
           </DialogContent>

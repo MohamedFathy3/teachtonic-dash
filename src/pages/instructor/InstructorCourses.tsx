@@ -24,7 +24,7 @@ import {
   Users, DollarSign, Clock, Filter, X, Sparkles, TrendingUp,
   GraduationCap, Calendar, Star, Zap
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '@/lib/static-motion';
 import type { Course } from '@/types/course.types';
 import { AsyncSelect } from '@/components/ui/AsyncSelect';
 import { Label } from '@/components/ui/label';
@@ -333,7 +333,7 @@ const handleToggleStar = async (course: Course) => {
     await courseService.updateCourseStar(course.id, newStarValue);
     await refreshCourses();
     toast.success(
-      newStarValue === 1 
+      newStarValue === 1
         ? (lang === "ar" ? "تم تفعيل التقييم للكورس" : "Course rating enabled")
         : (lang === "ar" ? "تم إلغاء تفعيل التقييم للكورس" : "Course rating disabled")
     );
@@ -392,7 +392,7 @@ const handleToggleStar = async (course: Course) => {
   // ✅ Render Details
   if (showDetails && selectedCourse) {
     return (
-      <Suspense fallback={<div className="min-h-screen animate-pulse bg-muted/30" />}>
+      <Suspense fallback={<div className="min-h-screen  bg-muted/30" />}>
         <CourseDetails
           courseId={selectedCourseId!}
           onBack={() => {
@@ -413,7 +413,7 @@ const handleToggleStar = async (course: Course) => {
   // ✅ Render Form
   if (showForm) {
     return (
-      <Suspense fallback={<div className="min-h-screen animate-pulse bg-muted/30" />}>
+      <Suspense fallback={<div className="min-h-screen  bg-muted/30" />}>
         <CourseForm
           course={courseToEdit || undefined}
           onSuccess={handleFormSuccess}
@@ -440,7 +440,7 @@ const handleToggleStar = async (course: Course) => {
           <div>
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-xl blur-xl opacity-60" />
+                <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-xl  opacity-60" />
                 <div className="relative h-12 w-12 rounded-xl bg-gradient-to-r from-primary to-secondary flex items-center justify-center shadow-lg">
                   <BookOpen className="h-6 w-6 text-white" />
                 </div>
@@ -451,7 +451,7 @@ const handleToggleStar = async (course: Course) => {
                 </h1>
                 <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                   <Sparkles className="h-3 w-3" />
-                  {pagination.total} {t('courses')} 
+                  {pagination.total} {t('courses')}
                 </p>
               </div>
             </div>
@@ -495,7 +495,7 @@ const handleToggleStar = async (course: Course) => {
   "
             >
               <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                className={`h-4 w-4 ${loading ? "" : ""}`}
               />
               {lang === "ar" ? "تحديث البيانات" : "Refresh Data"}
             </Button>
@@ -546,11 +546,11 @@ const handleToggleStar = async (course: Course) => {
                     {stat.value}
                   </motion.p>
                 </div>
-                <div className="p-2 rounded-lg bg-white/20 backdrop-blur">
+                <div className="p-2 rounded-lg bg-white/20 ">
                   <stat.icon className="h-5 w-5 text-primary" />
                 </div>
               </div>
-              <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full bg-white/10 blur-xl" />
+              <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full bg-white/10 " />
             </motion.div>
           ))}
         </motion.div>
@@ -560,7 +560,7 @@ const handleToggleStar = async (course: Course) => {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <div className="flex flex-col sm:flex-row justify-between gap-4">
               <TabsList className="bg-muted/50 p-1 rounded-xl">
-             
+
 
               </TabsList>
 
@@ -600,12 +600,12 @@ const handleToggleStar = async (course: Course) => {
                   exit={{ opacity: 0, height: 0, y: -20 }}
                   className="overflow-hidden"
                 >
-                  <Card className="p-5 mt-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border shadow-xl rounded-2xl">
+                  <Card className="p-5 mt-4 bg-white/80 dark:bg-gray-800/80  border shadow-xl rounded-2xl">
 
                     {/* 🔹 Filters Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-                    
+
 
                       {/* Subject */}
                       <div className="space-y-2">
@@ -738,7 +738,7 @@ const handleToggleStar = async (course: Course) => {
             <TabsContent value={activeTab} className="mt-6">
               {loading && currentList.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                  <Loader2 className="h-12 w-12  text-primary" />
                   <p className="text-muted-foreground mt-4">{t('loadingCourses')}</p>
                 </div>
               )}
@@ -795,7 +795,7 @@ const handleToggleStar = async (course: Course) => {
                           onRestore={() => setRestoringCourse(course)}
                           onForceDelete={() => setForceDeletingCourse(course)}
                           onToggleActive={handleToggleActive}
-                          onToggleStar={handleToggleStar} 
+                          onToggleStar={handleToggleStar}
                           isDeleted={isDeletedTab}
                           showActions={true}
                         />
@@ -856,7 +856,7 @@ const handleToggleStar = async (course: Course) => {
 
               {/* ✅ Table View - Simplified with better design */}
               {(!loading || currentList.length > 0) && !error && currentList.length > 0 && viewMode === 'table' && (
-                <Card className="rounded-3xl overflow-hidden border bg-background/80 backdrop-blur-md shadow-2xl">
+                <Card className="rounded-3xl overflow-hidden border bg-background/80  shadow-2xl">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gradient-to-r from-primary/5 via-secondary/5 to-primary/5 border-b">
@@ -1105,7 +1105,7 @@ const DeleteConfirmDialog: React.FC<{
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 ">
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
