@@ -1,49 +1,12 @@
 import { lazy, Suspense } from "react";
 import type { ComponentType } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider } from "@/contexts/AppContext";
 
-<<<<<<< HEAD
-import { SemestersPage } from "./components/admin/SemestersPage";
-import { BooksPage } from "./components/admin/books/BooksPage";
-import { OffersPage } from "@/components/offers/OffersPage";
-import { BannersPage } from "@/components/offers/BannersPage";
-import { CenterHoursPage } from "./components/admin/center-hours/CenterHoursPage";
-import { PaymentCodesPage } from "./components/admin/payment-codes/PaymentCodesPage";
-import { InstructorRedeemRequests } from "./components/redeem-requests/RedeemRequestsPage";
-import { InstructorAnalytics } from "./pages/instructor/InstructorAnalytics";
-import { InstructorAssistants } from "./pages/instructor/InstructorAssistants";
-import InstructorBankQuestions from "./pages/instructor/InstructorBankQuestions";
-import { InstructorContent } from "./pages/instructor/InstructorContent";
-import { InstructorEarnings } from "./pages/instructor/InstructorEarnings";
-import InstructorStudents from "./pages/instructor/InstructorStudents";
-import { InstructorWebsite } from "./pages/instructor/InstructorWebsite";
-import { LessonDetailsPage } from "./pages/instructor/LessonDetailsPage";
-import { BookDetailsPage } from "./pages/instructor/BookDetailsPage";
-import { StudentAttendance } from "./pages/instructor/StudentAttendance";
-import { MyAssistantPage } from "./pages/instructor/MyAssistantPage";
-import SettingsPages from '@/pages/instructor/SettingsPage';
-import SeoCountsPage from '@/pages/instructor/SeoCountsPage';
-import { SemesterDetailsPage } from '@/pages/instructor/SemesterDetailsPage';
-import { AttendancePage } from '@/pages/instructor/AttendancePage';
-import WhatsAppSetup  from '@/pages/instructor/WhatsAppSetup';
-
-const InstructorDashboard = lazy(() =>
-  import("./pages/instructor/InstructorDashboard").then(({ InstructorDashboard }) => ({
-    default: InstructorDashboard,
-  }))
-);
-const InstructorCourses = lazy(() =>
-  import("./pages/instructor/InstructorCourses").then(({ InstructorCourses }) => ({
-    default: InstructorCourses,
-  }))
-);
-=======
 const lazyNamed = (loader: () => Promise<Record<string, unknown>>, name: string) =>
   lazy(() => loader().then((module) => ({ default: module[name] as ComponentType })));
 
@@ -94,7 +57,6 @@ const SeoCountsPage = lazy(() => import("@/pages/instructor/SeoCountsPage"));
 const SemesterDetailsPage = lazyNamed(() => import("@/pages/instructor/SemesterDetailsPage"), "SemesterDetailsPage");
 const AttendancePage = lazyNamed(() => import("@/pages/instructor/AttendancePage"), "AttendancePage");
 const WhatsAppSetup = lazy(() => import("@/pages/instructor/WhatsAppSetup"));
->>>>>>> ac945d0b6e2066a2a703da515fe460d28ce03ef6
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,38 +70,17 @@ const queryClient = new QueryClient({
   },
 });
 
-<<<<<<< HEAD
-const App = () => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AppProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Suspense fallback={
-              <div aria-busy="true" className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6">
-                <div className="mx-auto max-w-[1600px] space-y-6">
-                  <div className="h-44 animate-pulse rounded-3xl bg-gradient-to-r from-indigo-600/70 via-purple-600/70 to-pink-600/70" />
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-                    {Array.from({ length: 6 }, (_, index) => (
-                      <div key={index} className="h-24 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    {Array.from({ length: 4 }, (_, index) => (
-                      <div key={index} className="h-72 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            }>
-              <Routes>
-              {/* Login */}
-=======
 const PageLoader = () => (
-  <div className="flex min-h-[40vh] items-center justify-center" aria-label="Loading">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+  <div aria-busy="true" className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6">
+    <div className="mx-auto max-w-[1600px] space-y-6">
+      <div className="h-44 animate-pulse rounded-3xl bg-gradient-to-r from-indigo-600/70 via-purple-600/70 to-pink-600/70" />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-24 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />)}
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-white dark:bg-slate-900" />)}
+      </div>
+    </div>
   </div>
 );
 
@@ -152,7 +93,6 @@ const App = () => (
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
->>>>>>> ac945d0b6e2066a2a703da515fe460d28ce03ef6
               <Route path="/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<Index />}>
                 <Route index element={<AdminOverview />} />
@@ -207,16 +147,6 @@ const App = () => (
                 <Route path="whatsapp-setup" element={<WhatsAppSetup />} />
               </Route>
               <Route path="*" element={<Index />} />
-<<<<<<< HEAD
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AppProvider>
-    </QueryClientProvider>
-  );
-};
-=======
             </Routes>
           </Suspense>
         </BrowserRouter>
@@ -224,6 +154,5 @@ const App = () => (
     </AppProvider>
   </QueryClientProvider>
 );
->>>>>>> ac945d0b6e2066a2a703da515fe460d28ce03ef6
 
 export default App;
