@@ -51,7 +51,7 @@ class ExamService extends BaseService<Exam> {
         requestBody.searchFields = ['title', 'title_ar', 'description', 'description_ar'];
       }
 
-      const response = await api.post(`/${this.endpoint}/index`, requestBody);
+      const response = await api.post(`/exam/index-dashboard`, requestBody);
 
       return {
         data: response.data?.data || [],

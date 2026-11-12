@@ -120,6 +120,33 @@ export const InstructorExams: React.FC = () => {
     avgMarks: exams.length > 0 ? Math.round(exams.reduce((sum, e) => sum + (e.total_marks || 0), 0) / exams.length) : 0,
   }), [exams, pagination.total]);
 
+  const apiFilters = useMemo(() => {
+    const nextFilters: Record<string, number | string> = {};
+    if (filters.stageId) nextFilters.stage_id = filters.stageId;
+    if (filters.lessonId) nextFilters.course_detail_id = filters.lessonId;
+    if (filters.marksMin) nextFilters.total_marks = filters.marksMin;
+    if (filterExamType) nextFilters.type_exam = filterExamType;
+    if (filterExamType === 'center' && filterCenterHourId) {
+      nextFilters.center_hour_id = Number(filterCenterHourId);
+    }
+    return nextFilters;
+  }, [filters, filterExamType, filterCenterHourId]);
+
+  const pageNumbers = useMemo(() => {
+    const lastPage = Math.max(1, pagination.lastPage);
+    const currentPage = Math.min(pagination.currentPage, lastPage);
+    return Array.from(
+      new Set([1, lastPage, currentPage - 1, currentPage, currentPage + 1])
+    )
+      .filter(page => page >= 1 && page <= lastPage)
+      .sort((a, b) => a - b);
+  }, [pagination.currentPage, pagination.lastPage]);
+
+  const goToExamPage = (page: number) => {
+    if (loading || page < 1 || page > pagination.lastPage || page === pagination.currentPage) return;
+    fetchExams(page, apiFilters, debouncedSearch);
+  };
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
@@ -128,17 +155,8 @@ export const InstructorExams: React.FC = () => {
 
   // Fetch exams when dependencies change
   useEffect(() => {
-    const apiFilters: any = {};
-    if (filters.stageId) apiFilters.stage_id = filters.stageId;
-    if (filters.lessonId) apiFilters.course_detail_id = filters.lessonId;
-    if (filters.marksMin) apiFilters.total_marks = filters.marksMin;
-    if (filterExamType) apiFilters.type_exam = filterExamType;
-    if (filterExamType === 'center' && filterCenterHourId) {
-      apiFilters.center_hour_id = Number(filterCenterHourId);
-    }
-    
     fetchExams(1, apiFilters, debouncedSearch);
-  }, [fetchExams, filters, debouncedSearch, filterExamType, filterCenterHourId]);
+  }, [fetchExams, apiFilters, debouncedSearch]);
 
   // Check URL param for exam ID
   useEffect(() => {
@@ -454,16 +472,63 @@ export const InstructorExams: React.FC = () => {
         )}
 
         {/* Pagination */}
-        {pagination.total > pagination.perPage && (
-          <div className="flex items-center justify-center gap-3 pt-8 pb-4">
-            <Button variant="outline" size="icon" className="rounded-full w-10 h-10" onClick={() => fetchExams(pagination.currentPage - 1)} disabled={pagination.currentPage === 1}>
-              <ChevronLeft className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />
-            </Button>
-            <span className="text-sm">{pagination.currentPage} / {pagination.lastPage}</span>
-            <Button variant="outline" size="icon" className="rounded-full w-10 h-10" onClick={() => fetchExams(pagination.currentPage + 1)} disabled={pagination.currentPage === pagination.lastPage}>
-              <ChevronRight className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />
-            </Button>
-          </div>
+        {pagination.lastPage > 1 && (
+          <nav
+            aria-label={lang === 'ar' ? 'التنقل بين صفحات الامتحانات' : 'Exam pagination'}
+            className="flex flex-col items-center gap-3 pt-8 pb-4 sm:flex-row sm:justify-between"
+          >
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {lang === 'ar'
+                ? `عرض ${((pagination.currentPage - 1) * pagination.perPage) + 1}–${Math.min(pagination.currentPage * pagination.perPage, pagination.total)} من ${pagination.total}`
+                : `Showing ${((pagination.currentPage - 1) * pagination.perPage) + 1}–${Math.min(pagination.currentPage * pagination.perPage, pagination.total)} of ${pagination.total}`}
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="rounded-full"
+                aria-label={lang === 'ar' ? 'الصفحة السابقة' : 'Previous page'}
+                onClick={() => goToExamPage(pagination.currentPage - 1)}
+                disabled={loading || pagination.currentPage <= 1}
+              >
+                <ChevronLeft className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />
+              </Button>
+              {pageNumbers.map((page, index) => {
+                const previousPage = pageNumbers[index - 1];
+                return (
+                  <React.Fragment key={page}>
+                    {previousPage && page - previousPage > 1 && (
+                      <span className="px-1 text-muted-foreground" aria-hidden="true">…</span>
+                    )}
+                    <Button
+                      type="button"
+                      variant={page === pagination.currentPage ? 'default' : 'outline'}
+                      size="icon"
+                      className="rounded-full"
+                      aria-label={lang === 'ar' ? `الصفحة ${page}` : `Page ${page}`}
+                      aria-current={page === pagination.currentPage ? 'page' : undefined}
+                      onClick={() => goToExamPage(page)}
+                      disabled={loading || page === pagination.currentPage}
+                    >
+                      {page}
+                    </Button>
+                  </React.Fragment>
+                );
+              })}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="rounded-full"
+                aria-label={lang === 'ar' ? 'الصفحة التالية' : 'Next page'}
+                onClick={() => goToExamPage(pagination.currentPage + 1)}
+                disabled={loading || pagination.currentPage >= pagination.lastPage}
+              >
+                <ChevronRight className={`h-4 w-4 ${isRTL ? 'rotate-180' : ''}`} />
+              </Button>
+            </div>
+          </nav>
         )}
       </div>
     </motion.div>
