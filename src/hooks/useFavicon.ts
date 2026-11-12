@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
-import api from "@/lib/api";
 
 // حفظ القيم الأصلية الموجودة في index.html
 const DEFAULTS = {
@@ -46,20 +45,8 @@ export const useFavicon = () => {
           return;
         }
 
-        // جلب البيانات
-        const response = await api.get("/admin/check-auth");
-
-        if (
-          response.data?.result === "Success" &&
-          response.data?.data?.image?.fullUrl
-        ) {
-          updateFaviconElement(
-            response.data.data.image.fullUrl,
-            response.data.data.name
-          );
-        } else {
-          resetFavicon();
-        }
+        // AppContext هو المصدر الوحيد لبيانات المدرس لتجنب طلب check-auth إضافي.
+        resetFavicon();
       } catch (error) {
         console.warn("⚠️ Could not update favicon:", error);
         resetFavicon();

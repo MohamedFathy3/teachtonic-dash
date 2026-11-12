@@ -35,8 +35,6 @@ import { AvatarBadge } from "@/components/lms/AvatarBadge";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
-import api from "@/lib/api";
 
 interface TopbarProps {
   onToggleSidebar: () => void;
@@ -56,39 +54,18 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
     setLang,
     role,
     user,
+    instructorData,
     logout,
   } = useApp();
 
   const navigate = useNavigate();
   
-  // ✅ State لتاريخ الانتهاء
-  const [expiryData, setExpiryData] = useState<ExpiryData | null>(null);
-  const [loadingExpiry, setLoadingExpiry] = useState(false);
-
-  // ✅ جلب تاريخ الانتهاء
-  useEffect(() => {
-    const fetchExpiryData = async () => {
-      // فقط للمعلمين
-      if (role !== 'teacher') return;
-      
-      setLoadingExpiry(true);
-      try {
-        const response = await api.get('/admin/check-auth');
-        if (response.data?.data) {
-          setExpiryData({
-            expire_date: response.data.data.expire_date || null,
-            show_expire_message: response.data.data.show_expire_message || false,
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch expiry data:', error);
-      } finally {
-        setLoadingExpiry(false);
+  const expiryData: ExpiryData | null = instructorData
+    ? {
+        expire_date: instructorData.expire_date || null,
+        show_expire_message: Boolean(instructorData.show_expire_message),
       }
-    };
-
-    fetchExpiryData();
-  }, [role]);
+    : null;
 
   const handleLogout = () => {
     logout();

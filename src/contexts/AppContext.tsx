@@ -16,6 +16,8 @@ interface InstructorData {
   email?: string;
   type?: string;
   role: string;
+  expire_date?: string | null;
+  show_expire_message?: boolean;
   imageUrl?: string;
   image?: {
     id: number;
@@ -54,6 +56,8 @@ interface AppContextType {
 }
 
 const instructorCacheKey = (userId: number) => `instructor-data:${userId}`;
+const instructorCacheTimeKey = (userId: number) => `${instructorCacheKey(userId)}:saved-at`;
+const INSTRUCTOR_CACHE_TTL = 5 * 60 * 1000;
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -127,6 +131,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       return;
     }
 
+    const cacheSavedAt = Number(sessionStorage.getItem(instructorCacheTimeKey(user.id)) || 0);
+    if (cacheSavedAt && Date.now() - cacheSavedAt < INSTRUCTOR_CACHE_TTL) {
+      return;
+    }
+
     setIsLoadingInstructor(true);
     try {
       console.log('🔄 Fetching instructor data...');
@@ -143,6 +152,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           name: data.name,
           type: data.type,
           role: data.role || 'assistant_teacher',
+          expire_date: data.expire_date || null,
+          show_expire_message: Boolean(data.show_expire_message),
           imageUrl: data.imageUrl || data.image?.fullUrl,
           image: data.image,
           email: data.email,
@@ -150,6 +161,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         setInstructorData(instructor);
         try {
           sessionStorage.setItem(instructorCacheKey(user.id), JSON.stringify(instructor));
+          sessionStorage.setItem(instructorCacheTimeKey(user.id), String(Date.now()));
         } catch (error) {
           console.warn('Unable to cache instructor data:', error);
         }

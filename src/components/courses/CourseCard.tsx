@@ -32,7 +32,7 @@ interface CourseCardProps {
   prioritizeImage?: boolean;
 }
 
-export const CourseCard: React.FC<CourseCardProps> = ({
+export const CourseCard = React.memo<CourseCardProps>(({
   course,
   onView,
   onEdit,
@@ -392,4 +392,9 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       </Card>
     </motion.div>
   );
-};
+}, (previous, next) =>
+  previous.course === next.course &&
+  previous.isDeleted === next.isDeleted &&
+  previous.prioritizeImage === next.prioritizeImage &&
+  previous.showActions === next.showActions
+);
